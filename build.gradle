@@ -1,19 +1,416 @@
+import se.bjurr.gitchangelog.plugin.gradle.GitChangelogTask
+
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version 'latest.release'
+    id 'maven-publish'
+    id 'signing'
+
+    id 'pmd'
+    id 'checkstyle'
+    id 'jacoco'
+    id 'com.github.kt3k.coveralls' version "latest.release"
+    id "com.github.spotbugs" version "latest.release"
+    id "com.diffplug.spotless" version "latest.release"
+
+    // download the RR tools which have no Maven Repository
+    id "de.undercouch.download" version "latest.release"
+    id 'org.hidetake.ssh' version "latest.release"
+    id "com.github.hierynomus.license" version "latest.release"
+    id "se.bjurr.gitchangelog.git-changelog-gradle-plugin" version "latest.release"
+    id "com.nwalsh.gradle.saxon.saxon-gradle" version "0.9.6"
 }
 
-group = 'com.manticore-projects'
-version = '1.0-SNAPSHOT'
-
 repositories {
+    mavenLocal()
     mavenCentral()
+
+    // Sonatype OSSRH
+    maven {
+        url = uri('https://s01.oss.sonatype.org/content/repositories/snapshots/')
+    }
+
+    maven {
+        url = uri('https://oss.sonatype.org/content/groups/public/')
+    }
+
+    maven {
+        url = uri('https://repo.maven.apache.org/maven2/')
+    }
+}
+
+configurations {
+    xmlDoclet
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.9.1')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
+    implementation 'commons-cli:commons-cli:+'
+    implementation 'commons-io:commons-io:+'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.+'
+    testImplementation 'org.duckdb:duckdb_jdbc:0.10.0'
+    testImplementation 'org.apache.commons:commons-compress:+'
+
+    // Java Doc in XML Format
+    xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
 }
+
+def getVersion = { boolean considerSnapshot ->
+    Integer major = 0
+    Integer minor = 0
+    Integer patch = null
+    Integer build = null
+    def commit = null
+    def snapshot = ""
+    new ByteArrayOutputStream().withStream { os ->
+        exec {
+            args = [
+                    "--no-pager"
+                    , "describe"
+                    , "--tags"
+                    , "--always"
+                    , "--dirty=-SNAPSHOT"
+            ]
+            executable "git"
+            standardOutput = os
+        }
+        def versionStr = os.toString().trim()
+        def pattern = /(?<major>\d*)\.(?<minor>\d*)(\.(?<patch>\d*))?(-(?<build>\d*)-(?<commit>[a-zA-Z\d]*))?/
+        def matcher = versionStr =~ pattern
+        if (matcher.find()) {
+            major = matcher.group('major') as Integer
+            minor = matcher.group('minor') as Integer
+            patch = matcher.group('patch') as Integer
+            build = matcher.group('build') as Integer
+            commit = matcher.group('commit')
+        }
+
+        if (considerSnapshot && ( versionStr.endsWith('SNAPSHOT') || build!=null) ) {
+            minor++
+            if (patch!=null) patch = 0
+            snapshot = "-SNAPSHOT"
+        }
+    }
+    return patch!=null
+            ? "${major}.${minor}.${patch}${snapshot}"
+            :  "${major}.${minor}${snapshot}"
+}
+version = getVersion(true)
+group = 'com.manticore-projects.jsqlformatter'
+description = 'JSQLTranspiler'
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+    sourceCompatibility(JavaVersion.VERSION_11)
+    targetCompatibility(JavaVersion.VERSION_11)
+
+    // needed for XML-Doclet to work (since Doclet changed again with Java 13)
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+
+javadoc {
+    if(JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
+    options.addBooleanOption("Xdoclint:none", true)
+}
+
+tasks.register('xmldoc', Javadoc) {
+    source = sourceSets.main.allJava
+    destinationDir = reporting.file("xmlDoclet")
+    options.docletpath = configurations.xmlDoclet.files as List
+    options.doclet = "com.github.markusbernhardt.xmldoclet.XmlDoclet"
+
+    options.addBooleanOption("rst", true)
+    options.addBooleanOption("withFloatingToc", true)
+    options.addStringOption("basePackage", "com.manticore.jsqlformatter")
+
+    dependsOn(compileJava)
+    doLast {
+        copy {
+            from reporting.file("xmlDoclet/javadoc.rst")
+            into "${projectDir}/src/site/sphinx/"
+        }
+    }
+}
+
+jar {
+    manifest {
+        attributes('Main-Class': 'com.manticore.jsqlformatter.JSQLTranspiler')
+    }
+}
+
+shadowJar {
+    minimize()
+}
+
 
 test {
     useJUnitPlatform()
+
+    // set heap size for the test JVM(s)
+    minHeapSize = "128m"
+    maxHeapSize = "1G"
 }
+
+license {
+    excludes(["**/*.txt", "**/*.conf", "**/*.sql",])
+    includes(["**/*.properties", "**/*.java", "**/*.xml"])
+
+    ext.year = Calendar.getInstance().get(Calendar.YEAR)
+    ext.name = 'Andreas Reichel'
+    ext.email = 'andreas@manticore-projects.com'
+
+    strictCheck = false
+    ignoreFailures = true
+}
+
+coveralls {
+    // /home/runner/work/jsqlformatter/jsqlformatter/build/reports/jacoco/test/jacocoTestReport.xml
+    jacocoReportPath  layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml')
+}
+
+jacocoTestReport {
+    dependsOn test // tests are required to run before generating the report
+    reports {
+        xml.required = true
+        csv.required = false
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco')
+    }
+}
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            //element = 'CLASS'
+            limit {
+                minimum = 0.92
+            }
+            excludes = [
+            ]
+        }
+        rule {
+            //element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                value = 'MISSEDCOUNT'
+
+                maximum = 64
+            }
+            excludes = [
+            ]
+        }
+    }
+}
+
+spotbugsMain {
+    reports {
+        html {
+            enabled = true
+            destination = file("build/reports/spotbugs/main/spotbugs.html")
+            stylesheet = 'fancy-hist.xsl'
+        }
+    }
+}
+
+spotbugs {
+    // fail only on P1 and without the net.sf.jsqlparser.parser.*
+    excludeFilter = file("config/spotbugs/spotBugsExcludeFilter.xml")
+
+    // do not run over the test, although we should do that eventually
+    spotbugsTest.enabled = false
+}
+
+pmd {
+    consoleOutput = true
+    sourceSets = [sourceSets.main]
+
+    // clear the ruleset in order to use configured rules only
+    ruleSets = []
+
+    //rulesMinimumPriority = 1
+    ruleSetFiles = files("config/pmd/ruleset.xml")
+
+    pmdMain {
+        excludes = [
+                "build/generated/*"
+        ]
+    }
+}
+
+checkstyle {
+    sourceSets = [sourceSets.main, sourceSets.test]
+    configFile = rootProject.file('config/checkstyle/checkstyle.xml')
+}
+
+spotless {
+    // optional: limit format enforcement to just the files changed by this feature branch
+    ratchetFrom 'origin/main'
+
+    format 'misc', {
+        // define the files to apply `misc` to
+        target '*.rst', '*.md', '.gitignore'
+
+        // define the steps to apply to those files
+        trimTrailingWhitespace()
+        indentWithSpaces(4) // or spaces. Takes an integer argument if you don't like 4
+        endWithNewline()
+    }
+    java {
+        indentWithSpaces(4)
+        eclipse().configFile('config/formatter/eclipse-java-google-style.xml')
+    }
+}
+
+tasks.withType(Checkstyle).configureEach {
+    reports {
+        xml.required = false
+        html.required = true
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId 'jsqltranspiler'
+            from(components.java)
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
+            }
+
+            pom {
+                name = 'JSQLTranspiler library'
+                description = 'Format and pretty print SQL Statements'
+                url = 'https://github.com/JSQLParser/JSqlParser'
+                licenses {
+                    license {
+                        name = 'GNU Affero General Public License Version 3'
+                        url = 'https://www.gnu.org/licenses/agpl-3.0.html'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'are'
+                        name = 'Andreas Reichel'
+                        email = 'andreas@manticore-projects.com'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/manticore-projects/jsqlformatter.git'
+                    developerConnection = 'scm:git:ssh://git@github.com:manticore-projects/jsqlformatter.git'
+                    url = 'http://manticore-projects.com/JSQLFormatter/index.html'
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            // Username and Password are defined in ~/.gradle/gradle.properties
+            name "ossrh"
+            url version.toString().endsWith('-SNAPSHOT')
+                    ? "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+                    : "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            credentials(PasswordCredentials)
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 11
+}
+
+tasks.withType(Test).configureEach {
+    maxParallelForks = 100
+    forkEvery = 1
+}
+
+tasks.register('gitChangelogTask', GitChangelogTask) {
+    fromRepo = file("$projectDir")
+    file = new File("${projectDir}/src/site/sphinx/changelog.rst")
+    //fromRef = "4.0";
+    //toRef = "1.1";
+    templateContent = """
+************************
+Changelog
+************************
+
+
+{{#tags}}
+{{#ifMatches name "^Unreleased.*"}}
+Latest Changes since |JSQLTRANSPILER_VERSION|
+{{/ifMatches}}
+{{#ifMatches name "^(?!Unreleased).*"}}
+Version {{name}}
+{{/ifMatches}}
+=============================================================
+
+ {{#issues}}
+
+  {{#commits}}
+   {{#ifMatches messageTitle "^(?!Merge).*"}}
+  * **{{{messageTitle}}}**
+    
+    {{authorName}}, {{commitDate}}
+   {{/ifMatches}}
+  {{/commits}}
+
+ {{/issues}}
+{{/tags}}
+"""
+}
+
+remotes {
+    webServer {
+        host = findProperty("${project.name}.host")
+        user = findProperty("${project.name}.username")
+        identity = new File("${System.properties['user.home']}/.ssh/id_rsa")
+    }
+}
+
+ssh.settings {
+    timeoutSec = 60000
+}
+
+tasks.register('upload') {
+    dependsOn(jar, gitChangelogTask, xmldoc, xslt)
+    doFirst {
+        if (findProperty("${project.name}.host") == null) {
+            println(
+                    """
+                Property \"${project.name}.host\' not found.
+                Please define \"${project.name}.host\" in the Gradle configuration (e. g. \$HOME/.gradle/gradle.properties.
+                """
+            )
+        }
+    }
+    doLast {
+        ssh.run {
+            session(remotes.webServer) {
+                def versionStable = getVersion(false)
+                execute "mkdir -p download/${project.name}-${versionStable}"
+                for (File file: fileTree(include:['*.jar'], dir:"${project.buildDir}/libs").collect()) {
+                    put from: file, into: "download/${project.name}-${versionStable}"
+                }
+            }
+        }
+    }
+}
+
+
+
