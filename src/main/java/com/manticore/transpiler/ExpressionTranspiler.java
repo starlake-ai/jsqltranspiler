@@ -8,11 +8,11 @@ import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
 public class ExpressionTranspiler extends ExpressionDeParser {
   public void visit(Function function) {
+    // @todo: figure out a better rewrite mechanism
     if (function.getName().equalsIgnoreCase("nvl")) {
       function.setName("Coalesce");
-    }
-
-    if (function.getName().equalsIgnoreCase("date")) {
+      super.visit(function);
+    } else if (function.getName().equalsIgnoreCase("date")) {
       ExpressionList<?> parameters = function.getParameters();
       final CastExpression expression;
       switch (parameters.size()) {
@@ -32,7 +32,5 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           break;
       }
     }
-
-
   }
 }
