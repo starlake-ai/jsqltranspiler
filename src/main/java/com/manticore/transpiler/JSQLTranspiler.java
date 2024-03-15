@@ -198,13 +198,13 @@ public class JSQLTranspiler extends SelectDeParser {
 
   public void visit(Top top) {
     // get the parent SELECT
-
     SimpleNode node = (SimpleNode) top.getASTNode().jjtGetParent();
     while (node.jjtGetValue() == null) {
       node = (SimpleNode) node.jjtGetParent();
     }
     PlainSelect select = (PlainSelect) node.jjtGetValue();
 
+    // rewrite the TOP into a LIMIT
     select.setTop(null);
     select.setLimit(new Limit().withRowCount(top.getExpression()));
   }

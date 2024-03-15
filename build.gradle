@@ -53,6 +53,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.+'
     testImplementation 'org.duckdb:duckdb_jdbc:0.10.0'
     testImplementation 'org.apache.commons:commons-compress:+'
+    testImplementation 'com.opencsv:opencsv:+'
 
     // Java Doc in XML Format
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'

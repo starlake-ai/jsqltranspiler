@@ -1,5 +1,5 @@
 CREATE TABLE users (
-    userid               INTEGER         NOT NULL /*PRIMARY KEY*/
+    userid               INTEGER         NOT NULL PRIMARY KEY
     , username           CHAR (8)
     , firstname          VARCHAR (30)
     , lastname           VARCHAR (30)
@@ -21,7 +21,7 @@ CREATE TABLE users (
 ;
 
 CREATE TABLE venue (
-    venueid          SMALLINT        NOT NULL /*PRIMARY KEY*/
+    venueid          SMALLINT        NOT NULL PRIMARY KEY
     , venuename      VARCHAR (100)
     , venuecity      VARCHAR (30)
     , venuestate     CHAR (2)
@@ -30,7 +30,7 @@ CREATE TABLE venue (
 ;
 
 CREATE TABLE category (
-    catid            SMALLINT        NOT NULL /*PRIMARY KEY*/
+    catid            SMALLINT        NOT NULL PRIMARY KEY
     , catgroup       VARCHAR (10)
     , catname        VARCHAR (10)
     , catdesc        VARCHAR (50)
@@ -38,7 +38,7 @@ CREATE TABLE category (
 ;
 
 CREATE TABLE date (
-    dateid       SMALLINT        NOT NULL /*PRIMARY KEY*/
+    dateid       SMALLINT        NOT NULL PRIMARY KEY
     , caldate    DATE            NOT NULL
     , day        CHARACTER (3)   NOT NULL
     , week       SMALLINT        NOT NULL
@@ -50,7 +50,7 @@ CREATE TABLE date (
 ;
 
 CREATE TABLE event (
-    eventid          INTEGER         NOT NULL /*PRIMARY KEY*/
+    eventid          INTEGER         NOT NULL PRIMARY KEY
     , venueid        SMALLINT        NOT NULL
     , catid          SMALLINT        NOT NULL
     , dateid         SMALLINT        NOT NULL
@@ -60,7 +60,7 @@ CREATE TABLE event (
 ;
 
 CREATE TABLE listing (
-    listid               INTEGER         NOT NULL /*PRIMARY KEY*/
+    listid               INTEGER         NOT NULL PRIMARY KEY
     , sellerid           INTEGER         NOT NULL
     , eventid            INTEGER         NOT NULL
     , dateid             SMALLINT        NOT NULL
@@ -72,7 +72,7 @@ CREATE TABLE listing (
 ;
 
 CREATE TABLE sales (
-    salesid          INTEGER         NOT NULL /*PRIMARY KEY*/
+    salesid          INTEGER         NOT NULL PRIMARY KEY
     , listid         INTEGER         NOT NULL
     , sellerid       INTEGER         NOT NULL
     , buyerid        INTEGER         NOT NULL
