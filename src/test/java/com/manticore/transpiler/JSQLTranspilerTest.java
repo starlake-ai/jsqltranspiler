@@ -114,6 +114,12 @@ class JSQLTranspilerTest {
     // STDIN to Output file
     cmdLine = new String[]{"--any", "-o", outputFile.getAbsolutePath(), providedSqlStr};
     JSQLTranspiler.main(cmdLine);
+
+    cmdLine = new String[]{"--help"};
+    JSQLTranspiler.main(cmdLine);
+
+    cmdLine = new String[]{"--unsupported-option"};
+    JSQLTranspiler.main(cmdLine);
   }
 
   static class SQLTest {

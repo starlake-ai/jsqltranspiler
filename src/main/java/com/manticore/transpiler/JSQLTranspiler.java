@@ -112,6 +112,9 @@ public class JSQLTranspiler extends SelectDeParser {
     options.addOption("o", "outputFile", true,
         "The out SQL file for the formatted statements.\n  - Create new SQL file when folder provided.\n  - Append when existing file provided.\n  - Write to STDOUT when no output file provided.");
 
+    options.addOption("h", "help", false,
+            "Print the help synopsis.");
+
     // create the parser
     CommandLineParser parser = new DefaultParser();
     try {
