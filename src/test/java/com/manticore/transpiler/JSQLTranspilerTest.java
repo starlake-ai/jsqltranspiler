@@ -1,16 +1,33 @@
+/**
+ * Manticore Projects JSQLTranspiler is a multiple SQL Dialect to DuckDB Translation Software.
+ * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 package com.manticore.transpiler;
 
 import com.opencsv.CSVWriter;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statements;
-import net.sf.jsqlparser.util.PerformanceTest;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -60,7 +77,7 @@ class JSQLTranspilerTest {
   private static final Pattern SQL_SANITATION_PATTERN2 =
       Pattern.compile("\\s*([!/,()=+\\-*|\\]<>:])\\s*", Pattern.MULTILINE);
 
-  public final static String TEST_FOLDER_STR = "build/resources/test/com/manticore/transpiler/any";
+  public final static String TEST_FOLDER_STR = "build/resources/test/com/manticore/transpiler";
 
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override
@@ -68,6 +85,36 @@ class JSQLTranspilerTest {
       return name.toLowerCase().endsWith(".sql");
     }
   };
+
+  @Test
+  void main() throws IOException {
+    String providedSqlStr = IOUtils.resourceToString(
+        JSQLTranspilerTest.class.getCanonicalName().replaceAll("\\.", "/") + "_MainIn.sql",
+        Charset.defaultCharset(), JSQLTranspilerTest.class.getClassLoader());
+
+    String expectedSqlStr = IOUtils.resourceToString(
+        JSQLTranspilerTest.class.getCanonicalName().replaceAll("\\.", "/") + "_MainOut.sql",
+        Charset.defaultCharset(), JSQLTranspilerTest.class.getClassLoader());
+
+    String inputFileStr = TEST_FOLDER_STR + "/JSQLTranspilerTest_MainIn.sql";
+    File outputFile = File.createTempFile("any_transpiled_", ".sql");
+
+    // Input file to Output file
+    String[] cmdLine = {"-i", inputFileStr, "--any", "-o", outputFile.getAbsolutePath()};
+    JSQLTranspiler.main(cmdLine);
+
+    // Input file to STDOUT
+    cmdLine = new String[]{"-i", inputFileStr, "--any"};
+    JSQLTranspiler.main(cmdLine);
+
+    // STDIN to STDOUT
+    cmdLine = new String[]{"--any",  providedSqlStr};
+    JSQLTranspiler.main(cmdLine);
+
+    // STDIN to Output file
+    cmdLine = new String[]{"--any", "-o", outputFile.getAbsolutePath(), providedSqlStr};
+    JSQLTranspiler.main(cmdLine);
+  }
 
   static class SQLTest {
     String providedSqlStr;
@@ -79,7 +126,7 @@ class JSQLTranspilerTest {
   }
 
   static Stream<Map.Entry<File, SQLTest>> getSqlTestMap() {
-    return getSqlTestMap(new File(TEST_FOLDER_STR).listFiles(FILENAME_FILTER));
+    return getSqlTestMap(new File(TEST_FOLDER_STR + "/any").listFiles(FILENAME_FILTER));
   }
 
   static Stream<Map.Entry<File, SQLTest>> getSqlTestMap(File[] testFiles) {
@@ -152,7 +199,7 @@ class JSQLTranspilerTest {
     if (!isInitialised) {
       String sqlStr = IOUtils.resourceToString(
           JSQLTranspilerTest.class.getCanonicalName().replaceAll("\\.", "/") + "_DDL.sql",
-          Charset.defaultCharset(), PerformanceTest.class.getClassLoader());
+          Charset.defaultCharset(), JSQLTranspilerTest.class.getClassLoader());
       Statements statements = CCJSqlParserUtil.parseStatements(sqlStr);
 
       LOGGER.info("Create the DuckDB Table with Indices");

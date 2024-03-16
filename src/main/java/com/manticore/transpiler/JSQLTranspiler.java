@@ -1,8 +1,27 @@
+/**
+ * Manticore Projects JSQLTranspiler is a multiple SQL Dialect to DuckDB Translation Software.
+ * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 package com.manticore.transpiler;
 
+import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.parser.SimpleNode;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Top;
@@ -11,12 +30,15 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.IOUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -31,7 +53,7 @@ public class JSQLTranspiler extends SelectDeParser {
   public final static Logger LOGGER = Logger.getLogger(JSQLTranspiler.class.getName());
 
   public enum Dialect {
-    GOOGLE_BIG_QUERY, DATABRICKS, SNOWFLAKE, AMAZON_REDSHIFT, ANY
+    GOOGLE_BIG_QUERY, DATABRICKS, SNOWFLAKE, AMAZON_REDSHIFT, ANY, DUCK_DB
   }
 
   public static File getAbsoluteFile(String filename) {
@@ -55,15 +77,40 @@ public class JSQLTranspiler extends SelectDeParser {
     return getAbsoluteFile(filename).getAbsolutePath();
   }
 
-  @SuppressWarnings({"PMD.CyclomaticComplexity"})
+  @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public static void main(String[] args) {
-    System.out.println("Hello world");
-
     Options options = new Options();
+    OptionGroup inputDialectOptions = new OptionGroup();
+    inputDialectOptions.addOption(Option.builder("d").longOpt("input-dialect").hasArg()
+        .type(Dialect.class)
+        .desc(
+            "The SQL dialect to parse.\n[ANY*, GOOGLE_BIG_QUERY, DATABRICKS, SNOWFLAKE, AMAZON_REDSHIFT]")
+        .build());
+    inputDialectOptions.addOption(Option.builder(null).longOpt("any").hasArg(false)
+        .desc("Interpret the SQL as Generic Dialect [DEFAULT].").build());
+    inputDialectOptions.addOption(Option.builder(null).longOpt("bigquery").hasArg(false)
+        .desc("Interpret the SQL as Google BigQuery Dialect.").build());
+    inputDialectOptions.addOption(Option.builder(null).longOpt("databricks").hasArg(false)
+        .desc("Interpret the SQL as DataBricks Dialect.").build());
+    inputDialectOptions.addOption(Option.builder(null).longOpt("snowflake").hasArg(false)
+        .desc("Interpret the SQL as Snowflake Dialect.").build());
+    inputDialectOptions.addOption(Option.builder(null).longOpt("redshift").hasArg(false)
+        .desc("Interpret the SQL as Amazon Snowflake Dialect.").build());
 
-    options.addOption("i", "inputFile", true, "The input SQL file or folder.");
-    options.addOption("o", "outputFile", true, "The out SQL file for the formatted statements.");
+    options.addOptionGroup(inputDialectOptions);
 
+
+    OptionGroup outputDialectOptions = new OptionGroup();
+    outputDialectOptions.addOption(Option.builder("D").longOpt("output-dialect").hasArg()
+        .desc("The SQL dialect to write.\n[DUCKDB*]").build());
+    outputDialectOptions.addOption(Option.builder(null).longOpt("duckdb").hasArg(false)
+        .desc("Write the SQL in the Duck DB Dialect [DEFAULT].").build());
+    options.addOptionGroup(outputDialectOptions);
+
+    options.addOption("i", "inputFile", true,
+        "The input SQL file or folder.\n  - Read from STDIN when no input file provided.");
+    options.addOption("o", "outputFile", true,
+        "The out SQL file for the formatted statements.\n  - Create new SQL file when folder provided.\n  - Append when existing file provided.\n  - Write to STDOUT when no output file provided.");
 
     // create the parser
     CommandLineParser parser = new DefaultParser();
@@ -83,6 +130,29 @@ public class JSQLTranspiler extends SelectDeParser {
         return;
       }
 
+      Dialect dialect = Dialect.ANY;
+      if (line.hasOption("d")) {
+        dialect = (Dialect) line.getParsedOptionValue("d");
+      } else if (line.hasOption("bigquery")) {
+        dialect = Dialect.GOOGLE_BIG_QUERY;
+      } else if (line.hasOption("databricks")) {
+        dialect = Dialect.DATABRICKS;
+      } else if (line.hasOption("snowflake")) {
+        dialect = Dialect.SNOWFLAKE;
+      } else if (line.hasOption("redshift")) {
+        dialect = Dialect.AMAZON_REDSHIFT;
+      }
+
+      File outputFile = null;
+      if (line.hasOption("outputFile")) {
+        outputFile = getAbsoluteFile(line.getOptionValue("outputFile"));
+
+        // if an existing folder was provided, create a new file in it
+        if (outputFile.exists() && outputFile.isDirectory()) {
+          outputFile = File.createTempFile(dialect.name() + "_transpiled_", ".sql", outputFile);
+        }
+      }
+
       File inputFile = null;
       if (line.hasOption("inputFile")) {
         inputFile = getAbsoluteFile(line.getOptionValue("inputFile"));
@@ -94,21 +164,25 @@ public class JSQLTranspiler extends SelectDeParser {
 
         try (FileInputStream inputStream = new FileInputStream(inputFile)) {
           String sqlStr = IOUtils.toString(inputStream, Charset.defaultCharset());
-          // @todo: do something useful here
-          System.out.println(sqlStr);
+          transpile(sqlStr, dialect, Dialect.DUCK_DB, outputFile);
         } catch (IOException ex) {
           throw new IOException(
               "Can't read the specified INPUT-FILE " + inputFile.getAbsolutePath(), ex);
+        } catch (JSQLParserException ex) {
+          throw new RuntimeException("Failed to parse the provided SQL.", ex);
         }
       }
 
       List<String> argsList = line.getArgList();
-      if (argsList.isEmpty() && !line.hasOption("input-file")) {
+      if (argsList.isEmpty() && !line.hasOption("inputFile")) {
         throw new IOException("No SQL statements provided for formatting.");
       } else {
-        for (String s : argsList) {
-          // @todo: do something useful here
-          System.out.println(s);
+        for (String sqlStr : argsList) {
+          try {
+            transpile(sqlStr, dialect, Dialect.DUCK_DB, outputFile);
+          } catch (JSQLParserException ex) {
+            throw new RuntimeException("Failed to parse the provided SQL.", ex);
+          }
         }
       }
 
@@ -145,6 +219,50 @@ public class JSQLTranspiler extends SelectDeParser {
     } else {
       throw new RuntimeException("The " + st.getClass().getName()
           + " is not supported yet. Only `PlainSelect` is supported right now.");
+    }
+  }
+
+  public static void transpile(String sqlStr, Dialect inputDialect, Dialect outputDialect,
+      File outputFile) throws JSQLParserException {
+    JSQLTranspiler transpiler = new JSQLTranspiler();
+
+    // @todo: we may need to split this manually to salvage any not parseable statements
+    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, parser -> {
+      parser.setErrorRecovery(true);
+      // parser.withTimeOut(60000);
+      // parser.withAllowComplexParsing(true);
+    });
+    for (Statement st : statements) {
+      if (st instanceof PlainSelect) {
+        PlainSelect select = (PlainSelect) st;
+        transpiler.visit(select);
+
+        transpiler.getResultBuilder().append("\n;\n\n");
+      } else {
+        LOGGER.log(Level.SEVERE,
+            st.getClass().getSimpleName() + " is not supported yet:\n" + st.toString());
+      }
+    }
+
+    String transpiledSqlStr = transpiler.getResultBuilder().toString();
+    LOGGER.fine("-- Transpiled SQL:\n" + transpiledSqlStr);
+
+    // write to STDOUT when there is no OUTPUT File
+    if (outputFile == null) {
+      System.out.println(transpiledSqlStr);
+    } else {
+      if (!outputFile.exists() && outputFile.getParentFile() != null) {
+        boolean mkdirs = outputFile.getParentFile().mkdirs();
+        if (mkdirs) {
+          LOGGER.fine("Created all the necessary folders.");
+        }
+      }
+
+      try (FileWriter writer = new FileWriter(outputFile, Charset.defaultCharset(), true)) {
+        writer.write(transpiledSqlStr);
+      } catch (IOException e) {
+        LOGGER.log(Level.SEVERE, "Failed to write to " + outputFile.getAbsolutePath());
+      }
     }
   }
 
