@@ -2,6 +2,7 @@ import se.bjurr.gitchangelog.plugin.gradle.GitChangelogTask
 
 plugins {
     id 'java'
+    id 'application'
     id 'com.github.johnrengelman.shadow' version 'latest.release'
     id 'maven-publish'
     id 'signing'
@@ -115,6 +116,9 @@ java {
     }
 }
 
+application {
+    mainClass.set("com.manticore.transpiler.JSQLTranspiler")
+}
 
 javadoc {
     if(JavaVersion.current().isJava9Compatible()) {
@@ -144,7 +148,7 @@ tasks.register('xmldoc', Javadoc) {
 
 jar {
     manifest {
-        attributes('Main-Class': 'com.manticore.jsqlformatter.JSQLTranspiler')
+        attributes('Main-Class': 'com.manticore.transpiler.JSQLTranspiler')
     }
 }
 
@@ -292,8 +296,8 @@ publishing {
 
             pom {
                 name = 'JSQLTranspiler library'
-                description = 'Format and pretty print SQL Statements'
-                url = 'https://github.com/JSQLParser/JSqlParser'
+                description = 'Rewrite Big RDBMS queries into DuckDB compatible queries'
+                url = 'https://manticore-projects.com/JSQLTranspiler'
                 licenses {
                     license {
                         name = 'GNU Affero General Public License Version 3'
@@ -308,9 +312,9 @@ publishing {
                     }
                 }
                 scm {
-                    connection = 'scm:git:https://github.com/manticore-projects/jsqlformatter.git'
+                    connection = 'scm:git@github.com:manticore-projects/JSQLTranspiler.git'
                     developerConnection = 'scm:git:ssh://git@github.com:manticore-projects/jsqlformatter.git'
-                    url = 'http://manticore-projects.com/JSQLFormatter/index.html'
+                    url = 'http://manticore-projects.com/JSQLTranspiler/index.html'
                 }
             }
         }
