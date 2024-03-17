@@ -18,12 +18,31 @@
 package com.manticore.transpiler;
 
 import net.sf.jsqlparser.expression.CastExpression;
+import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
+import net.sf.jsqlparser.expression.DateValue;
+import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
+import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
+/**
+ * The type Expression transpiler.
+ */
 public class ExpressionTranspiler extends ExpressionDeParser {
+  private final JSQLTranspiler.Dialect inputDialect;
+
+  private final JSQLTranspiler.Dialect outputDialect;
+
+  public ExpressionTranspiler(SelectVisitor selectVisitor, StringBuilder buffer,
+      JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
+    super(selectVisitor, buffer);
+    this.inputDialect = inputDialect;
+    this.outputDialect = outputDialect;
+  }
+
   public void visit(Function function) {
     // @todo: figure out a better rewrite mechanism
     if (function.getName().equalsIgnoreCase("nvl")) {
@@ -35,12 +54,10 @@ public class ExpressionTranspiler extends ExpressionDeParser {
       switch (parameters.size()) {
         // DATE(DATETIME '2016-12-25 23:59:59') AS date_dt
         case 1:
-        // DATE(TIMESTAMP '2016-12-25 05:30:00+07', 'America/Los_Angeles') AS date_tstz
+          // DATE(TIMESTAMP '2016-12-25 05:30:00+07', 'America/Los_Angeles') AS date_tstz
         case 2:
-           expression =
-                  new CastExpression("Cast")
-                          .withLeftExpression(parameters.get(0))
-                          .withType(new ColDataType().withDataType("DATE"));
+          expression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
+              .withType(new ColDataType().withDataType("DATE"));
           super.visit(expression);
           break;
         case 3:
@@ -48,6 +65,39 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           super.visit(function);
           break;
       }
+    } else if (function.getName().equalsIgnoreCase("date_diff")
+        && inputDialect == JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY) {
+      ExpressionList<?> parameters = function.getParameters();
+      switch (parameters.size()) {
+        case 3:
+          ExpressionList<Expression> reversedParameters = new ExpressionList<>();
+
+          // translate DAY into String 'DAY'
+          reversedParameters.add(
+                  parameters.get(2) instanceof StringValue
+                  ? new StringValue(((StringValue) parameters.get(2)).toString())
+                  : parameters.get(2)
+          );
+
+          // enforce DATE casting
+          reversedParameters.add(
+                  parameters.get(1) instanceof StringValue
+                  ? new StringValue("DATE " + parameters.get(1))
+                  : parameters.get(1)
+          );
+
+          // enforce DATE casting
+          reversedParameters.add(
+                  parameters.get(0) instanceof StringValue
+                  ? new StringValue("DATE " + parameters.get(0))
+                  : parameters.get(0)
+          );
+          function.setParameters(reversedParameters);
+        default:
+          super.visit(function);
+      }
+    } else {
+      super.visit(function);
     }
   }
 }

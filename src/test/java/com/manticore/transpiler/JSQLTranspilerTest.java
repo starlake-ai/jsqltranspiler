@@ -27,10 +27,10 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -51,7 +51,9 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -86,87 +88,69 @@ class JSQLTranspilerTest {
     }
   };
 
-  @Test
-  void main() throws IOException {
-    String providedSqlStr = IOUtils.resourceToString(
-        JSQLTranspilerTest.class.getCanonicalName().replaceAll("\\.", "/") + "_MainIn.sql",
-        Charset.defaultCharset(), JSQLTranspilerTest.class.getClassLoader());
-
-    String expectedSqlStr = IOUtils.resourceToString(
-        JSQLTranspilerTest.class.getCanonicalName().replaceAll("\\.", "/") + "_MainOut.sql",
-        Charset.defaultCharset(), JSQLTranspilerTest.class.getClassLoader());
-
-    String inputFileStr = TEST_FOLDER_STR + "/JSQLTranspilerTest_MainIn.sql";
-    File outputFile = File.createTempFile("any_transpiled_", ".sql");
-
-    // Input file to Output file
-    String[] cmdLine = {"-i", inputFileStr, "--any", "-o", outputFile.getAbsolutePath()};
-    JSQLTranspiler.main(cmdLine);
-
-    // Input file to STDOUT
-    cmdLine = new String[]{"-i", inputFileStr, "--any"};
-    JSQLTranspiler.main(cmdLine);
-
-    // STDIN to STDOUT
-    cmdLine = new String[]{"--any",  providedSqlStr};
-    JSQLTranspiler.main(cmdLine);
-
-    // STDIN to Output file
-    cmdLine = new String[]{"--any", "-o", outputFile.getAbsolutePath(), providedSqlStr};
-    JSQLTranspiler.main(cmdLine);
-
-    cmdLine = new String[]{"--help"};
-    JSQLTranspiler.main(cmdLine);
-
-    cmdLine = new String[]{"--unsupported-option"};
-    JSQLTranspiler.main(cmdLine);
-  }
-
   static class SQLTest {
+    final JSQLTranspiler.Dialect inputDialect;
+    final JSQLTranspiler.Dialect outputDialect;
+
     String providedSqlStr;
     String expectedSqlStr;
 
     int expectedTally = -1;
 
     String expectedResult = null;
+
+      SQLTest(JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
+          this.inputDialect = inputDialect;
+          this.outputDialect = outputDialect;
+      }
   }
 
-  static Stream<Map.Entry<File, SQLTest>> getSqlTestMap() {
-    return getSqlTestMap(new File(TEST_FOLDER_STR + "/any").listFiles(FILENAME_FILTER));
+  static Stream<Map.Entry<File, List<SQLTest>>> getSqlTestMap() {
+    return getSqlTestMap(new File(TEST_FOLDER_STR + "/any").listFiles(FILENAME_FILTER), JSQLTranspiler.Dialect.ANY, JSQLTranspiler.Dialect.DUCK_DB );
   }
 
-  static Stream<Map.Entry<File, SQLTest>> getSqlTestMap(File[] testFiles) {
-    LinkedHashMap<File, SQLTest> sqlMap = new LinkedHashMap<>();
+  static Stream<Map.Entry<File, List<SQLTest>>> getSqlTestMap(File[] testFiles,  JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
+    LinkedHashMap<File, List<SQLTest>> sqlMap = new LinkedHashMap<>();
+    List<SQLTest> tests = new ArrayList<>();
 
     for (File file : Objects.requireNonNull(testFiles)) {
-      boolean start = false;
-      boolean end;
+      boolean startContent = false;
+      boolean endContent;
 
       StringBuilder stringBuilder = new StringBuilder();
       String line;
       String k = "";
-
+      int j = 0;
 
       try (FileReader fileReader = new FileReader(file);
           BufferedReader bufferedReader = new BufferedReader(fileReader)) {
-        SQLTest test = new SQLTest();
+        SQLTest test = new SQLTest(inputDialect, outputDialect);
         while ((line = bufferedReader.readLine()) != null) {
-          if (!start && line.startsWith("--") && !line.startsWith("-- @")) {
+          if (!startContent && line.startsWith("--") && !line.startsWith("-- @")) {
             k = line.substring(3).trim().toLowerCase();
           }
 
-          start = start
+          if (line.toLowerCase().startsWith("-- provided")) {
+            if (test.providedSqlStr!=null && test.expectedSqlStr!=null && (test.expectedTally>=0 || test.expectedResult!=null)) {
+              LOGGER.info("Found multiple test descriptions in " + file.getName());
+              tests.add(test);
+
+              test = new SQLTest(inputDialect, outputDialect);
+            }
+          }
+
+          startContent = startContent
               || (!line.startsWith("--") || line.startsWith("-- @")) && !line.trim().isEmpty();
-          end = start && !line.startsWith("--")
+          endContent = startContent && !line.startsWith("--")
               && (line.trim().endsWith(";")
                   || (k.equalsIgnoreCase("count") || k.equalsIgnoreCase("tally")) && line.isEmpty()
                   || k.startsWith("result") && line.isEmpty());
 
-          if (start) {
+          if (startContent) {
             stringBuilder.append(line).append("\n");
           }
 
-          if (end) {
+          if (endContent) {
             if (k.equalsIgnoreCase("provided")) {
               test.providedSqlStr = sanitize(stringBuilder.toString());
             } else if (k.equalsIgnoreCase("expected")) {
@@ -177,11 +161,13 @@ class JSQLTranspilerTest {
               test.expectedResult = stringBuilder.toString();
             }
             stringBuilder.setLength(0);
-            start = false;
+            startContent = false;
           }
 
         }
-        sqlMap.put(file, test);
+        tests.add(test);
+
+        sqlMap.put(file, tests);
       } catch (IOException ex) {
         LOGGER.log(Level.SEVERE, "Failed to read " + file.getAbsolutePath(), ex);
       }
@@ -327,50 +313,52 @@ class JSQLTranspilerTest {
 
   @ParameterizedTest(name = "{index} {0}: {1}")
   @MethodSource("getSqlTestMap")
-  void transpile(Map.Entry<File, SQLTest> entry) throws Exception {
-    // Expect this query to fail since DuckDB does not support `TOP <integer>`
-    Assertions.assertThrows(java.sql.SQLException.class, new Executable() {
-      @Override
-      public void execute() throws Throwable {
+  void transpile(Map.Entry<File, List<SQLTest>> entry) throws Exception {
+    for (SQLTest t: entry.getValue()) {
+      // Expect this query to fail since DuckDB does not support `TOP <integer>`
+      Assertions.assertThrows(java.sql.SQLException.class, new Executable() {
+        @Override
+        public void execute() throws Throwable {
+          try (Statement st = connDuck.createStatement();
+               ResultSet rs = st.executeQuery(t.providedSqlStr)) {
+            rs.next();
+          }
+        }
+      });
+
+      // Expect a rewritten query
+      String expectedSqlStr = sanitize("select qtysold, sellerid\n" + "from sales\n"
+              + "order by qtysold desc, sellerid\n" + "limit 10");
+
+      String transpiledSqlStr =
+              JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect);
+      Assertions.assertEquals(t.expectedSqlStr, sanitize(transpiledSqlStr));
+
+      // Expect this transpiled query to succeed since DuckDB does not support `TOP <integer>`
+      if (t.expectedTally >= 0) {
+        int i = 0;
         try (Statement st = connDuck.createStatement();
-            ResultSet rs = st.executeQuery(entry.getValue().providedSqlStr)) {
-          rs.next();
+             ResultSet rs = st.executeQuery(transpiledSqlStr);) {
+          while (rs.next()) {
+            i++;
+          }
         }
+        // Expect 10 records
+        Assertions.assertEquals(t.expectedTally, i);
       }
-    });
 
-    // Expect a rewritten query
-    String expectedSqlStr = sanitize("select qtysold, sellerid\n" + "from sales\n"
-        + "order by qtysold desc, sellerid\n" + "limit 10");
 
-    String transpiledSqlStr =
-        JSQLTranspiler.transpileQuery(entry.getValue().providedSqlStr, JSQLTranspiler.Dialect.ANY);
-    Assertions.assertEquals(entry.getValue().expectedSqlStr, sanitize(transpiledSqlStr));
-
-    // Expect this transpiled query to succeed since DuckDB does not support `TOP <integer>`
-    if (entry.getValue().expectedTally >= 0) {
-      int i = 0;
-      try (Statement st = connDuck.createStatement();
-          ResultSet rs = st.executeQuery(transpiledSqlStr);) {
-        while (rs.next()) {
-          i++;
+      if (t.expectedResult!=null && !t.expectedResult.isEmpty()) {
+        // Compare output
+        try (Statement st = connDuck.createStatement();
+             ResultSet rs = st.executeQuery(transpiledSqlStr);
+             StringWriter stringWriter = new StringWriter();
+             CSVWriter csvWriter = new CSVWriter(stringWriter)) {
+          csvWriter.writeAll(rs, true, true, true);
+          csvWriter.flush();
+          stringWriter.flush();
+          Assertions.assertEquals(t.expectedResult, stringWriter.toString().trim());
         }
-      }
-      // Expect 10 records
-      Assertions.assertEquals(entry.getValue().expectedTally, i);
-    }
-
-
-    if (entry.getValue().expectedResult != null && !entry.getValue().expectedResult.isEmpty()) {
-      // Compare output
-      try (Statement st = connDuck.createStatement();
-          ResultSet rs = st.executeQuery(transpiledSqlStr);
-          StringWriter stringWriter = new StringWriter();
-          CSVWriter csvWriter = new CSVWriter(stringWriter)) {
-        csvWriter.writeAll(rs, true, true, true);
-        csvWriter.flush();
-        stringWriter.flush();
-        Assertions.assertEquals(entry.getValue().expectedResult, stringWriter.toString().trim());
       }
     }
   }
