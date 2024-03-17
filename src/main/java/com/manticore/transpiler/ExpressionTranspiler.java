@@ -75,6 +75,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           if (parameters.get(2) instanceof Function && ((Function) parameters.get(2)).toString()
               .replaceAll(" ", "").equalsIgnoreCase("WEEK(MONDAY)")) {
             reversedParameters.add(new StringValue("WEEK"));
+            buffer.append(" /*APPROXIMATION: WEEK*/ ");
           } else if (parameters.get(2) instanceof Column && ((Column) parameters.get(2)).toString()
               .replaceAll(" ", "").equalsIgnoreCase("ISOWEEK")) {
             reversedParameters.add(new StringValue("WEEK"));

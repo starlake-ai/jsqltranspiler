@@ -20,7 +20,7 @@ SELECT
 -- expected
 SELECT
   DATE_DIFF('DAY', DATE '2017-10-14', DATE '2017-10-15') AS days_diff,
-  DATE_DIFF( /*@WARNING: Date part WEEK can mean differently*/ 'WEEK', DATE '2017-10-14', DATE '2017-10-15') AS weeks_diff;
+  /*APPROXIMATION: WEEK*/ DATE_DIFF('WEEK', DATE '2017-10-14', DATE '2017-10-15') AS weeks_diff;
 
 -- count
 1
@@ -56,9 +56,9 @@ SELECT
 
 -- expected
 SELECT
-  DATE_DIFF( /*Warning: Date part WEEK can mean differently*/ 'WEEK', DATE '2017-12-17', DATE '2017-12-18' ) AS week_diff,
-  DATE_DIFF( /*Warning: Date part WEEK can mean differently*/ 'WEEK', DATE '2017-12-17', DATE '2017-12-18' ) AS week_weekday_diff,
-  DATE_DIFF( /*Warning: Date part WEEK can mean differently*/ 'WEEK', DATE '2017-12-17', DATE '2017-12-18' ) AS isoweek_diff;
+  /*APPROXIMATION: WEEK*/ DATE_DIFF(  'WEEK', DATE '2017-12-17', DATE '2017-12-18' ) AS week_diff,
+  /*APPROXIMATION: WEEK*/ DATE_DIFF( 'WEEK', DATE '2017-12-17', DATE '2017-12-18' ) AS week_weekday_diff,
+  DATE_DIFF( 'WEEK', DATE '2017-12-17', DATE '2017-12-18' ) AS isoweek_diff;
 
 -- count
 1
