@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html class="ws-fullscreen" lang="en">
+
+<head>
+    <title>Webswing</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' ws: wss: data:">
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+    <link rel="stylesheet" href="http://217.160.215.75:8080/jsqlformatter/css/style.css"/>
+    <link rel="icon" href="favicon.ico"/>
+    <link rel="manifest" href="manifest.json" />
+</head>
+
+<body>
+	<div class="webswing-element" data-webswing-instance="webswingInstance0">
+	    <div id="loading" class="ws-modal-container">
+	        <div class="ws-login">
+	            <div  class="ws-login-content"><div class="ws-spinner"><div class="ws-spinner-dot-1"></div> <div class="ws-spinner-dot-2"></div></div></div>
+	        </div>
+	    </div>
+	</div>
+	
+<script>
+    var webswingInstance0 = {
+        options: {
+            autoStart: true,
+            args: getParam('args'),
+            recording: getParam('recording'),
+            debugPort: getParam('debugPort'),
+            recordingPlayback: getParam('recordingPlayback'),
+            securityToken: getParam('securityToken'),
+            realm: getParam('realm'),
+            debugLog: getParam('debugLog'),
+            connectionUrl: 'http://217.160.215.75:8080/jsqlformatter'
+        }
+    }
+
+    function getParam(name) {
+        name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+        var results = new RegExp("[\\?&]" + name + "=([^&#]*)").exec(location.href);
+        return results == null ? null : decodeURIComponent(results[1]);
+    }
+</script>
+
+<script data-webswing-global-var="webswing">
+    (function (window, document) {
+        var loader = function () {
+            //fix for ie
+            if (!window.location.origin) {
+                window.location.origin = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port : '');
+            }
+            var baseUrl = document.location.origin + document.location.pathname;
+            baseUrl = 'http://217.160.215.75:8080/jsqlformatter/'
+            var xmlhttp = new XMLHttpRequest();
+            xmlhttp.onreadystatechange = function () {
+                if (xmlhttp.readyState == XMLHttpRequest.DONE) {
+                    var version = xmlhttp.status == 200 ? xmlhttp.responseText : "undefined";
+                    var script = document.createElement("script"),
+                        tag = document.getElementsByTagName("script")[0];
+                    script.src = baseUrl + "javascript/webswing-embed.js?version=" + version;
+                    tag.parentNode.insertBefore(script, tag);
+                }
+            };
+            xmlhttp.open("GET", baseUrl + "rest/version", true);
+            xmlhttp.send();
+        };
+        window.addEventListener ? window.addEventListener("load", loader, false) : window.attachEvent("onload", loader);
+    })(window, document);
+</script>
+</body>
+
+</html>
