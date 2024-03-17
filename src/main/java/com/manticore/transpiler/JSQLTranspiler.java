@@ -43,7 +43,6 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.SQLFeatureNotSupportedException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -60,21 +59,14 @@ public class JSQLTranspiler extends SelectDeParser {
   private final ExpressionTranspiler expressionTranspiler;
   private final StringBuilder resultBuilder;
 
-  private final Dialect inputDialect;
-
-  private final Dialect outputDialect;
-
   /**
    * Instantiates a new Jsql transpiler.
    */
-  public JSQLTranspiler(Dialect inputDialect, Dialect outputDialect) {
-    this.inputDialect = inputDialect;
-    this.outputDialect = outputDialect;
+  public JSQLTranspiler(Dialect inputDialect) {
     this.resultBuilder = new StringBuilder();
     this.setBuffer(resultBuilder);
 
-    expressionTranspiler =
-        new ExpressionTranspiler(this, this.resultBuilder, inputDialect, outputDialect);
+    expressionTranspiler = new ExpressionTranspiler(this, this.resultBuilder, inputDialect);
     this.setExpressionVisitor(expressionTranspiler);
   }
 
@@ -205,7 +197,7 @@ public class JSQLTranspiler extends SelectDeParser {
 
         try (FileInputStream inputStream = new FileInputStream(inputFile)) {
           String sqlStr = IOUtils.toString(inputStream, Charset.defaultCharset());
-          transpile(sqlStr, dialect, Dialect.DUCK_DB, outputFile);
+          transpile(sqlStr, dialect, outputFile);
         } catch (IOException ex) {
           throw new IOException(
               "Can't read the specified INPUT-FILE " + inputFile.getAbsolutePath(), ex);
@@ -220,7 +212,7 @@ public class JSQLTranspiler extends SelectDeParser {
       } else {
         for (String sqlStr : argsList) {
           try {
-            transpile(sqlStr, dialect, Dialect.DUCK_DB, outputFile);
+            transpile(sqlStr, dialect, outputFile);
           } catch (JSQLParserException ex) {
             throw new RuntimeException("Failed to parse the provided SQL.", ex);
           }
@@ -278,13 +270,12 @@ public class JSQLTranspiler extends SelectDeParser {
    *
    * @param sqlStr the original query string
    * @param inputDialect the input dialect
-   * @param outputDialect the output dialect (DuckDB)
    * @param outputFile the output file, writing to STDOUT when not defined
    * @throws JSQLParserException the jsql parser exception
    */
-  public static void transpile(String sqlStr, Dialect inputDialect, Dialect outputDialect,
-      File outputFile) throws JSQLParserException {
-    JSQLTranspiler transpiler = new JSQLTranspiler(inputDialect, outputDialect);
+  public static void transpile(String sqlStr, Dialect inputDialect, File outputFile)
+      throws JSQLParserException {
+    JSQLTranspiler transpiler = new JSQLTranspiler(inputDialect);
 
     // @todo: we may need to split this manually to salvage any not parseable statements
     Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, parser -> {
@@ -334,7 +325,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpile(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.ANY, Dialect.DUCK_DB);
+    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.ANY);
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();
@@ -348,7 +339,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileGoogleBigQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.GOOGLE_BIG_QUERY, Dialect.DUCK_DB);
+    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.GOOGLE_BIG_QUERY);
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();
@@ -362,7 +353,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileDatabricksQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.DATABRICKS, Dialect.DUCK_DB);
+    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.DATABRICKS);
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();
@@ -376,7 +367,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileSnowflakeQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.SNOWFLAKE, Dialect.DUCK_DB);
+    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.SNOWFLAKE);
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();
@@ -390,7 +381,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileAmazonRedshiftQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.AMAZON_REDSHIFT, Dialect.DUCK_DB);
+    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.AMAZON_REDSHIFT);
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();

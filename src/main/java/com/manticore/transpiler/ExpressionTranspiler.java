@@ -19,11 +19,11 @@ package com.manticore.transpiler;
 
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
-import net.sf.jsqlparser.expression.DateValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
@@ -34,15 +34,13 @@ import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 public class ExpressionTranspiler extends ExpressionDeParser {
   private final JSQLTranspiler.Dialect inputDialect;
 
-  private final JSQLTranspiler.Dialect outputDialect;
-
   public ExpressionTranspiler(SelectVisitor selectVisitor, StringBuilder buffer,
-      JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
+      JSQLTranspiler.Dialect inputDialect) {
     super(selectVisitor, buffer);
     this.inputDialect = inputDialect;
-    this.outputDialect = outputDialect;
   }
 
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public void visit(Function function) {
     // @todo: figure out a better rewrite mechanism
     if (function.getName().equalsIgnoreCase("nvl")) {
@@ -72,26 +70,32 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         case 3:
           ExpressionList<Expression> reversedParameters = new ExpressionList<>();
 
-          // translate DAY into String 'DAY'
-          reversedParameters.add(
-                  parameters.get(2) instanceof StringValue
-                  ? new StringValue(((StringValue) parameters.get(2)).toString())
-                  : parameters.get(2)
-          );
+          // Date Part "WEEK(MONDAY)" or "WEEK(SUNDAY)" seems to be a thing
+          // Date Part "ISOWEEK" exists and is not supported on DuckDB
+          if (parameters.get(2) instanceof Function && ((Function) parameters.get(2)).toString()
+              .replaceAll(" ", "").equalsIgnoreCase("WEEK(MONDAY)")) {
+            reversedParameters.add(new StringValue("WEEK"));
+          } else if (parameters.get(2) instanceof Column && ((Column) parameters.get(2)).toString()
+              .replaceAll(" ", "").equalsIgnoreCase("ISOWEEK")) {
+            reversedParameters.add(new StringValue("WEEK"));
+          } else {
+            // translate DAY into String 'DAY'
+            reversedParameters.add(!(parameters.get(2) instanceof StringValue)
+                ? new StringValue(parameters.get(2).toString())
+                : parameters.get(2));
+          }
 
           // enforce DATE casting
-          reversedParameters.add(
-                  parameters.get(1) instanceof StringValue
-                  ? new StringValue("DATE " + parameters.get(1))
-                  : parameters.get(1)
-          );
+          reversedParameters.add(parameters.get(1) instanceof StringValue
+              ? new DateTimeLiteralExpression().withType(DateTimeLiteralExpression.DateTime.DATE)
+                  .withValue(((StringValue) parameters.get(1)).toString())
+              : parameters.get(1));
 
           // enforce DATE casting
-          reversedParameters.add(
-                  parameters.get(0) instanceof StringValue
-                  ? new StringValue("DATE " + parameters.get(0))
-                  : parameters.get(0)
-          );
+          reversedParameters.add(parameters.get(0) instanceof StringValue
+              ? new DateTimeLiteralExpression().withType(DateTimeLiteralExpression.DateTime.DATE)
+                  .withValue(((StringValue) parameters.get(0)).toString())
+              : parameters.get(0));
           function.setParameters(reversedParameters);
         default:
           super.visit(function);
