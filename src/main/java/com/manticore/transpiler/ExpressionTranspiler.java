@@ -28,6 +28,9 @@ import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * The type Expression transpiler.
  */
@@ -39,6 +42,258 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     super(selectVisitor, buffer);
     this.inputDialect = inputDialect;
   }
+
+  public static boolean isDatePart(Expression expression, JSQLTranspiler.Dialect dialect) {
+    switch (dialect) {
+        case GOOGLE_BIG_QUERY:
+            return isDatePartBigQuery(expression);
+        case DATABRICKS:
+          return isDatePartDataBricks(expression);
+        case SNOWFLAKE:
+          return isDatePartSnowflake(expression);
+        case AMAZON_REDSHIFT:
+          return isDatePartRedshift(expression);
+      default:
+          return isDatePart(expression);
+    }
+  }
+
+  private static boolean isDatePart(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+            "\\b(DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR)"
+            , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  private static boolean isDatePartBigQuery(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+                    "WEEK(\\(\\b(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\\))?"
+                    , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+            , Pattern.compile(
+                    "\\b(DAY|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR)"
+                    , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  private static boolean isDatePartDataBricks(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+                    "\\b(DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR)"
+                    , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  private static boolean isDatePartSnowflake(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+            "\\b(DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR)"
+            , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  private static boolean isDatePartRedshift(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+                    "\\b(DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR)"
+                    , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  private static boolean isDateTimePart(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+                    "\\b(DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR)"
+                    , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  private static boolean isDateTimePartBigQuery(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+                    "WEEK(\\(\\b(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\\))?"
+                    , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+            , Pattern.compile(
+            "\\b(MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR|DAYOFWEEK|DAYOFYEAR|DATE|TIME\n)"
+            , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  private static boolean isDateTimePartDataBricks(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+                    "\\b(MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR|DAYOFWEEK|DAYOFYEAR|DATE|TIME\n)"
+                    , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  private static boolean isDateTimePartSnowflake(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+                    "\\b(MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR|DAYOFWEEK|DAYOFYEAR|DATE|TIME\n)"
+                    , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  private static boolean isDateTimePartRedshift(Expression expression) {
+    Pattern[] patterns = {
+            Pattern.compile(
+                    "\\b(MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR|DAYOFWEEK|DAYOFYEAR|DATE|TIME\n)"
+                    , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)
+    };
+    boolean isDatePart=false;
+    for (Pattern p:patterns) {
+      if (expression instanceof Column || expression instanceof Function) {
+        Matcher matcher = p.matcher(expression.toString());
+        isDatePart |= matcher.matches();
+      } else if (expression instanceof StringValue) {
+        StringValue stringValue = (StringValue) expression;
+        Matcher matcher = p.matcher(stringValue.getValue());
+        isDatePart |= matcher.matches();
+      }
+    }
+    return isDatePart;
+  }
+
+  public static boolean isDateTimePart(Expression expression, JSQLTranspiler.Dialect dialect) {
+    switch (dialect) {
+      case GOOGLE_BIG_QUERY:
+        return isDateTimePartBigQuery(expression);
+      case DATABRICKS:
+        return isDateTimePartDataBricks(expression);
+      case SNOWFLAKE:
+        return isDateTimePartSnowflake(expression);
+      case AMAZON_REDSHIFT:
+        return isDateTimePartRedshift(expression);
+      default:
+        return isDateTimePart(expression);
+    }
+  }
+
+  private boolean parameterWEEK(ExpressionList<?> parameters, int index) {
+    // Date Part "WEEK(MONDAY)" or "WEEK(SUNDAY)" seems to be a thing
+    Pattern pattern = Pattern.compile(
+            "WEEK(\\(\\b(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\\))?"
+            , Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
+    Expression p = parameters.get(index);
+    if (p instanceof Column || p instanceof Function) {
+      Matcher matcher = pattern.matcher(p.toString());
+      return matcher.matches();
+    } else {
+      return false;
+    }
+  }
+
+
 
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public void visit(Function function) {
@@ -69,11 +324,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
       switch (parameters.size()) {
         case 3:
           ExpressionList<Expression> reversedParameters = new ExpressionList<>();
-
-          // Date Part "WEEK(MONDAY)" or "WEEK(SUNDAY)" seems to be a thing
           // Date Part "ISOWEEK" exists and is not supported on DuckDB
-          if (parameters.get(2) instanceof Function && ((Function) parameters.get(2)).toString()
-              .replaceAll(" ", "").equalsIgnoreCase("WEEK(MONDAY)")) {
+          if (parameterWEEK(parameters, 2)) {
             reversedParameters.add(new StringValue("WEEK"));
             buffer.append(" /*APPROXIMATION: WEEK*/ ");
           } else if (parameters.get(2) instanceof Column && ((Column) parameters.get(2)).toString()

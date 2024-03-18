@@ -40,3 +40,7 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+src/main/resources/doc/.~lock.JSQLTranspiler.ods#
+src/site/sphinx/changelog.rst
+src/site/sphinx/javadoc.rst
