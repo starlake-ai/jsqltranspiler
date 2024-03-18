@@ -18,6 +18,7 @@
 package com.manticore.transpiler;
 
 import com.opencsv.CSVWriter;
+import com.opencsv.ResultSetHelperService;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statements;
@@ -327,9 +328,12 @@ class JSQLTranspilerTest {
       // Rewrite statement separators "/" and "GO"
       if (sanitizedSqlStr.endsWith("/") || sanitizedSqlStr.endsWith(";")) {
         sanitizedSqlStr = sanitizedSqlStr.substring(0, sanitizedSqlStr.length() - 1).trim();
-      } else if (sanitizedSqlStr.endsWith("go")) {
-        sanitizedSqlStr = sanitizedSqlStr.substring(0, sanitizedSqlStr.length() - 2).trim();
       }
+      // @todo: "SELECT 1 AS ago" would trigger this wrongly, so we need to do this more
+      // sophisticated
+      // else if (sanitizedSqlStr.endsWith("go")) {
+      // sanitizedSqlStr = sanitizedSqlStr.substring(0, sanitizedSqlStr.length() - 2).trim();
+      // }
 
       return sanitizedSqlStr;
 
@@ -380,6 +384,13 @@ class JSQLTranspilerTest {
           ResultSet rs = st.executeQuery(transpiledSqlStr);
           StringWriter stringWriter = new StringWriter();
           CSVWriter csvWriter = new CSVWriter(stringWriter)) {
+
+        // enforce SQL compliant format
+        ResultSetHelperService resultSetHelperService = new ResultSetHelperService();
+        resultSetHelperService.setDateFormat("yyyy-MM-dd");
+        resultSetHelperService.setDateTimeFormat("yyyy-MM-dd HH:mm:ss");
+        csvWriter.setResultService(resultSetHelperService);
+
         csvWriter.writeAll(rs, true, true, true);
         csvWriter.flush();
         stringWriter.flush();
