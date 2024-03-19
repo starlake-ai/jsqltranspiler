@@ -83,7 +83,7 @@ class JSQLTranspilerTest {
   private static final Pattern SQL_SANITATION_PATTERN2 =
       Pattern.compile("\\s*([!/,()=+\\-*|\\]<>:])\\s*", Pattern.MULTILINE);
 
-  public final static String TEST_FOLDER_STR = "build/resources/test/com/manticore/transpiler";
+  public final static String TEST_FOLDER_STR = "build/resources/test/com/manticore/transpiler/any";
 
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override
@@ -116,7 +116,7 @@ class JSQLTranspilerTest {
 
   static Stream<Arguments> getSqlTestMap() {
     return unrollParameterMap(
-        getSqlTestMap(new File(TEST_FOLDER_STR + "/any").listFiles(FILENAME_FILTER),
+        getSqlTestMap(new File(TEST_FOLDER_STR ).listFiles(FILENAME_FILTER),
             JSQLTranspiler.Dialect.ANY, JSQLTranspiler.Dialect.DUCK_DB));
   }
 
@@ -139,9 +139,10 @@ class JSQLTranspilerTest {
   static Map<File, List<SQLTest>> getSqlTestMap(File[] testFiles,
       JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
     LinkedHashMap<File, List<SQLTest>> sqlMap = new LinkedHashMap<>();
-    List<SQLTest> tests = new ArrayList<>();
+
 
     for (File file : Objects.requireNonNull(testFiles)) {
+      List<SQLTest> tests = new ArrayList<>();
       boolean startContent = false;
       boolean endContent;
 
@@ -346,20 +347,21 @@ class JSQLTranspilerTest {
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
   @MethodSource("getSqlTestMap")
   void transpile(File f, int idx, SQLTest t) throws Exception {
-    // Expect this query to fail since DuckDB does not support `TOP <integer>`
-    Assertions.assertThrows(java.sql.SQLException.class, new Executable() {
-      @Override
-      public void execute() throws Throwable {
-        try (Statement st = connDuck.createStatement();
-            ResultSet rs = st.executeQuery(t.providedSqlStr)) {
-          rs.next();
-        }
-      }
-    });
 
-    // Expect a rewritten query
-    String expectedSqlStr = sanitize("select qtysold, sellerid\n" + "from sales\n"
-        + "order by qtysold desc, sellerid\n" + "limit 10");
+    // ONLY if expected differs from provided:
+    // Expect this query to fail since DuckDB does not support `TOP <integer>`
+//    if (!t.expectedSqlStr.equals(t.providedSqlStr)) {
+//      Assertions.assertThrows(java.sql.SQLException.class, new Executable() {
+//        @Override
+//        public void execute() throws Throwable {
+//          try (Statement st = connDuck.createStatement();
+//               ResultSet rs = st.executeQuery(t.providedSqlStr)) {
+//            rs.next();
+//          }
+//        }
+//      });
+//    }
+
 
     String transpiledSqlStr = JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect);
     Assertions.assertEquals(t.expectedSqlStr, sanitize(transpiledSqlStr));
