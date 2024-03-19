@@ -62,11 +62,11 @@ public class JSQLTranspiler extends SelectDeParser {
   /**
    * Instantiates a new Jsql transpiler.
    */
-  public JSQLTranspiler(Dialect inputDialect) {
+  public JSQLTranspiler() {
     this.resultBuilder = new StringBuilder();
     this.setBuffer(resultBuilder);
 
-    expressionTranspiler = new ExpressionTranspiler(this, this.resultBuilder, inputDialect);
+    expressionTranspiler = new ExpressionTranspiler(this, this.resultBuilder);
     this.setExpressionVisitor(expressionTranspiler);
   }
 
@@ -197,7 +197,7 @@ public class JSQLTranspiler extends SelectDeParser {
 
         try (FileInputStream inputStream = new FileInputStream(inputFile)) {
           String sqlStr = IOUtils.toString(inputStream, Charset.defaultCharset());
-          transpile(sqlStr, dialect, outputFile);
+          transpile(sqlStr, outputFile);
         } catch (IOException ex) {
           throw new IOException(
               "Can't read the specified INPUT-FILE " + inputFile.getAbsolutePath(), ex);
@@ -212,7 +212,7 @@ public class JSQLTranspiler extends SelectDeParser {
       } else {
         for (String sqlStr : argsList) {
           try {
-            transpile(sqlStr, dialect, outputFile);
+            transpile(sqlStr, outputFile);
           } catch (JSQLParserException ex) {
             throw new RuntimeException("Failed to parse the provided SQL.", ex);
           }
@@ -269,13 +269,11 @@ public class JSQLTranspiler extends SelectDeParser {
    *
    *
    * @param sqlStr the original query string
-   * @param inputDialect the input dialect
    * @param outputFile the output file, writing to STDOUT when not defined
    * @throws JSQLParserException the jsql parser exception
    */
-  public static void transpile(String sqlStr, Dialect inputDialect, File outputFile)
-      throws JSQLParserException {
-    JSQLTranspiler transpiler = new JSQLTranspiler(inputDialect);
+  public static void transpile(String sqlStr, File outputFile) throws JSQLParserException {
+    JSQLTranspiler transpiler = new JSQLTranspiler();
 
     // @todo: we may need to split this manually to salvage any not parseable statements
     Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, parser -> {
@@ -325,7 +323,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpile(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.ANY);
+    JSQLTranspiler transpiler = new JSQLTranspiler();
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();
@@ -339,7 +337,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileGoogleBigQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.GOOGLE_BIG_QUERY);
+    JSQLTranspiler transpiler = new JSQLTranspiler();
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();
@@ -353,7 +351,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileDatabricksQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.DATABRICKS);
+    JSQLTranspiler transpiler = new JSQLTranspiler();
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();
@@ -367,7 +365,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileSnowflakeQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.SNOWFLAKE);
+    JSQLTranspiler transpiler = new JSQLTranspiler();
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();
@@ -381,7 +379,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileAmazonRedshiftQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler(Dialect.AMAZON_REDSHIFT);
+    JSQLTranspiler transpiler = new JSQLTranspiler();
     transpiler.visit(select);
 
     return transpiler.getResultBuilder().toString();

@@ -21,10 +21,10 @@ SELECT
   DATE(DATETIME '2016-12-25 23:59:59') AS date_dt,
   DATE(TIMESTAMP '2016-12-25 05:30:00+07', 'America/Los_Angeles') AS date_tstz;
 
-/* Output  
+/* Output
 "date_ymd","date_dt","date_tstz"
-"2016-12-15","2016-12-15","2016-12-15" 
-*/ 
+"2016-12-15","2016-12-15","2016-12-15"
+*/
 ```
 
 will become DuckDB compatible SQL
@@ -35,11 +35,11 @@ SELECT
   MAKE_DATE(2016, 12, 25) AS date_ymd,
   CAST(DATETIME '2016-12-25 23:59:59' AS DATE) AS date_dt,
   CAST(TIMESTAMP '2016-12-25 05:30:00+07' AS DATE) AS date_tstz;
-  
-/* Output  
+
+/* Output
 "date_ymd","date_dt","date_tstz"
-"2016-12-15","2016-12-15","2016-12-15" 
-*/   
+"2016-12-15","2016-12-15","2016-12-15"
+*/
 ```
 
 
@@ -62,7 +62,7 @@ assertEquals(expectedSQL, result);
 usage: java -jar JSQLTranspiler.jar [-d <arg> | --any | --bigquery |
        --databricks | --snowflake | --redshift]      [-D <arg> | --duckdb]
        [-i <arg>] [-o <arg>] [-h]
-       
+
  -d,--input-dialect <arg>    The SQL dialect to parse.
                              [ANY*, GOOGLE_BIG_QUERY, DATABRICKS,
                              SNOWFLAKE, AMAZON_REDSHIFT]

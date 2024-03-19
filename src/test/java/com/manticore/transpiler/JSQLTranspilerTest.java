@@ -28,7 +28,6 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -62,7 +61,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -116,9 +114,8 @@ class JSQLTranspilerTest {
   }
 
   static Stream<Arguments> getSqlTestMap() {
-    return unrollParameterMap(
-        getSqlTestMap(new File(TEST_FOLDER_STR ).listFiles(FILENAME_FILTER),
-            JSQLTranspiler.Dialect.ANY, JSQLTranspiler.Dialect.DUCK_DB));
+    return unrollParameterMap(getSqlTestMap(new File(TEST_FOLDER_STR).listFiles(FILENAME_FILTER),
+        JSQLTranspiler.Dialect.ANY, JSQLTranspiler.Dialect.DUCK_DB));
   }
 
   static Stream<Arguments> unrollParameterMap(Map<File, List<SQLTest>> map) {
@@ -379,17 +376,17 @@ class JSQLTranspilerTest {
 
     // ONLY if expected differs from provided:
     // Expect this query to fail since DuckDB does not support `TOP <integer>`
-//    if (!t.expectedSqlStr.equals(t.providedSqlStr)) {
-//      Assertions.assertThrows(java.sql.SQLException.class, new Executable() {
-//        @Override
-//        public void execute() throws Throwable {
-//          try (Statement st = connDuck.createStatement();
-//               ResultSet rs = st.executeQuery(t.providedSqlStr)) {
-//            rs.next();
-//          }
-//        }
-//      });
-//    }
+    // if (!t.expectedSqlStr.equals(t.providedSqlStr)) {
+    // Assertions.assertThrows(java.sql.SQLException.class, new Executable() {
+    // @Override
+    // public void execute() throws Throwable {
+    // try (Statement st = connDuck.createStatement();
+    // ResultSet rs = st.executeQuery(t.providedSqlStr)) {
+    // rs.next();
+    // }
+    // }
+    // });
+    // }
 
 
     String transpiledSqlStr = JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect);
