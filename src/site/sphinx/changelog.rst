@@ -8,6 +8,33 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **doc: Google BigQuery date parts and date formats**
+    
+    Andreas Reichel, 2024-03-18
+  * **feat: many more Google BigData date functions**
+    
+    Andreas Reichel, 2024-03-18
+  * **feat: date parts**
+    
+    Andreas Reichel, 2024-03-18
+  * **feat: `DATE_DIFF()` function**
+    
+    Andreas Reichel, 2024-03-17
+  * **doc: update feature matrix**
+    
+    Andreas Reichel, 2024-03-17
+  * **test: refactor the test parametrization**
+    
+    Andreas Reichel, 2024-03-17
+  * **build: Ueber JAR and Publish**
+    
+    Andreas Reichel, 2024-03-17
+  * **test: improve the test framework**
+    
+    Andreas Reichel, 2024-03-17
+  * **doc: add basic SPHINX website**
+    
+    Andreas Reichel, 2024-03-17
   * **doc: add a simple README**
     
     Andreas Reichel, 2024-03-16

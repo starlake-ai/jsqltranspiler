@@ -31,6 +31,8 @@ JSQLTranspiler.Dialect
 
 [GOOGLE_BIG_QUERY, DATABRICKS, SNOWFLAKE, AMAZON_REDSHIFT, ANY, DUCK_DB]
 
+| The enum Dialect.
+
 
 ..  _com.manticore.transpiler.ExpressionTranspiler:
 
@@ -40,9 +42,29 @@ ExpressionTranspiler
 
 *extends:* ExpressionDeParser 
 
-| **ExpressionTranspiler** ()
+| The type Expression transpiler.
+
+| **ExpressionTranspiler** (selectVisitor, buffer, inputDialect)
+|          SelectVisitor selectVisitor
+|          :ref:`StringBuilder<java.lang.StringBuilder>` buffer
+|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` inputDialect
 
 
+| **isDatePart** (expression, dialect) → boolean
+|          Expression expression
+|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` dialect
+|          returns boolean
+
+
+
+| **isDateTimePart** (expression, dialect) → boolean
+|          Expression expression
+|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` dialect
+|          returns boolean
+
+
+
+| *@SuppressWarnings*
 | **visit** (function)
 |          Function function
 
@@ -56,77 +78,92 @@ JSQLTranspiler
 
 *extends:* SelectDeParser 
 
-| **JSQLTranspiler** ()
+| The type Jsql transpiler.
+
+| **JSQLTranspiler** (inputDialect)
+| Instantiates a new Jsql transpiler.
+|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` inputDialect
 
 
 | **getAbsoluteFile** (filename) → :ref:`File<java.io.File>`
-|          :ref:`String<java.lang.String>` filename
-|          returns :ref:`File<java.io.File>`
+| Resolves the absolute File from a relative filename, considering $HOME variable and "~"
+|          :ref:`String<java.lang.String>` filename  | filename the relative filename
+|          returns :ref:`File<java.io.File>`  | the resolved absolute file
 
 
 
 | **getAbsoluteFileName** (filename) → :ref:`String<java.lang.String>`
-|          :ref:`String<java.lang.String>` filename
-|          returns :ref:`String<java.lang.String>`
+| Resolves the absolute File Name from a relative filename, considering $HOME variable and "~"
+|          :ref:`String<java.lang.String>` filename  | filename the relative filename
+|          returns :ref:`String<java.lang.String>`  | the resolved absolute file name
 
 
 
 | *@SuppressWarnings*
 | **main** (args)
-|          :ref:`String<java.lang.String>` args
+| The entry point of application.
+|          :ref:`String<java.lang.String>` args  | args the input arguments
 
 
 | **transpileQuery** (qryStr, dialect) → :ref:`String<java.lang.String>`
-|          :ref:`String<java.lang.String>` qryStr
-|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` dialect
-|          returns :ref:`String<java.lang.String>`
+| Transpile a query string in the defined dialect into DuckDB compatible SQL.
+|          :ref:`String<java.lang.String>` qryStr  | qryStr the original query string
+|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` dialect  | dialect the dialect of the query string
+|          returns :ref:`String<java.lang.String>`  | the transformed query string
 
 
 
-| **transpile** (sqlStr, inputDialect, outputDialect, outputFile)
-|          :ref:`String<java.lang.String>` sqlStr
-|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` inputDialect
-|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` outputDialect
-|          :ref:`File<java.io.File>` outputFile
+| **transpile** (sqlStr, inputDialect, outputFile)
+| Transpile a query string from a file or STDIN and write the transformed query string into a file or STDOUT.
+|          :ref:`String<java.lang.String>` sqlStr  | sqlStr the original query string
+|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` inputDialect  | inputDialect the input dialect
+|          :ref:`File<java.io.File>` outputFile  | outputFile the output file, writing to STDOUT when not defined
 
 
 | **transpile** (select) → :ref:`String<java.lang.String>`
-|          PlainSelect select
-|          returns :ref:`String<java.lang.String>`
+| Transpile string.
+|          PlainSelect select  | select the select
+|          returns :ref:`String<java.lang.String>`  | the string
 
 
 
 | **transpileGoogleBigQuery** (select) → :ref:`String<java.lang.String>`
-|          PlainSelect select
-|          returns :ref:`String<java.lang.String>`
+| Transpile google big query string.
+|          PlainSelect select  | select the select
+|          returns :ref:`String<java.lang.String>`  | the string
 
 
 
 | **transpileDatabricksQuery** (select) → :ref:`String<java.lang.String>`
-|          PlainSelect select
-|          returns :ref:`String<java.lang.String>`
+| Transpile databricks query string.
+|          PlainSelect select  | select the select
+|          returns :ref:`String<java.lang.String>`  | the string
 
 
 
 | **transpileSnowflakeQuery** (select) → :ref:`String<java.lang.String>`
-|          PlainSelect select
-|          returns :ref:`String<java.lang.String>`
+| Transpile snowflake query string.
+|          PlainSelect select  | select the select
+|          returns :ref:`String<java.lang.String>`  | the string
 
 
 
 | **transpileAmazonRedshiftQuery** (select) → :ref:`String<java.lang.String>`
-|          PlainSelect select
-|          returns :ref:`String<java.lang.String>`
+| Transpile amazon redshift query string.
+|          PlainSelect select  | select the select
+|          returns :ref:`String<java.lang.String>`  | the string
 
 
 
 | **getExpressionTranspiler** () → :ref:`ExpressionTranspiler<com.manticore.transpiler.ExpressionTranspiler>`
-|          returns :ref:`ExpressionTranspiler<com.manticore.transpiler.ExpressionTranspiler>`
+| Gets expression transpiler.
+|          returns :ref:`ExpressionTranspiler<com.manticore.transpiler.ExpressionTranspiler>`  | the expression transpiler
 
 
 
 | **getResultBuilder** () → :ref:`StringBuilder<java.lang.StringBuilder>`
-|          returns :ref:`StringBuilder<java.lang.StringBuilder>`
+| Gets result builder.
+|          returns :ref:`StringBuilder<java.lang.StringBuilder>`  | the result builder
 
 
 

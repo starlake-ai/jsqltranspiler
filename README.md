@@ -13,6 +13,7 @@ Focus is on Queries (only) and work is on progress based on the [Feature Matrix]
 ## Example
 
 Google BigQuery specific SQL
+
 ```sql
 -- BigQuery specific DATE() function
 SELECT
@@ -27,6 +28,7 @@ SELECT
 ```
 
 will become DuckDB compatible SQL
+
 ```sql
 -- DuckDB compliant rewrite producing the same result
 SELECT
