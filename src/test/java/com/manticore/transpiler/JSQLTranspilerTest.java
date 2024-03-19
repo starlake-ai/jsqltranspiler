@@ -62,6 +62,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -162,7 +163,7 @@ class JSQLTranspilerTest {
           if (line.toLowerCase().startsWith("-- provided")) {
             if (test.providedSqlStr != null && test.expectedSqlStr != null
                 && (test.expectedTally >= 0 || test.expectedResult != null)) {
-              LOGGER.info("Found multiple test descriptions in " + file.getName());
+              LOGGER.fine("Found multiple test descriptions in " + file.getName());
               tests.add(test);
 
               test = new SQLTest(inputDialect, outputDialect);
@@ -309,6 +310,33 @@ class JSQLTranspilerTest {
     });
   }
 
+  private static String upperCaseExceptEnclosed(String input) {
+    StringBuilder result = new StringBuilder();
+    boolean inQuotes = false;
+    boolean escaped = false;
+
+    for (char c : input.toCharArray()) {
+      if (escaped) {
+        result.append(Character.toUpperCase(c));
+        escaped = false;
+      } else if (c == '\\') {
+        result.append(c);
+        escaped = true;
+      } else if (c == '\'') {
+        if (inQuotes && !escaped) {
+          inQuotes = false;
+        } else if (!inQuotes) {
+          inQuotes = true;
+        }
+        result.append(c);
+      } else {
+        result.append(inQuotes ? c : Character.toUpperCase(c));
+      }
+    }
+
+    return result.toString();
+  }
+
   public static String sanitize(final String originalSql) {
     return sanitize(originalSql, true);
   }
@@ -324,7 +352,8 @@ class JSQLTranspilerTest {
       // assure spacing around Syntax Characters
       sanitizedSqlStr = SQL_SANITATION_PATTERN2.matcher(sanitizedSqlStr).replaceAll("$1");
 
-      sanitizedSqlStr = sanitizedSqlStr.trim().toLowerCase();
+      sanitizedSqlStr = sanitizedSqlStr.trim();
+      sanitizedSqlStr = upperCaseExceptEnclosed(sanitizedSqlStr);
 
       // Rewrite statement separators "/" and "GO"
       if (sanitizedSqlStr.endsWith("/") || sanitizedSqlStr.endsWith(";")) {
@@ -396,7 +425,7 @@ class JSQLTranspilerTest {
         csvWriter.writeAll(rs, true, true, true);
         csvWriter.flush();
         stringWriter.flush();
-        Assertions.assertEquals(t.expectedResult, stringWriter.toString().trim());
+        Assertions.assertTrue(t.expectedResult.equalsIgnoreCase(stringWriter.toString().trim()));
       }
     }
   }

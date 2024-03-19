@@ -24,6 +24,7 @@ import net.sf.jsqlparser.expression.ExtractExpression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.IntervalExpression;
 import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
@@ -37,44 +38,23 @@ import java.util.regex.Pattern;
  * The type Expression transpiler.
  */
 public class ExpressionTranspiler extends ExpressionDeParser {
-  enum DateFunction {
-   CURRENT_DATE
-    , DATE
-    , DATE_ADD
-    , DATE_DIFF
-    , DATE_SUB
-    , DATE_TRUNC
-    , EXTRACT
-    , FORMAT_DATE;
-
-    public static ExpressionTranspiler.DateFunction from(String name) {
-      ExpressionTranspiler.DateFunction function = null;
-      try {
-        function = Enum.valueOf(ExpressionTranspiler.DateFunction.class, name.toUpperCase());
-      } catch (Exception ignore) {
-
-      }
-      return function;
-    }
-
-    public static ExpressionTranspiler.DateFunction from(Function f) {
-      return from(f.getName());
-    }
-
-  }
-  public static boolean isDateFunction(Function f) {
-    return DateFunction.from(f.getName())!=null;
-  }
-
   enum TranspiledFunction {
     CURRENT_DATE
+    , CURRENT_DATETIME
     , DATE
+    , DATETIME
     , DATE_ADD
+    , DATETIME_ADD
     , DATE_DIFF
+    , DATETIME_DIFF
     , DATE_SUB
     , DATE_TRUNC
     , EXTRACT
     , FORMAT_DATE
+    , LAST_DAY
+    , PARSE_DATE
+    , DATE_FROM_UNIX_DATE
+    , UNIX_DATE
 
     , NVL;
 
@@ -94,7 +74,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
   }
 
   enum UnsupportedFunction {
-    DATE_FROM_UNIX_DATE
+    NOTHING
     ;
 
     public static UnsupportedFunction from(String name) {
@@ -358,16 +338,24 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     if (f!=null) {
       switch (f) {
           case CURRENT_DATE:
-            rewriteCurrentDateFunction(parameters);
+          case CURRENT_DATETIME:
+            rewriteCurrentDateFunction(function, parameters);
             break;
           case DATE:
             rewrittenExpression = rewriteDateFunction(function, parameters);
             break;
+        case DATETIME:
+          rewrittenExpression = rewriteDateTimeFunction(function, parameters);
+          break;
           case DATE_ADD:
+          case DATETIME_ADD:
             rewriteDateAddFunction(parameters);
             break;
           case DATE_DIFF:
-            rewriteDateDiffFunction(function, parameters);
+            rewriteDateDiffFunction(function, parameters, DateTimeLiteralExpression.DateTime.DATE);
+            break;
+          case DATETIME_DIFF:
+            rewriteDateDiffFunction(function, parameters, DateTimeLiteralExpression.DateTime.DATETIME);
             break;
           case DATE_SUB:
             // Google BigQuery DATE_SUB means Subtract interval from Date
@@ -383,13 +371,118 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           case FORMAT_DATE:
             rewriteDateFormatFunction(function, parameters);
             break;
-          case NVL:
+          case LAST_DAY:
+            rewriteLastDayFunction(function, parameters);
+            break;
+        case PARSE_DATE:
+          rewriteParseDateFunction(function, parameters);
+          break;
+        case UNIX_DATE:
+          rewriteUnixDateFunction(function, parameters);
+          break;
+        case DATE_FROM_UNIX_DATE:
+          rewriteDateFromUnixFunction(function, parameters);
+          break;
+        case NVL:
             function.setName("Coalesce");
             break;
       }
     }
     if (rewrittenExpression==null) {
       super.visit(function);
+    }
+  }
+
+
+  private void rewriteDateFromUnixFunction(Function function, ExpressionList<?> parameters) {
+    ExpressionList<Expression> newParameters = new ExpressionList<>();
+    switch (parameters.size()) {
+      case 1:
+        // Epoch
+        newParameters.add(new DateTimeLiteralExpression()
+                .withType(DateTimeLiteralExpression.DateTime.DATE)
+                .withValue("'1970-01-01'"));
+
+        // INTERVAL " 1 DAY"
+        newParameters.add(
+                new IntervalExpression()
+                  .withExpression( new StringValue( parameters.get(0).toString() + " DAY" ))
+        );
+
+        function.setParameters(newParameters);
+        function.setName("DATE_ADD");
+    }
+  }
+
+  private void rewriteUnixDateFunction(Function function, ExpressionList<?> parameters) {
+    ExpressionList<Expression> newParameters = new ExpressionList<>();
+    switch (parameters.size()) {
+      case 1:
+        // Date Part
+        newParameters.add(new StringValue("DAY"));
+
+        // Epoch
+        newParameters.add(new DateTimeLiteralExpression()
+                .withType(DateTimeLiteralExpression.DateTime.DATE)
+                .withValue("'1970-01-01'"));
+
+        // enforce DATE casting
+        newParameters.add(parameters.get(0) instanceof StringValue
+                               ? new DateTimeLiteralExpression().withType(DateTimeLiteralExpression.DateTime.DATE)
+                                       .withValue(parameters.get(0).toString())
+                               :parameters.get(0));
+
+        function.setParameters(newParameters);
+        function.setName("DATE_DIFF");
+    }
+  }
+
+  private void rewriteParseDateFunction(Function function, ExpressionList<?> parameters) {
+    ExpressionList<Expression> reversed = new ExpressionList<>();
+    switch (parameters.size()) {
+      case 2:
+        /* translate format parameters
+          %e --> %-d
+        */
+        reversed.add(parameters.get(1));
+
+        if (parameters.get(0) instanceof StringValue ) {
+          String formatStr = ((StringValue) parameters.get(0)).getValue();
+          // The day of month as a decimal number (1-31); single digits are preceded by a space.
+          formatStr = formatStr.replaceAll("%e", "%-d");
+
+          // The hour (24-hour clock) as a decimal number (0-23); single digits are preceded by a space.
+          formatStr = formatStr.replaceAll("%k", "%-H");
+
+          // The hour (12-hour clock) as a decimal number (1-12); single digits are preceded by a space.
+          formatStr = formatStr.replaceAll("%l", "%-I");
+
+          reversed.add(new StringValue(formatStr));
+        } else {
+          reversed.add(parameters.get(0));
+        }
+        function.setName("strptime");
+        function.setParameters(reversed);
+    }
+  }
+
+  private void rewriteLastDayFunction(Function function, ExpressionList<?> parameters) {
+    ExpressionList<Expression> newParameters = new ExpressionList<>();
+    switch (parameters.size()) {
+      case 2:
+        if ("MONTH".equalsIgnoreCase( parameters.get(1).toString() )) {
+          parameters.remove(1);
+        } else {
+          //todo: check if we can rewrite for YEAR, QUARTER and WEEK
+          throw new RuntimeException("Unsupported: LAST_DAT(date, part) is not supported by DuckDB.");
+        }
+      case 1:
+        // enforce DATE casting
+        newParameters.add(parameters.get(0) instanceof StringValue
+                               ? new DateTimeLiteralExpression().withType(DateTimeLiteralExpression.DateTime.DATE)
+                                       .withValue(parameters.get(0).toString())
+                               :parameters.get(0));
+        function.setParameters(newParameters);
     }
   }
 
@@ -457,7 +550,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     }
   }
 
-  private void rewriteDateDiffFunction(Function function, ExpressionList<?> parameters) {
+  private void rewriteDateDiffFunction(Function function, ExpressionList<?> parameters, DateTimeLiteralExpression.DateTime dateTimeType) {
     switch (parameters.size()) {
       case 3:
         ExpressionList<Expression> reversedParameters = new ExpressionList<>();
@@ -477,16 +570,19 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
         // enforce DATE casting
         reversedParameters.add(parameters.get(1) instanceof StringValue
-                               ? new DateTimeLiteralExpression().withType(DateTimeLiteralExpression.DateTime.DATE)
+                               ? new DateTimeLiteralExpression().withType(dateTimeType)
                                        .withValue(((StringValue) parameters.get(1)).toString())
                                :parameters.get(1));
 
         // enforce DATE casting
         reversedParameters.add(parameters.get(0) instanceof StringValue
-                               ? new DateTimeLiteralExpression().withType(DateTimeLiteralExpression.DateTime.DATE)
+                               ? new DateTimeLiteralExpression().withType(dateTimeType)
                                        .withValue(((StringValue) parameters.get(0)).toString())
                                :parameters.get(0));
         function.setParameters(reversedParameters);
+        if (function.getName().equalsIgnoreCase("DATETIME_DIFF")) {
+          function.setName("DATE_DIFF");
+        }
     }
   }
 
@@ -521,10 +617,54 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     return castExpression;
   }
 
-  private void rewriteCurrentDateFunction(ExpressionList<?> parameters) {
+  private Expression rewriteDateTimeFunction(Function function, ExpressionList<?> parameters) {
+    CastExpression castExpression = null;
+    switch (parameters.size()) {
+      case 6:
+        Function dateFuncttion = new Function()
+                .withName("MAKE_DATE")
+                .withParameters(parameters.get(0), parameters.get(1), parameters.get(2));
+
+        Function timeFuncttion = new Function()
+                .withName("MAKE_TIME")
+                .withParameters(parameters.get(3), parameters.get(4), parameters.get(5));
+        Addition add = new Addition()
+                .withLeftExpression(dateFuncttion)
+                .withRightExpression(timeFuncttion);
+        castExpression = new CastExpression("Cast").withLeftExpression(add)
+                .withType(new ColDataType().withDataType("DATETIME"));
+        visit(castExpression);
+        break;
+      case 2:
+        if (parameters.get(0) instanceof DateTimeLiteralExpression && parameters.get(1) instanceof DateTimeLiteralExpression) {
+          add = new Addition()
+                  .withLeftExpression(parameters.get(0))
+                  .withRightExpression(parameters.get(1));
+          castExpression = new CastExpression("Cast").withLeftExpression(add)
+                  .withType(new ColDataType().withDataType("DATETIME"));
+          visit(castExpression);
+        } else if (parameters.get(0) instanceof DateTimeLiteralExpression
+                && ((DateTimeLiteralExpression) parameters.get(0)).getType()==DateTimeLiteralExpression.DateTime.TIMESTAMP
+                && parameters.get(1) instanceof StringValue) {
+
+          buffer.append(" /*APPROXIMATION: timezone not supported*/ ");
+          castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
+                  .withType(new ColDataType().withDataType("DATETIME"));
+          visit(castExpression);
+        } else {
+          //@todo: veryify if this needs to be ammended
+          throw new RuntimeException("Unsupported: DATETIME(string, string) is not supported yet.");
+        }
+        break;
+    }
+    return castExpression;
+  }
+
+  private void rewriteCurrentDateFunction(Function function, ExpressionList<?> parameters) {
     switch (parameters.size()) {
       case 1:
         // CURRENT_DATE(timezone) is not supported in DuckDB
+        // CURRENT_DATETIME(timezone) is not supported in DuckDB
         buffer.append(" /*APPROXIMATION: timezone not supported*/ ");
         parameters.clear();
     }

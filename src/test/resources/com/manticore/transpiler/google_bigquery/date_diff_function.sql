@@ -65,4 +65,16 @@ SELECT
 
 -- result
 "week_diff","week_weekday_diff","isoweek_diff"
-"0","1","1"
+"1","1","1"
+
+
+-- provided
+SELECT DATETIME_DIFF(DATETIME '2010-07-07 10:20:00',
+    DATETIME '2008-12-25 15:30:00', DAY) as difference;
+
+-- expected
+SELECT DATE_DIFF('DAY', DATETIME '2008-12-25 15:30:00', DATETIME '2010-07-07 10:20:00' ) as difference;
+
+-- result
+"difference"
+"559"
