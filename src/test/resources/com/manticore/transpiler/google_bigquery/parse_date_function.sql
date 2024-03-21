@@ -71,3 +71,15 @@ SELECT Cast(strptime('2:23:38 pm', '%I:%M:%S %p') AS TIME) AS parsed_time
 -- result
 "parsed_time"
 "14:23:38"
+
+
+-- provided
+SELECT PARSE_TIMESTAMP('%c', 'Thu Dec 25 07:30:00 2008') AS parsed;
+
+-- expected
+SELECT Cast(strptime('Thu Dec 25 07:30:00 2008', '%a %b %-d %-H:%M:%S %Y') AS TIMESTAMP) AS parsed
+;
+
+-- result
+"parsed"
+"2008-12-25 07:30:00"

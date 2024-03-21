@@ -56,3 +56,18 @@ SELECT DATE_ADD(TIME '15:30:00', INTERVAL '-10 MINUTE') as earlier;
 "earlier"
 "15:20:00"
 
+
+-- provided
+SELECT
+  TIMESTAMP('2008-12-25 15:30:00+00') AS original,
+  TIMESTAMP_SUB(TIMESTAMP '2008-12-25 15:30:00+00', INTERVAL 10 MINUTE) AS earlier;
+
+-- expected
+SELECT
+  Cast('2008-12-25 15:30:00+00' AS TIMESTAMPTZ) AS original,
+  DATE_ADD(TIMESTAMPTZ '2008-12-25 15:30:00+00', INTERVAL '-10 MINUTE') AS earlier;
+
+-- result
+"original","earlier"
+"2008-12-25T15:30Z","2008-12-25T15:20Z"
+

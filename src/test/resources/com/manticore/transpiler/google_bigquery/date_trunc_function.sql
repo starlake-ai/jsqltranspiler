@@ -6,9 +6,6 @@ SELECT DATE_TRUNC(DATE '2008-12-25', MONTH) AS month
 SELECT DATE_TRUNC('MONTH', DATE '2008-12-25') AS month
 ;
 
--- count
-1
-
 -- result
 "month"
 "2008-12-01"
@@ -26,9 +23,6 @@ SELECT  date AS original
         , Date_Trunc( 'WEEK', date ) AS truncated
 FROM (  SELECT  cast( '2017-11-05' AS DATE ) AS date  )
 ;
-
--- count
-1
 
 -- result
 "original","truncated"
@@ -63,3 +57,31 @@ SELECT
 -- result
 "original","truncated"
 "15:30:00","15:00:00"
+
+-- provided
+SELECT
+  TIMESTAMP_TRUNC(TIMESTAMP '2008-12-25 15:30:00+00', DAY) AS utc,
+  TIMESTAMP_TRUNC(TIMESTAMP '2008-12-25 15:30:00+00', DAY) AS la;
+
+-- expected
+SELECT
+  CAST(DATE_TRUNC('DAY', TIMESTAMPTZ '2008-12-25 15:30:00+00') AS TIMESTAMP) AS utc,
+  CAST(DATE_TRUNC('DAY', TIMESTAMPTZ '2008-12-25 15:30:00+00') AS TIMESTAMP) AS la;
+
+-- result
+"utc","la"
+"2008-12-25 00:00:00","2008-12-25 00:00:00"
+
+-- provided
+SELECT
+  TIMESTAMP_TRUNC(TIMESTAMP '2008-12-25 15:30:00+00', DAY, 'UTC') AS utc,
+  TIMESTAMP_TRUNC(TIMESTAMP '2008-12-25 15:30:00+00', DAY, 'America/Los_Angeles') AS la;
+
+-- expected
+SELECT
+  CAST(DATE_TRUNC('DAY', TIMESTAMPTZ '2008-12-25 15:30:00+00' AT TIME ZONE 'UTC') AS TIMESTAMPTZ) AS utc,
+  CAST(DATE_TRUNC('DAY', TIMESTAMPTZ '2008-12-25 15:30:00+00' AT TIME ZONE 'America/Los_Angeles') AS TIMESTAMPTZ) AS la;
+
+-- result
+"utc","la"
+"2008-12-25T00:00Z","2008-12-25T00:00Z"
