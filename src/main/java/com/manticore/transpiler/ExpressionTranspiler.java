@@ -62,7 +62,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , LAST_DAY
 
-    , PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP, DATE_FROM_UNIX_DATE, UNIX_DATE, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS
+    , PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP, DATE_FROM_UNIX_DATE, UNIX_DATE, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS, UNIX_MICROS, UNIX_MILLIS, UNIX_SECONDS
 
     , STRING
 
@@ -521,6 +521,15 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           function.setName("EPOCH_MS");
           function.setParameters(new ExpressionList<Expression>(new Multiplication()
               .withLeftExpression(castExpression).withRightExpression(new LongValue(1000))));
+          break;
+        case UNIX_MICROS:
+          function.setName("EPOCH_US");
+          break;
+        case UNIX_MILLIS:
+          function.setName("EPOCH_MS");
+          break;
+        case UNIX_SECONDS:
+          function.setName("EPOCH");
           break;
         case NVL:
           function.setName("Coalesce");

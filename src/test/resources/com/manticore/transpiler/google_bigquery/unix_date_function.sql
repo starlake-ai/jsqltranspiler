@@ -62,5 +62,48 @@ SELECT EPOCH_MS(Cast(1230219000 AS INT64) * 1000) AS timestamp_value;
 "2008-12-25 15:30:00"
 
 
+-- provided
+SELECT UNIX_MICROS(TIMESTAMP '2008-12-25 15:30:00+00') AS micros;
+
+-- expected
+SELECT EPOCH_US(TIMESTAMP '2008-12-25 15:30:00+00') AS micros
+;
+
+-- result
+"micros"
+"1230219000000000"
 
 
+-- provided
+SELECT UNIX_MILLIS(TIMESTAMP '2008-12-25 15:30:00+00') AS millis;
+
+-- expected
+SELECT EPOCH_MS(TIMESTAMP '2008-12-25 15:30:00+00') AS millis
+;
+
+-- result
+"millis"
+"1230219000000"
+
+
+-- provided
+SELECT UNIX_MILLIS(TIMESTAMP '1970-01-01 00:00:00.0018+00') AS millis;
+
+-- expected
+SELECT EPOCH_MS(TIMESTAMP '1970-01-01 00:00:00.0018+00') AS millis
+;
+
+-- result
+"millis"
+"1"
+
+
+-- provided
+SELECT UNIX_SECONDS(TIMESTAMP '2008-12-25 15:30:00+00') AS seconds;
+
+-- expected
+SELECT EPOCH(TIMESTAMP '2008-12-25 15:30:00+00') AS seconds;
+
+-- result
+"seconds"
+"1230219000"
