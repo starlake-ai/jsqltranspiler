@@ -52,9 +52,15 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.+'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.+'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.+'
+    // we do need better matchers
+    testImplementation("org.assertj:assertj-core:+")
+
     testImplementation 'org.duckdb:duckdb_jdbc:0.10.0'
     testImplementation 'org.apache.commons:commons-compress:+'
     testImplementation 'com.opencsv:opencsv:+'
+
+    //calling external python
+    testImplementation 'org.apache.commons:commons-exec:+'
 
     // Java Doc in XML Format
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
@@ -163,6 +169,18 @@ test {
     // set heap size for the test JVM(s)
     minHeapSize = "128m"
     maxHeapSize = "1G"
+
+    doFirst {
+        // Download Amazon Redshift `TickitDB` example
+        // Use the Gradle task in order to allow caching
+        download.run {
+            src 'https://docs.aws.amazon.com/redshift/latest/gsg/samples/tickitdb.zip'
+            dest "build/resources/test/com/manticore/transpiler/tickitdb.zip"
+            overwrite false
+            onlyIfModified true
+            tempAndMove true
+        }
+    }
 }
 
 license {

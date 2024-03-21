@@ -78,3 +78,13 @@ SELECT DATE_DIFF('DAY', DATETIME '2008-12-25 15:30:00', DATETIME '2010-07-07 10:
 -- result
 "difference"
 "559"
+
+-- provided
+SELECT TIME_DIFF(TIME '15:30:00', TIME '14:35:00', MINUTE) as difference;
+
+-- expected
+SELECT DATE_DIFF('MINUTE', TIME '14:35:00', TIME '15:30:00' ) as difference;
+
+-- result
+"difference"
+"55"

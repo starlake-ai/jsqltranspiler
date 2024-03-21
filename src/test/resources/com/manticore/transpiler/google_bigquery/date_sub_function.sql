@@ -28,3 +28,31 @@ SELECT DATE_ADD(DATE '2008-12-25', INTERVAL '5 DAY') AS five_days_later
 -- result
 "five_days_later"
 "2008-12-30 00:00:00"
+
+
+-- provided
+SELECT
+  DATETIME '2008-12-25 15:30:00' as original_date,
+  DATETIME_SUB(DATETIME '2008-12-25 15:30:00', INTERVAL 10 MINUTE) as earlier
+;
+
+-- expected
+SELECT
+  DATETIME '2008-12-25 15:30:00' as original_date,
+  DATE_ADD(DATETIME '2008-12-25 15:30:00', INTERVAL '-10 MINUTE') as earlier
+;
+
+--result
+"original_date","earlier"
+"2008-12-25 15:30:00","2008-12-25 15:20:00"
+
+-- provided
+SELECT TIME_SUB(TIME '15:30:00', INTERVAL 10 MINUTE) as earlier;
+
+-- expected
+SELECT DATE_ADD(TIME '15:30:00', INTERVAL '-10 MINUTE') as earlier;
+
+-- result
+"earlier"
+"15:20:00"
+

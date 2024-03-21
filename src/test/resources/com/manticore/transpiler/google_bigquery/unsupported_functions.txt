@@ -1,2 +1,0 @@
--- DATE
-DATE_FROM_UNIX_DATE(long)

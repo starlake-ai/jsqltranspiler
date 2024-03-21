@@ -25,8 +25,8 @@ import net.sf.jsqlparser.statement.Statements;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.io.IOUtils;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -66,10 +66,10 @@ import java.util.stream.Stream;
 
 
 class JSQLTranspilerTest {
-  private final static Logger LOGGER = Logger.getLogger(JSQLTranspilerTest.class.getName());
+  final static Logger LOGGER = Logger.getLogger(JSQLTranspilerTest.class.getName());
   private final static String EXTRACTION_PATH =
       System.getProperty("java.io.tmpdir") + File.separator + UUID.randomUUID();
-  private static Connection connDuck;
+  static Connection connDuck;
   private static boolean isInitialised = false;
 
   private static final Pattern SQL_COMMENT_PATTERN =
@@ -154,10 +154,10 @@ class JSQLTranspilerTest {
         SQLTest test = new SQLTest(inputDialect, outputDialect);
         while ((line = bufferedReader.readLine()) != null) {
           if (!startContent && line.startsWith("--") && !line.startsWith("-- @")) {
-            k = line.substring(3).trim().toLowerCase();
+            k = line.substring(2).trim().toLowerCase();
           }
 
-          if (line.toLowerCase().startsWith("-- provided")) {
+          if (line.toLowerCase().replaceAll("\\s", "").startsWith("--provided")) {
             if (test.providedSqlStr != null && test.expectedSqlStr != null
                 && (test.expectedTally >= 0 || test.expectedResult != null)) {
               LOGGER.fine("Found multiple test descriptions in " + file.getName());
@@ -231,8 +231,11 @@ class JSQLTranspilerTest {
       }
 
       LOGGER.info("Download Amazon Redshift `TickitDB` example");
-      // Download the ZIP file
-      URL url = new URL("https://docs.aws.amazon.com/redshift/latest/gsg/samples/tickitdb.zip");
+      // Download the ZIP file via Gradle Download task in order to enable caching
+      // URL url = new URL("https://docs.aws.amazon.com/redshift/latest/gsg/samples/tickitdb.zip");
+      URL url = JSQLTranspilerTest.class.getClassLoader()
+          .getResource("com/manticore/transpiler/tickitdb.zip");
+      assert url != null;
       try (InputStream in = url.openStream()) {
         // Extract the ZIP file
         try (ZipArchiveInputStream zipIn = new ZipArchiveInputStream(in)) {
@@ -388,9 +391,10 @@ class JSQLTranspilerTest {
     // });
     // }
 
-
+    // Assertions.assertNotNull(t.expectedSqlStr);
     String transpiledSqlStr = JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect);
-    Assertions.assertEquals(t.expectedSqlStr, sanitize(transpiledSqlStr));
+    Assertions.assertThat(transpiledSqlStr).isNotNull();
+    Assertions.assertThat(sanitize(transpiledSqlStr)).isEqualTo(t.expectedSqlStr);
 
     // Expect this transpiled query to succeed since DuckDB does not support `TOP <integer>`
     if (t.expectedTally >= 0) {
@@ -402,7 +406,7 @@ class JSQLTranspilerTest {
         }
       }
       // Expect 10 records
-      Assertions.assertEquals(t.expectedTally, i);
+      Assertions.assertThat(i).isEqualTo(t.expectedTally);
     }
 
 
@@ -422,7 +426,8 @@ class JSQLTranspilerTest {
         csvWriter.writeAll(rs, true, true, true);
         csvWriter.flush();
         stringWriter.flush();
-        Assertions.assertTrue(t.expectedResult.equalsIgnoreCase(stringWriter.toString().trim()));
+        Assertions.assertThat(stringWriter.toString().trim())
+            .isEqualToIgnoringCase(t.expectedResult);
       }
     }
   }

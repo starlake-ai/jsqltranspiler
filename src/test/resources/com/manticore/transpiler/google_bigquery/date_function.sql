@@ -8,7 +8,7 @@ SELECT
 SELECT
   MAKE_DATE(2016, 12, 25) AS date_ymd,
   CAST(DATETIME '2016-12-25 23:59:59' AS DATE) AS date_dt,
-  CAST(TIMESTAMP '2016-12-25 05:30:00+07' AS DATE) AS date_tstz;
+  /*APPROXIMATION: timezone not supported*/ CAST(TIMESTAMP '2016-12-25 05:30:00+07' AS DATE) AS date_tstz;
 
 -- count
 1

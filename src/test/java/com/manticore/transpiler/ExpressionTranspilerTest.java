@@ -49,4 +49,13 @@ class ExpressionTranspilerTest {
     Assertions.assertFalse(
         ExpressionTranspiler.isDatePart(function, JSQLTranspiler.Dialect.AMAZON_REDSHIFT));
   }
+
+  @Test
+  void hasTimeZoneInfoTest() {
+    Assertions.assertTrue(ExpressionTranspiler.hasTimeZoneInfo("2024-03-20 12:34:56.789+00:00"));
+    Assertions.assertTrue(ExpressionTranspiler.hasTimeZoneInfo("2024-03-20 12:34:56.789+00"));
+    Assertions.assertFalse(ExpressionTranspiler.hasTimeZoneInfo("2024-03-20 12:34:56.789"));
+    Assertions.assertTrue(ExpressionTranspiler.hasTimeZoneInfo("2008-12-25 15:30:00+00"));
+    Assertions.assertTrue(ExpressionTranspiler.hasTimeZoneInfo("2008-12-25 15:30:00+00"));
+  }
 }
