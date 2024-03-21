@@ -45,7 +45,7 @@ configurations {
 }
 
 dependencies {
-    implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
+    implementation('com.github.jsqlparser:jsqlparser:4.10-SNAPSHOT'){ changing = true }
     implementation 'commons-cli:commons-cli:+'
     implementation 'commons-io:commons-io:+'
 
