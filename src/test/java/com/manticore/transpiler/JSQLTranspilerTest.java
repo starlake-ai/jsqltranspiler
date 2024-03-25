@@ -158,9 +158,13 @@ class JSQLTranspilerTest {
           }
 
           if (line.toLowerCase().replaceAll("\\s", "").startsWith("--provided")) {
-            if (test.providedSqlStr != null && test.expectedSqlStr != null
+            if (test.providedSqlStr != null
                 && (test.expectedTally >= 0 || test.expectedResult != null)) {
               LOGGER.fine("Found multiple test descriptions in " + file.getName());
+              // pass through tests not depending on transpiling
+              if (test.expectedSqlStr == null || test.expectedSqlStr.isEmpty()) {
+                test.expectedSqlStr = test.providedSqlStr;
+              }
               tests.add(test);
 
               test = new SQLTest(inputDialect, outputDialect);
@@ -192,6 +196,11 @@ class JSQLTranspilerTest {
             startContent = false;
           }
 
+        }
+
+        // pass through tests not depending on transpiling
+        if (test.expectedSqlStr == null || test.expectedSqlStr.isEmpty()) {
+          test.expectedSqlStr = test.providedSqlStr;
         }
         tests.add(test);
 
@@ -423,7 +432,7 @@ class JSQLTranspilerTest {
         resultSetHelperService.setDateTimeFormat("yyyy-MM-dd HH:mm:ss");
         csvWriter.setResultService(resultSetHelperService);
 
-        csvWriter.writeAll(rs, true, true, true);
+        csvWriter.writeAll(rs, true, false, true);
         csvWriter.flush();
         stringWriter.flush();
         Assertions.assertThat(stringWriter.toString().trim())

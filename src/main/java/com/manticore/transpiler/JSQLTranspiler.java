@@ -23,7 +23,10 @@ import net.sf.jsqlparser.parser.SimpleNode;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.select.Limit;
+import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.statement.select.Top;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
 import org.apache.commons.cli.CommandLine;
@@ -414,6 +417,20 @@ public class JSQLTranspiler extends SelectDeParser {
     // rewrite the TOP into a LIMIT
     select.setTop(null);
     select.setLimit(new Limit().withRowCount(top.getExpression()));
+  }
+
+  public void visit(TableFunction tableFunction) {
+    if (tableFunction.getFunction().getName().equalsIgnoreCase("unnest")) {
+      PlainSelect select = new PlainSelect()
+          .withSelectItems(new SelectItem<>(tableFunction.getFunction(), tableFunction.getAlias()));
+
+      ParenthesedSelect parenthesedSelect =
+          new ParenthesedSelect().withSelect(select).withAlias(tableFunction.getAlias());
+
+      visit(parenthesedSelect);
+    } else {
+      super.visit(tableFunction);
+    }
   }
 
   /**

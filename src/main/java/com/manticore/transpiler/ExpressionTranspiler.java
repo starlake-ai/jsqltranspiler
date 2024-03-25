@@ -17,6 +17,7 @@
  */
 package com.manticore.transpiler;
 
+import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
@@ -24,13 +25,21 @@ import net.sf.jsqlparser.expression.ExtractExpression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.IntervalExpression;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
+import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
+import net.sf.jsqlparser.expression.operators.arithmetic.Concat;
 import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
+import net.sf.jsqlparser.statement.select.ParenthesedSelect;
+import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.Select;
+import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
@@ -64,7 +73,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP, DATE_FROM_UNIX_DATE, UNIX_DATE, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS, UNIX_MICROS, UNIX_MILLIS, UNIX_SECONDS
 
-    , STRING
+    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR
+
 
     , NVL;
     // @FORMATTER:ON
@@ -534,11 +544,208 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         case NVL:
           function.setName("Coalesce");
           break;
+        case BYTE_LENGTH:
+          // case OCTET_LENGTH:
+          rewriteByteLengthFunction(function, parameters);
+          break;
+        case CHAR_LENGTH:
+        case CHARACTER_LENGTH:
+          function.setName("Length");
+          break;
+        case CODE_POINTS_TO_BYTES:
+          rewrittenExpression = rewriteCodePointsToBytes(parameters);
+          break;
+        case CODE_POINTS_TO_STRING:
+          rewrittenExpression = rewriteCodePointsToString(parameters);
+          break;
+        case COLLATE:
+          function.setName("icu_sort_key");
+          break;
+        case CONTAINS_SUBSTR:
+          rewrittenExpression = rewriteContainsSubStr(parameters);
+        case EDIT_DISTANCE:
+          function.setName("levenshtein");
+          break;
+        case FORMAT:
+          function.setName("printf");
+          // flags not working:
+          // %t the string representation of the value, e.g. '2023-12-31'
+          // %T the TYPE STRING representation of the value, e.g. DATE '2023-12-31'
+          break;
+        case INSTR:
+          if (parameters != null && parameters.size() == 2) {
+            // pass through
+            break;
+          } else {
+            throw new RuntimeException(
+                "`INSTR` does not support the parameters `position` or `occurrence` yet.");
+          }
+        case LENGTH:
+          rewrittenExpression = rewriteLength(parameters);
+          break;
+        case LPAD:
+          rewrittenExpression = rewriteLPad(parameters);
+          break;
+        case NORMALIZE:
+          if (parameters != null && parameters.size() == 2
+              && !"NFC".equalsIgnoreCase(parameters.get(1).toString())) {
+            warning("NORMALIZE only supported for NFC, but not for NFKC, NFD, NFKD yet.");
+          }
+          if (parameters.size() == 2) {
+            parameters.remove(1);
+          }
+          function.setName("NFC_NORMALIZE");
+          break;
+        case NORMALIZE_AND_CASEFOLD:
+          if (parameters != null && parameters.size() == 2
+              && !"NFC".equalsIgnoreCase(parameters.get(1).toString())) {
+            warning(
+                "NORMALIZE_AND_CASEFOLD only supported for NFC, but not for NFKC, NFD, NFKD yet.");
+          }
+          if (parameters.size() == 2) {
+            parameters.remove(1);
+          }
+          function.setName("NFC_NORMALIZE");
+          function.setParameters(new Function("lower", parameters));
+          break;
+        case REGEXP_CONTAINS:
+          function.setName("REGEXP_MATCHES");
+          break;
+        case REGEXP_EXTRACT:
+          if (parameters != null && parameters.size() > 2) {
+            warning("REGEXP_EXTRACT supports only 2 parameters.");
+            while (parameters.size() > 2) {
+              parameters.remove(parameters.size() - 1);
+            }
+          }
+          break;
+        case REGEXP_EXTRACT_ALL:
+          // pass through
+          break;
+        case REGEXP_INSTR:
+        case REGEXP_REPLACE:
+        case REGEXP_SUBSTR:
       }
     }
     if (rewrittenExpression == null) {
       super.visit(function);
     }
+  }
+
+  private Expression rewriteLength(ExpressionList<?> parameters) {
+    if (parameters != null) {
+      switch (parameters.size()) {
+        case 1:
+          /*
+          case typeof(bytes)
+            when 'VARCHAR' then length(Cast(bytes AS VARCHAR))
+            when 'BLOB' then octet_length(Cast(bytes as BLOB))
+            else 0
+            end
+          */
+
+          WhenClause whenChar = new WhenClause().withWhenExpression(new StringValue("VARCHAR"))
+              .withThenExpression(new Function("Length$$")
+                  .withParameters(new CastExpression(parameters.get(0), "VARCHAR")));
+          WhenClause whenBLOB = new WhenClause().withWhenExpression(new StringValue("BLOB"))
+              .withThenExpression(new Function("octet_length")
+                  .withParameters(new CastExpression(parameters.get(0), "BLOB")));
+
+          CaseExpression caseExpression = new CaseExpression(new LongValue(-1), whenChar, whenBLOB)
+              .withSwitchExpression(new Function("typeOf", parameters.get(0)));
+
+          visit(caseExpression);
+          return caseExpression;
+      }
+    }
+    return null;
+  }
+
+  private Expression rewriteLPad(ExpressionList<?> parameters) {
+    if (parameters != null) {
+      Expression padding = parameters.size() == 3 ? parameters.get(2) : new StringValue(" ");
+      switch (parameters.size()) {
+        case 2:
+        case 3:
+          WhenClause whenChar =
+              new WhenClause().withWhenExpression(new StringValue("VARCHAR"))
+                  .withThenExpression(new Function("LPAD$$").withParameters(
+                      new CastExpression(parameters.get(0), "VARCHAR"), parameters.get(1),
+                      padding));
+          // @todo: support bytes
+          // WhenClause whenBLOB = new WhenClause()
+          // .withWhenExpression(new StringValue("BLOB"))
+          // .withThenExpression(new Function("octet_length").withParameters(new
+          // CastExpression(parameters.get(0), "BLOB")));
+
+          CaseExpression caseExpression = new CaseExpression(whenChar)
+              .withSwitchExpression(new Function("typeOf", parameters.get(0)));
+
+          visit(caseExpression);
+          return caseExpression;
+      }
+    }
+    return null;
+  }
+
+  private Expression rewriteContainsSubStr(ExpressionList<?> parameters) {
+    if (parameters != null) {
+      switch (parameters.size()) {
+        case 2:
+
+          Concat concat = new Concat().withLeftExpression(new StringValue("%"))
+              .withRightExpression(parameters.get(1));
+
+          concat =
+              new Concat().withLeftExpression(concat).withRightExpression(new StringValue("%"));
+
+          LikeExpression like = new LikeExpression().setLikeKeyWord("ILIKE")
+              .withLeftExpression(new Function("nfc_normalize", parameters.get(0)))
+              .withRightExpression(new Function("nfc_normalize", concat));
+
+          visit(like);
+          return like;
+        case 3:
+          throw new RuntimeException(
+              "Function `CONTAINS_SUBST with `JSON_SCOPE` is not supported yet.");
+      }
+    }
+    return null;
+  }
+
+  private Expression rewriteCodePointsToBytes(ExpressionList<?> parameters) {
+    // select encode(string_agg(a, '')) bytes from (select chr(unnest([65, 98, 67, 100])) a)
+
+    Function chr = new Function("Chr", new Function("UnNest", parameters.get(0)));
+    PlainSelect select = new PlainSelect().withSelectItems(new SelectItem<Function>(chr, "a"));
+
+    Function encode =
+        new Function("Encode", new Function("String_Agg", new Column("a"), new StringValue("")));
+
+    select = new PlainSelect().withSelectItems(new SelectItem<Function>(encode, "bytes"))
+        .withFromItem(new ParenthesedSelect().withSelect(select));
+
+    Parenthesis p = new Parenthesis(select);
+
+    visit(p);
+    return p;
+  }
+
+  private Expression rewriteCodePointsToString(ExpressionList<?> parameters) {
+    // select string_agg(a, '') characters from (select chr(unnest([65, 255, 513, 1024])) a)
+
+    Function chr = new Function("Chr", new Function("UnNest", parameters.get(0)));
+    PlainSelect select = new PlainSelect().withSelectItems(new SelectItem<Function>(chr, "a"));
+
+    Function stringAgg = new Function("String_Agg", new Column("a"), new StringValue(""));
+
+    select = new PlainSelect().withSelectItems(new SelectItem<Function>(stringAgg, "characters"))
+        .withFromItem(new ParenthesedSelect().withSelect(select));
+
+    Parenthesis p = new Parenthesis(select);
+
+    visit(p);
+    return p;
   }
 
 
@@ -639,7 +846,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         } else {
           // todo: check if we can rewrite for YEAR, QUARTER and WEEK
           throw new RuntimeException(
-              "Unsupported: LAST_DAT(date, part) is not supported by DuckDB.");
+              "Unsupported: LAST_DATE(date, part) is not supported by DuckDB.");
         }
       case 1:
         // enforce DATE casting
@@ -727,7 +934,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         // Date Part "ISOWEEK" exists and is not supported on DuckDB
         if (parameterWEEK(parameters, 1)) {
           reversedParameters.add(new StringValue("WEEK"));
-          buffer.append(" /*APPROXIMATION: WEEK*/ ");
+          warning("WEEK is not distinct");
         } else if (parameters.get(1) instanceof Column && ((Column) parameters.get(1)).toString()
             .replaceAll(" ", "").equalsIgnoreCase("ISOWEEK")) {
           reversedParameters.add(new StringValue("WEEK"));
@@ -770,7 +977,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         // Date Part "ISOWEEK" exists and is not supported on DuckDB
         if (parameterWEEK(parameters, 1)) {
           reversedParameters.add(new StringValue("WEEK"));
-          buffer.append(" /*APPROXIMATION: WEEK*/ ");
+          warning("WEEK is not distinct");
         } else if (parameters.get(1) instanceof Column && ((Column) parameters.get(1)).toString()
             .replaceAll(" ", "").equalsIgnoreCase("ISOWEEK")) {
           reversedParameters.add(new StringValue("WEEK"));
@@ -833,7 +1040,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         // Date Part "ISOWEEK" exists and is not supported on DuckDB
         if (parameterWEEK(parameters, 2)) {
           reversedParameters.add(new StringValue("WEEK"));
-          buffer.append(" /*APPROXIMATION: WEEK*/ ");
+          warning("WEEK is not distinct");
         } else if (parameters.get(2) instanceof Column && ((Column) parameters.get(2)).toString()
             .replaceAll(" ", "").equalsIgnoreCase("ISOWEEK")) {
           reversedParameters.add(new StringValue("WEEK"));
@@ -883,7 +1090,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         // DATE(DATETIME '2016-12-25 23:59:59') AS date_dt
       case 2:
         // DATE(TIMESTAMP '2016-12-25 05:30:00+07', 'America/Los_Angeles') AS date_tstz
-        buffer.append(" /*APPROXIMATION: timezone not supported*/ ");
+        warning("timezone not supported");
         castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
             .withType(new ColDataType().withDataType("DATE"));
         visit(castExpression);
@@ -923,7 +1130,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
                 .getType() == DateTimeLiteralExpression.DateTime.TIMESTAMP
             && parameters.get(1) instanceof StringValue) {
 
-          buffer.append(" /*APPROXIMATION: timezone not supported*/ ");
+          warning("timezone not supported");
           castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
               .withType(new ColDataType().withDataType("DATETIME"));
           visit(castExpression);
@@ -943,7 +1150,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         // TIME(DATETIME '2016-12-25 23:59:59') AS date_dt
       case 2:
         // TIME(TIMESTAMP '2016-12-25 05:30:00+07', 'America/Los_Angeles') AS date_tstz
-        buffer.append(" /*APPROXIMATION: timezone not supported*/ ");
+        warning("timezone not supported");
         castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
             .withType(new ColDataType().withDataType("TIME"));
         visit(castExpression);
@@ -985,13 +1192,25 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     return null;
   }
 
+  private void rewriteByteLengthFunction(Function function, ExpressionList<?> parameters) {
+    // octet_length( Coalesce(try_cast(characters AS BLOB), encode(try_cast(characters AS
+    // VARCHAR))))
+
+    CastExpression cast1 = new CastExpression("Try_Cast", parameters.get(0), "BLOB");
+    Function encode =
+        new Function("Encode", new CastExpression("Try_Cast", parameters.get(0), "VARCHAR"));
+
+    function.setName("OCTET_LENGTH");
+    function.setParameters(new Function("Coalesce", cast1, encode));
+  }
+
   private void rewriteCurrentDateFunction(ExpressionList<?> parameters) {
     if (parameters != null) {
       switch (parameters.size()) {
         case 1:
           // CURRENT_DATE(timezone) is not supported in DuckDB
           // CURRENT_DATETIME(timezone) is not supported in DuckDB
-          buffer.append(" /*APPROXIMATION: timezone not supported*/ ");
+          warning("timezone not supported");
           parameters.clear();
       }
     }
@@ -1001,7 +1220,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     // @todo: JSQLParser Extract Expression must support `WEEK(MONDAY) .. WEEK(SUNDAY)`
 
     if (extractExpression.getName().equalsIgnoreCase("WEEK")) {
-      buffer.append(" /*APPROXIMATION: WEEK*/ ");
+      warning("WEEK is not distinct");
       extractExpression.setName("WEEK");
     } else if (extractExpression.getName().equalsIgnoreCase("ISOWEEK")) {
       extractExpression.setName("WEEK");
@@ -1014,5 +1233,72 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     }
     super.visit(extractExpression);
   }
+
+  public void visit(StringValue stringValue) {
+    stringValue.setValue(convertUnicode(stringValue.getValue()));
+
+    if ("b".equalsIgnoreCase(stringValue.getPrefix())) {
+      Function f = new Function().withName("encode").withParameters(stringValue.withPrefix(""));
+      visit(f);
+    } else {
+      super.visit(stringValue.withPrefix(null));
+    }
+  }
+
+  public static String convertUnicode(String input) {
+    StringBuilder builder = new StringBuilder();
+    int i = 0;
+    while (i < input.length()) {
+      char currentChar = input.charAt(i);
+      if (currentChar == '\\' && i + 1 < input.length()
+          && (input.charAt(i + 1) == 'u' || input.charAt(i + 1) == 'U')) {
+        // Found an escaped Unicode character
+        try {
+          String unicodeStr = input.substring(i + 2, i + 6);
+          char unicodeChar = (char) Integer.parseInt(unicodeStr, 16);
+          builder.append(unicodeChar);
+          i += 6;
+        } catch (NumberFormatException | IndexOutOfBoundsException e) {
+          // Invalid Unicode escape sequence, append as is
+          builder.append(currentChar);
+          i++;
+        }
+      } else {
+        // Not an escaped Unicode character, append as is
+        builder.append(currentChar);
+        i++;
+      }
+    }
+    return builder.toString();
+  }
+
+  public void visit(CastExpression castExpression) {
+    if (castExpression.isUseCastKeyword()) {
+      this.buffer.append(castExpression.keyword).append("(");
+      castExpression.getLeftExpression().accept(this);
+      this.buffer.append(" AS ");
+      this.buffer.append(castExpression.getColumnDefinitions().size() > 1
+          ? "ROW(" + Select.getStringList(castExpression.getColumnDefinitions()) + ")"
+          : rewriteType(castExpression.getColDataType()).toString());
+      this.buffer.append(")");
+    } else {
+      castExpression.getLeftExpression().accept(this);
+      this.buffer.append("::");
+      this.buffer.append(rewriteType(castExpression.getColDataType()));
+    }
+  }
+
+
+  public final static ColDataType rewriteType(ColDataType colDataType) {
+    if (colDataType.getDataType().equalsIgnoreCase("BYTES")) {
+      colDataType.setDataType("BLOB");
+    }
+    return colDataType;
+  }
+
+  public final void warning(String s) {
+    buffer.append("/* Approximation: ").append(s).append(" */ ");
+  }
+
 
 }

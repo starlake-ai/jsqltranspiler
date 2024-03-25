@@ -44,3 +44,4 @@ bin/
 **/changelog.rst
 **/javadoc.rst
 **/.~lock.JSQLTranspiler.ods#
+/.idea
