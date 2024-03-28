@@ -472,3 +472,133 @@ FROM code_markdown;
 "example"
 "[`function(x)`, `function(y)`]"
 
+
+-- provided
+WITH example AS (
+  SELECT 'ab@cd-ef' AS source_value, '@[^-]*' AS reg_exp UNION ALL
+  SELECT 'ab@d-ef', '@[^-]*' UNION ALL
+  SELECT 'abc@cd-ef', '@[^-]*' UNION ALL
+  SELECT 'abc-ef', '@[^-]*')
+SELECT source_value, reg_exp, REGEXP_INSTR(source_value, reg_exp) AS instr
+FROM example;
+
+
+-- expected
+WITH example AS (
+        SELECT  'ab@cd-ef' AS source_value
+                , '@[^-]*' AS reg_exp
+        UNION ALL
+        SELECT  'ab@d-ef'
+                , '@[^-]*'
+        UNION ALL
+        SELECT  'abc@cd-ef'
+                , '@[^-]*'
+        UNION ALL
+        SELECT  'abc-ef'
+                , '@[^-]*' )
+SELECT  source_value
+        , reg_exp
+        , CASE
+                WHEN Regexp_Matches( source_value, reg_exp )
+                    THEN Instr( source_value, Regexp_Extract( source_value, reg_exp ) )
+                ELSE 0
+            END AS instr
+FROM example
+;
+
+-- result
+"source_value","reg_exp","instr"
+"ab@cd-ef","@[^-]*","3"
+"ab@d-ef","@[^-]*","3"
+"abc@cd-ef","@[^-]*","4"
+"abc-ef","@[^-]*","0"
+
+
+-- provided
+WITH markdown AS
+  (SELECT '# Heading' as heading
+  UNION ALL
+  SELECT '# Another heading' as heading)
+SELECT
+  REGEXP_REPLACE(heading, r'^# ([a-zA-Z0-9\s]+$)', r'<h1>\1</h1>')
+  AS html
+FROM markdown;
+
+-- expected
+WITH markdown AS
+  (SELECT '# Heading' as heading
+  UNION ALL
+  SELECT '# Another heading' as heading)
+SELECT
+  REGEXP_REPLACE(heading, '^# ([a-zA-Z0-9\s]+$)', '<h1>\1</h1>')
+  AS html
+FROM markdown;
+
+--@todo: fix the CSVWriter problem with HTML tags and whitspace
+-- result
+"HTML"
+"# Heading"
+"# Another heading"
+
+
+-- provided
+WITH example AS
+(SELECT 'Hello World Helloo' AS value, 'H?ello+' AS regex, 1 AS position, 1 AS
+occurrence
+)
+SELECT value, regex, position, occurrence, REGEXP_SUBSTR(value, regex,
+position, occurrence) AS regexp_value FROM example;
+
+-- expected
+WITH example AS
+(SELECT 'Hello World Helloo' AS value, 'H?ello+' AS regex, 1 AS position, 1 AS
+occurrence
+)
+SELECT value, regex, position, occurrence, REGEXP_EXTRACT(value, regex) AS regexp_value FROM example;
+
+-- result
+"value","regex","position","occurrence","regexp_value"
+"Hello World Helloo","H?ello+","1","1","Hello"
+
+
+-- provided
+Select repeat('abc', 3) as repeated;
+
+-- result
+"repeated"
+"abcabcabc"
+
+
+-- provided
+WITH desserts AS
+  (SELECT 'apple pie' as dessert
+  UNION ALL
+  SELECT 'blackberry pie' as dessert
+  UNION ALL
+  SELECT 'cherry pie' as dessert)
+SELECT
+  REPLACE (dessert, 'pie', 'cobbler') as example
+FROM desserts;
+
+-- result
+"example"
+"apple cobbler"
+"blackberry cobbler"
+"cherry cobbler"
+
+
+-- provided
+WITH example AS (
+  SELECT 'foo' AS sample_string UNION ALL
+  SELECT 'абвгд' AS sample_string
+)
+SELECT
+  sample_string,
+  REVERSE(sample_string) AS reverse_string
+FROM example;
+
+-- expected
+"sample_string","reverse_string"
+"foo","oof"
+"абвгд","дгвба"
+

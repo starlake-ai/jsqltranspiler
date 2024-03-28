@@ -17,6 +17,7 @@
  */
 package com.manticore.transpiler;
 
+import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
@@ -25,8 +26,10 @@ import net.sf.jsqlparser.expression.ExtractExpression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.IntervalExpression;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.OracleNamedFunctionParameter;
 import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.StructType;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
@@ -34,6 +37,7 @@ import net.sf.jsqlparser.expression.operators.arithmetic.Concat;
 import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
+import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
@@ -43,6 +47,7 @@ import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -73,10 +78,15 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP, DATE_FROM_UNIX_DATE, UNIX_DATE, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS, UNIX_MICROS, UNIX_MILLIS, UNIX_SECONDS
 
-    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR
+    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE
+    , CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH
+    , REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPEAT, REPLACE
+    , REVERSE
 
 
-    , NVL;
+    , NVL
+    , UNNEST
+    ;
     // @FORMATTER:ON
 
 
@@ -612,19 +622,68 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           function.setName("REGEXP_MATCHES");
           break;
         case REGEXP_EXTRACT:
+        case REGEXP_SUBSTR:
           if (parameters != null && parameters.size() > 2) {
             warning("REGEXP_EXTRACT supports only 2 parameters.");
             while (parameters.size() > 2) {
               parameters.remove(parameters.size() - 1);
             }
           }
+          function.setName("REGEXP_EXTRACT");
           break;
         case REGEXP_EXTRACT_ALL:
           // pass through
           break;
         case REGEXP_INSTR:
+          if (parameters != null && parameters.size() > 2) {
+            warning("REGEXP_INSTR supports only 2 parameters.");
+            while (parameters.size() > 2) {
+              parameters.remove(parameters.size() - 1);
+            }
+          }
+          /*
+          CASE
+                WHEN Regexp_Matches( source_value, reg_exp )
+                    THEN Instr( source_value, Regexp_Extract( source_value, reg_exp ) )
+                ELSE 0
+            END AS instr
+           */
+          WhenClause when = new WhenClause(
+                  new Function("REGEXP_MATCHES", parameters.get(0), parameters.get(1))
+                  , new Function("INSTR", parameters.get(0), new Function("REGEXP_EXTRACT", parameters.get(0), parameters.get(1)))
+          );
+          CaseExpression caseExpression = new CaseExpression(new LongValue(0), when);
+          visit(caseExpression);
+
+          rewrittenExpression = caseExpression;
+          break;
         case REGEXP_REPLACE:
-        case REGEXP_SUBSTR:
+          // pass through
+          break;
+        case UNNEST:
+          if (parameters!=null) {
+            switch (parameters.size()) {
+              case 1:
+                boolean recursive = false;
+                if (parameters.get(0) instanceof ArrayConstructor) {
+                  ArrayConstructor arrayConstructor = (ArrayConstructor) parameters.get(0);
+                  for (Expression e:arrayConstructor.getExpressions()) {
+                    if (e instanceof StructType || e instanceof ParenthesedExpressionList) {
+                      recursive = true;
+                      break;
+                    }
+                  }
+                }
+
+                if (recursive) {
+                  function.setParameters(
+                          parameters.get(0)
+                          , new OracleNamedFunctionParameter("recursive", new Column("TRUE"))
+                  );
+                }
+            }
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -1285,6 +1344,42 @@ public class ExpressionTranspiler extends ExpressionDeParser {
       castExpression.getLeftExpression().accept(this);
       this.buffer.append("::");
       this.buffer.append(rewriteType(castExpression.getColDataType()));
+    }
+  }
+
+  public void visit(StructType structType) {
+    if (structType.getArguments() != null && !structType.getArguments().isEmpty()) {
+        buffer.append("{ ");
+        int i = 0;
+        for (SelectItem<?> e : structType.getArguments()) {
+          if (0 < i) {
+            buffer.append(",");
+          }
+          if (e.getAlias()!=null)  {
+            buffer.append(e.getAlias().getName());
+          } else if (structType.getParameters()!=null && i<structType.getParameters().size()) {
+            buffer.append(structType.getParameters().get(i).getKey());
+          }
+
+          buffer.append(":");
+          buffer.append(e.getExpression());
+
+          i++;
+        }
+        buffer.append(" }");
+    }
+
+    if (structType.getParameters() != null && !structType.getParameters().isEmpty()) {
+      buffer.append("::STRUCT( ");
+      int i = 0;
+      for (Map.Entry<String, ColDataType> e : structType.getParameters()) {
+        if (0 < i++) {
+          buffer.append(",");
+        }
+        buffer.append(e.getKey()).append(" ");
+        buffer.append(e.getValue());
+      }
+      buffer.append(")");
     }
   }
 

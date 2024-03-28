@@ -8,6 +8,42 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **feature: support many more TEXT functions**
+    
+    Andreas Reichel, 2024-03-25
+  * **feat: support more BigQuery Date/Time functions**
+    
+    Andreas Reichel, 2024-03-21
+  * **feat: support more BigQuery Date/Time functions**
+    
+    Andreas Reichel, 2024-03-21
+  * **build: Snapshot dependency**
+    
+    Andreas Reichel, 2024-03-21
+  * **feat: implement a Python SQLGlot based test for comparision**
+    
+    Andreas Reichel, 2024-03-21
+  * **feat: support more BigQuery Date/Time functions**
+    
+    Andreas Reichel, 2024-03-21
+  * **style: fix QA exceptions**
+    
+    Andreas Reichel, 2024-03-19
+  * **doc: fix the link to th Website**
+    
+    Andreas Reichel, 2024-03-19
+  * **feat: many more DateTime functions**
+    
+    Andreas Reichel, 2024-03-19
+  * **doc: update/fix the documentation**
+    
+    Andreas Reichel, 2024-03-19
+  * **style: improve the function rewrite**
+    
+    Andreas Reichel, 2024-03-19
+  * **test: fix the test template**
+    
+    Andreas Reichel, 2024-03-19
   * **doc: Google BigQuery date parts and date formats**
     
     Andreas Reichel, 2024-03-18

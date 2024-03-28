@@ -44,10 +44,9 @@ ExpressionTranspiler
 
 | The type Expression transpiler.
 
-| **ExpressionTranspiler** (selectVisitor, buffer, inputDialect)
+| **ExpressionTranspiler** (selectVisitor, buffer)
 |          SelectVisitor selectVisitor
 |          :ref:`StringBuilder<java.lang.StringBuilder>` buffer
-|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` inputDialect
 
 
 | **isDatePart** (expression, dialect) → boolean
@@ -64,9 +63,56 @@ ExpressionTranspiler
 
 
 
+| **hasTimeZoneInfo** (timestampStr) → boolean
+|          :ref:`String<java.lang.String>` timestampStr
+|          returns boolean
+
+
+
+| **hasTimeZoneInfo** (timestamp) → boolean
+|          Expression timestamp
+|          returns boolean
+
+
+
+| **rewriteDateLiteral** (p, dateTimeType) → Expression
+|          Expression p
+|          :ref:`DateTime<DateTimeLiteralExpression.DateTime>` dateTimeType
+|          returns Expression
+
+
+
 | *@SuppressWarnings*
 | **visit** (function)
 |          Function function
+
+
+| **visit** (extractExpression)
+|          ExtractExpression extractExpression
+
+
+| **visit** (stringValue)
+|          StringValue stringValue
+
+
+| **convertUnicode** (input) → :ref:`String<java.lang.String>`
+|          :ref:`String<java.lang.String>` input
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **visit** (castExpression)
+|          CastExpression castExpression
+
+
+| **rewriteType** (colDataType) → ColDataType
+|          ColDataType colDataType
+|          returns ColDataType
+
+
+
+| **warning** (s)
+|          :ref:`String<java.lang.String>` s
 
 
 
@@ -80,9 +126,8 @@ JSQLTranspiler
 
 | The type Jsql transpiler.
 
-| **JSQLTranspiler** (inputDialect)
+| **JSQLTranspiler** ()
 | Instantiates a new Jsql transpiler.
-|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` inputDialect
 
 
 | **getAbsoluteFile** (filename) → :ref:`File<java.io.File>`
@@ -113,10 +158,9 @@ JSQLTranspiler
 
 
 
-| **transpile** (sqlStr, inputDialect, outputFile)
+| **transpile** (sqlStr, outputFile)
 | Transpile a query string from a file or STDIN and write the transformed query string into a file or STDOUT.
 |          :ref:`String<java.lang.String>` sqlStr  | sqlStr the original query string
-|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` inputDialect  | inputDialect the input dialect
 |          :ref:`File<java.io.File>` outputFile  | outputFile the output file, writing to STDOUT when not defined
 
 
@@ -169,5 +213,9 @@ JSQLTranspiler
 
 | **visit** (top)
 |          Top top
+
+
+| **visit** (tableFunction)
+|          TableFunction tableFunction
 
 
