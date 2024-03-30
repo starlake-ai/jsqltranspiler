@@ -25,6 +25,7 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExtractExpression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.IntervalExpression;
+import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.OracleNamedFunctionParameter;
 import net.sf.jsqlparser.expression.Parenthesis;
@@ -47,6 +48,7 @@ import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -78,15 +80,10 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP, DATE_FROM_UNIX_DATE, UNIX_DATE, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS, UNIX_MICROS, UNIX_MILLIS, UNIX_SECONDS
 
-    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE
-    , CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH
-    , REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPEAT, REPLACE
-    , REVERSE
+    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPEAT, REPLACE, REVERSE, RPAD, SAFE_CONVERT_BYTES_TO_STRING, TO_CODE_POINTS
 
 
-    , NVL
-    , UNNEST
-    ;
+    , NVL, UNNEST;
     // @FORMATTER:ON
 
 
@@ -581,6 +578,19 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           // flags not working:
           // %t the string representation of the value, e.g. '2023-12-31'
           // %T the TYPE STRING representation of the value, e.g. DATE '2023-12-31'
+          if (parameters.get(0) instanceof StringValue) {
+            String s = ((StringValue) parameters.get(0)).getValue();
+            if (s.contains("%t")) {
+              warning("Format %t is not supported");
+              s = s.replaceAll("%t", "%s");
+            }
+            if (s.contains("%T")) {
+              warning("Format %T is not supported");
+              s = s.replaceAll("%T", "%s");
+            }
+
+            function.setParameters(new ExpressionList<>(new StringValue(s), parameters.get(1)));
+          }
           break;
         case INSTR:
           if (parameters != null && parameters.size() == 2) {
@@ -594,7 +604,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           rewrittenExpression = rewriteLength(parameters);
           break;
         case LPAD:
-          rewrittenExpression = rewriteLPad(parameters);
+        case RPAD:
+          rewrittenExpression = rewritePad(function, parameters);
           break;
         case NORMALIZE:
           if (parameters != null && parameters.size() == 2
@@ -648,10 +659,10 @@ public class ExpressionTranspiler extends ExpressionDeParser {
                 ELSE 0
             END AS instr
            */
-          WhenClause when = new WhenClause(
-                  new Function("REGEXP_MATCHES", parameters.get(0), parameters.get(1))
-                  , new Function("INSTR", parameters.get(0), new Function("REGEXP_EXTRACT", parameters.get(0), parameters.get(1)))
-          );
+          WhenClause when =
+              new WhenClause(new Function("REGEXP_MATCHES", parameters.get(0), parameters.get(1)),
+                  new Function("INSTR", parameters.get(0),
+                      new Function("REGEXP_EXTRACT", parameters.get(0), parameters.get(1))));
           CaseExpression caseExpression = new CaseExpression(new LongValue(0), when);
           visit(caseExpression);
 
@@ -661,13 +672,13 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           // pass through
           break;
         case UNNEST:
-          if (parameters!=null) {
+          if (parameters != null) {
             switch (parameters.size()) {
               case 1:
                 boolean recursive = false;
                 if (parameters.get(0) instanceof ArrayConstructor) {
                   ArrayConstructor arrayConstructor = (ArrayConstructor) parameters.get(0);
-                  for (Expression e:arrayConstructor.getExpressions()) {
+                  for (Expression e : arrayConstructor.getExpressions()) {
                     if (e instanceof StructType || e instanceof ParenthesedExpressionList) {
                       recursive = true;
                       break;
@@ -676,13 +687,24 @@ public class ExpressionTranspiler extends ExpressionDeParser {
                 }
 
                 if (recursive) {
-                  function.setParameters(
-                          parameters.get(0)
-                          , new OracleNamedFunctionParameter("recursive", new Column("TRUE"))
-                  );
+                  function.setParameters(parameters.get(0),
+                      new OracleNamedFunctionParameter("recursive", new Column("TRUE")));
                 }
             }
           }
+          break;
+        case SAFE_CONVERT_BYTES_TO_STRING:
+          warning("SAFE_CONVERT_BYTES_TO_STRING is not supported");
+          function.setName("decode");
+          break;
+        case TO_CODE_POINTS:
+          // TO_CODE_POINTS(word) as code_points
+          //
+          // list_transform( split(word, ''), x -> unicode(x) ) as code_points
+
+          function.setName("List_Transform");
+          function.setParameters(new Function("Split", parameters.get(0), new StringValue("")),
+              new LambdaExpression(Arrays.asList("x"), new Function("Unicode", new Column("x"))));
           break;
       }
     }
@@ -720,7 +742,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     return null;
   }
 
-  private Expression rewriteLPad(ExpressionList<?> parameters) {
+  private Expression rewritePad(Function function, ExpressionList<?> parameters) {
     if (parameters != null) {
       Expression padding = parameters.size() == 3 ? parameters.get(2) : new StringValue(" ");
       switch (parameters.size()) {
@@ -728,7 +750,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         case 3:
           WhenClause whenChar =
               new WhenClause().withWhenExpression(new StringValue("VARCHAR"))
-                  .withThenExpression(new Function("LPAD$$").withParameters(
+                  .withThenExpression(new Function(function.getName() + "$$").withParameters(
                       new CastExpression(parameters.get(0), "VARCHAR"), parameters.get(1),
                       padding));
           // @todo: support bytes
@@ -1297,9 +1319,14 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     stringValue.setValue(convertUnicode(stringValue.getValue()));
 
     if ("b".equalsIgnoreCase(stringValue.getPrefix())) {
-      Function f = new Function().withName("encode").withParameters(stringValue.withPrefix(""));
-      visit(f);
+      // Coalesce(TRY_CAST('абвгд' AS BLOB), encode('абвгд'))
+      CastExpression castExpression =
+          new CastExpression("Try_Cast", stringValue.withPrefix(""), "BLOB");
+      Function encode = new Function("encode", stringValue.withPrefix(""));
+      Function coalesce = new Function("Coalesce", castExpression, encode);
+      visit(coalesce);
     } else {
+      // @todo: handle "r"
       super.visit(stringValue.withPrefix(null));
     }
   }
@@ -1349,24 +1376,24 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
   public void visit(StructType structType) {
     if (structType.getArguments() != null && !structType.getArguments().isEmpty()) {
-        buffer.append("{ ");
-        int i = 0;
-        for (SelectItem<?> e : structType.getArguments()) {
-          if (0 < i) {
-            buffer.append(",");
-          }
-          if (e.getAlias()!=null)  {
-            buffer.append(e.getAlias().getName());
-          } else if (structType.getParameters()!=null && i<structType.getParameters().size()) {
-            buffer.append(structType.getParameters().get(i).getKey());
-          }
-
-          buffer.append(":");
-          buffer.append(e.getExpression());
-
-          i++;
+      buffer.append("{ ");
+      int i = 0;
+      for (SelectItem<?> e : structType.getArguments()) {
+        if (0 < i) {
+          buffer.append(",");
         }
-        buffer.append(" }");
+        if (e.getAlias() != null) {
+          buffer.append(e.getAlias().getName());
+        } else if (structType.getParameters() != null && i < structType.getParameters().size()) {
+          buffer.append(structType.getParameters().get(i).getKey());
+        }
+
+        buffer.append(":");
+        buffer.append(e.getExpression());
+
+        i++;
+      }
+      buffer.append(" }");
     }
 
     if (structType.getParameters() != null && !structType.getParameters().isEmpty()) {

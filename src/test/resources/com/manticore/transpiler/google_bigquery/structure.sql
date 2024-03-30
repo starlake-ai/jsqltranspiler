@@ -8,7 +8,7 @@ SELECT t, len, LPAD(t, len) AS padded FROM UNNEST([
 -- expected
 SELECT t, len, CASE TYPEOF(T) WHEN 'VARCHAR' THEN LPAD(T::VARCHAR, LEN,' ') END AS padded from (
 select Unnest([
-  {t:'abc', len:5 }::STRUCT(t VARCHAR, len integer),
+  { t:'abc', len:5 }::STRUCT(t VARCHAR, len integer),
   ('abc', 2),
   ('例子', 4)
 ], recursive => true)
@@ -31,7 +31,7 @@ SELECT t, len, LPAD(t, len) AS padded FROM UNNEST([
 -- expected
 SELECT t, len, CASE TYPEOF(T) WHEN 'VARCHAR' THEN LPAD(T::VARCHAR, LEN,' ') END AS padded from (
 select Unnest([
-  {t:'abc', len:5 },
+  { t:'abc', len:5 },
   ('abc', 2),
   ('例子', 4)
 ], recursive => true)

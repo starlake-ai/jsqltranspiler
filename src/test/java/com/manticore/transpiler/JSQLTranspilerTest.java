@@ -184,9 +184,9 @@ class JSQLTranspilerTest {
 
           if (endContent) {
             if (k.equalsIgnoreCase("provided")) {
-              test.providedSqlStr = sanitize(stringBuilder.toString());
+              test.providedSqlStr = stringBuilder.toString();
             } else if (k.equalsIgnoreCase("expected")) {
-              test.expectedSqlStr = sanitize(stringBuilder.toString());
+              test.expectedSqlStr = stringBuilder.toString();
             } else if (k.equalsIgnoreCase("count") || k.equalsIgnoreCase("tally")) {
               test.expectedTally = Integer.parseInt(stringBuilder.toString().trim());
             } else if (k.startsWith("result")) {
@@ -403,7 +403,8 @@ class JSQLTranspilerTest {
     // Assertions.assertNotNull(t.expectedSqlStr);
     String transpiledSqlStr = JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect);
     Assertions.assertThat(transpiledSqlStr).isNotNull();
-    Assertions.assertThat(sanitize(transpiledSqlStr)).isEqualTo(t.expectedSqlStr);
+    Assertions.assertThat(sanitize(transpiledSqlStr, true))
+        .isEqualTo(sanitize(t.expectedSqlStr, true));
 
     // Expect this transpiled query to succeed since DuckDB does not support `TOP <integer>`
     if (t.expectedTally >= 0) {

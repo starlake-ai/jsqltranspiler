@@ -16,13 +16,14 @@ SELECT
 FROM example;
 
 -- expected
-WITH example AS
-  (SELECT 'абвгд' AS characters, encode('абвгд') AS bytes)
-SELECT
-  characters,
-  octet_length( Coalesce(try_cast(characters AS BLOB), encode(try_cast(characters AS VARCHAR)))) as string_example,
-  octet_length( Coalesce(try_cast(bytes AS BLOB), encode(try_cast(bytes AS VARCHAR)))) AS bytes_example
-FROM example;
+WITH example AS (
+        SELECT  'абвгд' AS characters
+                , Coalesce( try_cast( 'абвгд' AS BLOB ), Encode( 'абвгд' ) ) AS bytes  )
+SELECT  characters
+        , Octet_Length( Coalesce(  try_cast( characters AS BLOB ), Encode(  try_cast( characters AS VARCHAR ) ) ) ) AS string_example
+        , Octet_Length( Coalesce(  try_cast( bytes AS BLOB ), Encode(  try_cast( bytes AS VARCHAR ) ) ) ) AS bytes_example
+FROM example
+;
 
 -- result
 "characters","string_example","bytes_example"
@@ -199,10 +200,9 @@ SELECT FORMAT('date: %s!', FORMAT_DATE('%B %d, %Y', date '2015-01-02')) AS forma
 -- expected
 SELECT printf('date: %s!', STRFTIME(DATE '2015-01-02','%B %d, %Y'))  AS formatted;
 
---@todo: investigate the wrong white-space: "date: January 02, 2015!"
 -- result
 "formatted"
-"date:January 02,2015!"
+"date: January 02, 2015!"
 
 
 -- provided
@@ -276,21 +276,26 @@ SELECT
 FROM example;
 
 -- expected
-WITH example AS
-  (SELECT 'абвгд' AS characters, encode('абвгд') AS bytes)
-SELECT
-  characters,
-  case typeof(characters)
-      when 'VARCHAR' then length(characters::VARCHAR)
-      when 'BLOB' then octet_length(characters::BLOB)
-      else -1
-      end as string_example
-  , case typeof(bytes)
-      when 'VARCHAR' then length(bytes::VARCHAR)
-      when 'BLOB' then octet_length(bytes::BLOB)
-      else -1
-      end as bytes_example
-FROM example;
+WITH example AS (
+        SELECT  'абвгд' AS characters
+                , Coalesce(  try_cast( 'абвгд' AS BLOB ), Encode( 'абвгд' ) ) AS bytes  )
+SELECT  characters
+        , CASE TYPEOF(characters)
+                WHEN 'VARCHAR'
+                    THEN Length( characters::VARCHAR )
+                WHEN 'BLOB'
+                    THEN Octet_Length( characters::BLOB )
+                ELSE - 1
+            END AS string_example
+        , CASE TYPEOF(bytes)
+                WHEN 'VARCHAR'
+                    THEN Length( bytes::VARCHAR )
+                WHEN 'BLOB'
+                    THEN Octet_Length( bytes::BLOB )
+                ELSE - 1
+            END AS bytes_example
+FROM example
+;
 
 -- result
 "characters","string_example","bytes_example"
@@ -340,10 +345,10 @@ SELECT
 FROM items;
 
 -- result
-"EXAMPLE"
-"#apple #"
-"#banana #"
-"#orange #"
+"example"
+"#apple   #"
+"#banana   #"
+"#orange   #"
 
 
 -- provided
@@ -534,11 +539,10 @@ SELECT
   AS html
 FROM markdown;
 
---@todo: fix the CSVWriter problem with HTML tags and whitspace
 -- result
-"HTML"
-"# Heading"
-"# Another heading"
+"html"
+"<h1>Heading</h1>"
+"<h1>Another heading</h1>"
 
 
 -- provided
@@ -597,8 +601,223 @@ SELECT
   REVERSE(sample_string) AS reverse_string
 FROM example;
 
--- expected
+-- result
 "sample_string","reverse_string"
 "foo","oof"
 "абвгд","дгвба"
 
+
+-- provided
+WITH examples AS
+(SELECT 'apple' as example
+UNION ALL
+SELECT 'banana' as example
+UNION ALL
+SELECT 'абвгд' as example
+)
+SELECT example, RIGHT(example, 3) AS right_example
+FROM examples;
+
+-- result
+"example","right_example"
+"apple","ple"
+"banana","ana"
+"абвгд","вгд"
+
+
+-- provided
+SELECT t, len, FORMAT('%T', RPAD(t, len)) AS RPAD FROM UNNEST([
+  STRUCT('abc' AS t, 5 AS len),
+  ('abc', 2),
+  ('例子', 4)
+]);
+
+-- expected
+SELECT t, len, PRINTF('%s',CASE TYPEOF(T) WHEN 'VARCHAR' THEN RPAD(T::VARCHAR,LEN,' ') END) AS RPAD FROM (select UNNEST([
+  { t:'abc', len:5 },
+  ('abc', 2),
+  ('例子', 4)
+], recursive => true));
+
+-- result
+"t","len","RPAD"
+"abc","5","abc  "
+"abc","2","ab"
+"例子","4","例子  "
+
+
+-- provided
+WITH items AS
+  (SELECT '***apple***' as item
+  UNION ALL
+  SELECT '***banana***' as item
+  UNION ALL
+  SELECT '***orange***' as item)
+SELECT
+  RTRIM(item, '*') as example
+FROM items;
+
+-- result
+"example"
+"***apple"
+"***banana"
+"***orange"
+
+
+-- provided
+WITH items AS
+  (SELECT 'applexxx' as item
+  UNION ALL
+  SELECT 'bananayyy' as item
+  UNION ALL
+  SELECT 'orangezzz' as item
+  UNION ALL
+  SELECT 'pearxyz' as item)
+SELECT
+  RTRIM(item, 'xyz') as example
+FROM items;
+
+-- result
+"example"
+"apple"
+"banana"
+"orange"
+"pear"
+
+
+-- provided
+SELECT SAFE_CONVERT_BYTES_TO_STRING(b'\x61') as safe_convert
+;
+
+-- expected
+SELECT DECODE(COALESCE(TRY_CAST('\x61' AS BLOB),ENCODE('\x61')))AS SAFE_CONVERT
+;
+
+-- result
+"safe_convert"
+"a"
+
+
+-- provided
+WITH letters AS
+  (SELECT '' as letter_group
+  UNION ALL
+  SELECT 'a' as letter_group
+  UNION ALL
+  SELECT 'b c d' as letter_group)
+SELECT SPLIT(letter_group, ' ') as example
+FROM letters;
+
+-- result
+"example"
+"[]"
+"[a]"
+"[b, c, d]"
+
+
+-- provided
+WITH items AS
+  (SELECT 'foo' as item
+  UNION ALL
+  SELECT 'bar' as item
+  UNION ALL
+  SELECT 'baz' as item)
+SELECT
+  STARTS_WITH(item, 'b') as example
+FROM items;
+
+-- result
+"example"
+"false"
+"true"
+"true"
+
+
+-- provided
+WITH email_addresses AS
+  (SELECT
+    'foo@example.com' AS email_address
+  UNION ALL
+  SELECT
+    'foobar@example.com' AS email_address
+  UNION ALL
+  SELECT
+    'foobarbaz@example.com' AS email_address
+  UNION ALL
+  SELECT
+    'quxexample.com' AS email_address)
+SELECT
+  STRPOS(email_address, '@') AS example
+FROM email_addresses;
+
+-- result
+"example"
+"4"
+"7"
+"10"
+"0"
+
+
+-- provided
+WITH items AS
+  (SELECT 'apple' as item
+  UNION ALL
+  SELECT 'banana' as item
+  UNION ALL
+  SELECT 'orange' as item)
+SELECT
+  SUBSTR(item, 2) as example
+FROM items;
+
+-- result
+"example"
+"pple"
+"anana"
+"range"
+
+
+-- provided
+WITH items AS
+  (SELECT 'apple' as item
+  UNION ALL
+  SELECT 'banana' as item
+  UNION ALL
+  SELECT 'orange' as item)
+
+SELECT
+  SUBSTRING(item, 123, 5) as example
+FROM items;
+
+-- result
+"example"
+""
+""
+""
+
+
+-- provided
+SELECT TO_BASE64(b'\x377\x340') AS base64_string;
+
+-- expected
+SELECT TO_BASE64( Coalesce(Try_CAST('\x377\x340' AS BLOB), Encode('\x377\x340'))) AS base64_string;
+
+--@todo: verify if this example is correct and makes sense
+--result
+"base64_string"
+"Nzc0MA=="
+
+-- provided
+SELECT word, TO_CODE_POINTS(word) AS code_points
+FROM UNNEST(['foo', 'bar', 'baz', 'giraffe', 'llama']) AS word;
+
+-- expected
+SELECT word, list_transform( split(word, ''),  x -> unicode(x) ) as code_points
+FROM (select UNNEST(['foo', 'bar', 'baz', 'giraffe', 'llama']) AS word) AS word;
+
+-- result
+"word","code_points"
+"foo","[102, 111, 111]"
+"bar","[98, 97, 114]"
+"baz","[98, 97, 122]"
+"giraffe","[103, 105, 114, 97, 102, 102, 101]"
+"llama","[108, 108, 97, 109, 97]"

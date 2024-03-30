@@ -1,14 +1,11 @@
 -- provided
-SELECT
-  DATE_DIFF('2017-12-30', '2014-12-30', YEAR) AS year_diff,
-  DATE_DIFF('2017-12-30', '2014-12-30', ISOYEAR) AS isoyear_diff;
+SELECT SAFE_CONVERT_BYTES_TO_STRING(b'\x61') as safe_convert
+;
 
 -- expected
-SELECT
-  DATE_DIFF('YEAR', DATE '2014-12-30', DATE '2017-12-30' ) AS year_diff,
-  DATE_DIFF('ISOYEAR', DATE '2014-12-30', DATE '2017-12-30') AS isoyear_diff;
+SELECT DECODE(COALESCE(TRY_CAST('\x61' AS BLOB),ENCODE('\x61')))AS SAFE_CONVERT;
 
 -- result
-"year_diff","isoyear_diff"
-"3","2"
+"safe_convert"
+"a"
 
