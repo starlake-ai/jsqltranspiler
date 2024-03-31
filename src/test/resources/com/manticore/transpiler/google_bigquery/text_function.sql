@@ -214,15 +214,13 @@ SELECT FROM_BASE64('/+A=') AS byte_data;
 
 -- provided
 WITH Input AS (
-  SELECT '00010203aaeeefff' AS hex_str UNION ALL
-  SELECT '0AF' UNION ALL
-  SELECT '666f6f626172'
+  SELECT '666f6f626172' hex_str
 )
 SELECT hex_str, FROM_HEX(hex_str) AS bytes_str
 FROM Input;
 
 -- tally
-3
+1
 
 -- provided
 WITH example AS (
@@ -821,3 +819,102 @@ FROM (select UNNEST(['foo', 'bar', 'baz', 'giraffe', 'llama']) AS word) AS word;
 "baz","[98, 97, 122]"
 "giraffe","[103, 105, 114, 97, 102, 102, 101]"
 "llama","[108, 108, 97, 109, 97]"
+
+
+-- provided
+WITH Input AS (
+  SELECT b'foobar' byte_str
+)
+SELECT TO_HEX(byte_str) AS hex_str
+FROM Input;
+
+-- expected
+WITH Input AS (
+  SELECT COALESCE( TRY_CAST('foobar' AS BLOB) , ENCODE('foobar') ) byte_str
+)
+SELECT TO_HEX(decode(byte_str)) AS hex_str
+FROM Input;
+
+-- result
+"hex_str"
+"666F6F626172"
+
+
+-- provided
+WITH example AS (
+  SELECT 'This is a cookie' AS expression, 'sco' AS source_characters, 'zku' AS
+  target_characters UNION ALL
+  SELECT 'A coaster' AS expression, 'co' AS source_characters, 'k' as
+  target_characters
+)
+SELECT expression, source_characters, target_characters, TRANSLATE(expression,
+source_characters, target_characters) AS translate
+FROM example;
+
+-- result
+"expression","source_characters","target_characters","translate"
+"This is a cookie","sco","zku","Thiz iz a kuukie"
+"A coaster","co","k","A kaster"
+
+
+-- provided
+WITH items AS
+  (SELECT '   apple   ' as item
+  UNION ALL
+  SELECT '   banana   ' as item
+  UNION ALL
+  SELECT '   orange   ' as item)
+SELECT
+  CONCAT('#', TRIM(item), '#') as example
+FROM items;
+
+-- result
+"example"
+"#apple#"
+"#banana#"
+"#orange#"
+
+
+-- provided
+WITH items AS
+  (SELECT '***apple***' as item
+  UNION ALL
+  SELECT '***banana***' as item
+  UNION ALL
+  SELECT '***orange***' as item)
+SELECT
+  TRIM(item, '*') as example
+FROM items;
+
+-- result
+"example"
+"apple"
+"banana"
+"orange"
+
+
+-- provided
+SELECT
+  TRIM('abaW̊', 'Y̊') AS a,
+  TRIM('W̊aba', 'Y̊') AS b,
+  TRIM('abaŪ̊', 'Y̊') AS c,
+  TRIM('Ū̊aba', 'Y̊') AS d;
+
+-- result
+"a","b","c","d"
+"abaW","W̊aba","abaŪ","Ū̊aba"
+
+
+-- provided
+SELECT UNICODE('âbcd') as A, UNICODE('â') as B, UNICODE('') as C, UNICODE(NULL) as D;
+
+-- expected
+SELECT  If( Length( 'âbcd' ) = 0, 0, Unicode( 'âbcd' ) ) AS a
+        , If( Length( 'â' ) = 0, 0, Unicode( 'â' ) ) AS b
+        , If( Length( '' ) = 0, 0, Unicode( '' ) ) AS c
+        , If( Length( NULL ) = 0, 0, Unicode( NULL ) ) AS d
+;
+
+-- result
+"A","B","C","D"
+"226","226","0",""

@@ -8,6 +8,12 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **feat: more String functions incl. Lambda based transpilation**
+    
+    Andreas Reichel, 2024-03-30
+  * **feat: support BigQuery Structs, DuckDB structs and translation**
+    
+    Andreas Reichel, 2024-03-28
   * **feature: support many more TEXT functions**
     
     Andreas Reichel, 2024-03-25

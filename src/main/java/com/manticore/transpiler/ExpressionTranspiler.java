@@ -36,6 +36,7 @@ import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Concat;
 import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
@@ -80,7 +81,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP, DATE_FROM_UNIX_DATE, UNIX_DATE, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS, UNIX_MICROS, UNIX_MILLIS, UNIX_SECONDS
 
-    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPEAT, REPLACE, REVERSE, RPAD, SAFE_CONVERT_BYTES_TO_STRING, TO_CODE_POINTS
+    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPEAT, REPLACE, REVERSE, RPAD, SAFE_CONVERT_BYTES_TO_STRING, TO_CODE_POINTS, TO_HEX, UNICODE
 
 
     , NVL, UNNEST;
@@ -704,7 +705,17 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
           function.setName("List_Transform");
           function.setParameters(new Function("Split", parameters.get(0), new StringValue("")),
-              new LambdaExpression(Arrays.asList("x"), new Function("Unicode", new Column("x"))));
+              new LambdaExpression(Arrays.asList("x"), new Function("Unicode$$", new Column("x"))));
+          break;
+        case TO_HEX:
+          function.setParameters(new Function("Decode", parameters.get(0)));
+          break;
+        case UNICODE:
+          Function ifFunction = new Function("If",
+              new EqualsTo(new Function("Length$$", parameters.get(0)), new LongValue(0)),
+              new LongValue(0), function.withName(function.getName() + "$$"));
+          visit(ifFunction);
+          rewrittenExpression = ifFunction;
           break;
       }
     }
