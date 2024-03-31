@@ -83,6 +83,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPEAT, REPLACE, REVERSE, RPAD, SAFE_CONVERT_BYTES_TO_STRING, TO_CODE_POINTS, TO_HEX, UNICODE
 
+    , DIV
 
     , NVL, UNNEST;
     // @FORMATTER:ON
@@ -105,7 +106,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
   }
 
   enum UnsupportedFunction {
-    NOTHING;
+    ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, NOTHING;
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
     public static UnsupportedFunction from(String name) {
@@ -414,6 +415,11 @@ public class ExpressionTranspiler extends ExpressionDeParser {
       return;
     }
 
+    if (function.getMultipartName().size()>1 && function.getMultipartName().get(0).equalsIgnoreCase("SAFE")) {
+      warning("SAFE prefix is not supported.");
+      function.getMultipartName().remove(0);
+    }
+
     Expression rewrittenExpression = null;
     ExpressionList<?> parameters = function.getParameters();
     TranspiledFunction f = TranspiledFunction.from(functionName);
@@ -716,6 +722,9 @@ public class ExpressionTranspiler extends ExpressionDeParser {
               new LongValue(0), function.withName(function.getName() + "$$"));
           visit(ifFunction);
           rewrittenExpression = ifFunction;
+          break;
+        case DIV:
+          function.setName("Divide");
           break;
       }
     }
