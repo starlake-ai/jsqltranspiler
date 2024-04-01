@@ -110,3 +110,330 @@ FROM (  SELECT Unnest(  [
 "20","3","6"
 "0","20","0"
 
+
+-- provided
+select exp(2.7) exp;
+
+-- result
+"exp"
+"14.879731724872837"
+
+
+-- provided
+SELECT Floor( Unnest( [2.0, 2.3, 2.8, 2.5, -2.3, -2.8, -2.5, 0] ) ) floor
+;
+
+-- result
+"floor"
+"2"
+"2"
+"2"
+"2"
+"-3"
+"-3"
+"-3"
+"0"
+
+-- provided
+SELECT Greatest(3, 5, 1) greatest;
+
+-- result
+"greatest"
+"5"
+
+
+-- provided
+SELECT Is_Inf(25) a, Is_Inf('-inf'::FLOAT) b, Is_Inf('+inf'::FLOAT) c;
+
+-- expected
+SELECT IsInf(25) a, IsInf('-Infinity'::FLOAT) b, IsInf('+Infinity'::FLOAT) c;
+
+-- result
+"a","b","c"
+"false","true","true"
+
+
+-- provided
+SELECT Is_Nan(25) a, Is_Nan( 'Nan'::FLOAT) b;
+
+-- expected
+SELECT IsNan(25) a, IsNan( 'Nan'::FLOAT) b;
+
+-- result
+"a","b"
+"false","true"
+
+
+-- provided
+SELECT Least(3, 5, 1) least;
+
+-- result
+"least"
+"1"
+
+
+-- provided
+SELECT Ln(2.7) ln;
+
+-- result
+"ln"
+"0.9932517730102834"
+
+
+-- provided
+SELECT Log( 100,  10 ) log;
+
+-- expected
+SELECT Divide( Ln( 100 ), Ln( 10 ) ) log;
+
+-- result
+"log"
+"2.0"
+
+-- provided
+SELECT Log10( 100 ) log;
+
+-- result
+"log"
+"2.0"
+
+
+-- provided
+SELECT Mod( 25, 12) mod;
+
+-- result
+"mod"
+"1"
+
+
+-- provided
+SELECT Pow( 2, 3) a, Pow( 1, 'Nan'::FLOAT) b, Pow( 1, '-inf'::FLOAT) c, Pow( 0.1, '-inf'::FLOAT) d;
+
+-- expected
+SELECT Pow( 2, 3) a, Pow( 1, 'Nan'::FLOAT) b, Pow( 1, '-Infinity'::FLOAT) c, Pow( 0.1, '-Infinity'::FLOAT) d;
+
+-- result
+"a","b","c","d"
+"8.0","1.0","1.0","Infinity"
+
+
+-- provided
+Select Rand() rand;
+
+-- expected
+Select Random() rand;
+
+-- tally
+1
+
+
+-- provided
+select RANGE_BUCKET(20, [0, 10, 20, 30, 40]) a -- 3 is return value
+       , RANGE_BUCKET(20, [0, 10, 20, 20, 40, 40]) b -- 4 is return value
+       , RANGE_BUCKET(25, [0, 10, 20, 30, 40]) c -- 3 is return value
+       , RANGE_BUCKET(-10, [5, 10, 20, 30, 40]) d -- 0 is return value
+;
+
+-- expected
+SELECT  Len( List_Filter( [0, 10, 20, 30, 40], x -> x <= 20 ) ) a
+        , Len( List_Filter( [0, 10, 20, 20, 40, 40], x -> x <= 20 ) ) b
+        , Len( List_Filter( [0, 10, 20, 30, 40], x -> x <= 25 ) ) c
+        , Len( List_Filter( [5, 10, 20, 30, 40], x -> x <= -10 ) ) d
+;
+
+-- result
+"a","b","c","d"
+"3","4","3","0"
+
+
+-- provided
+WITH students AS
+(
+  SELECT 9 AS age UNION ALL
+  SELECT 20 AS age UNION ALL
+  SELECT 25 AS age UNION ALL
+  SELECT 31 AS age UNION ALL
+  SELECT 32 AS age UNION ALL
+  SELECT 33 AS age
+)
+SELECT RANGE_BUCKET(age, [10, 20, 30]) AS age_group, COUNT(*) AS count
+FROM students
+GROUP BY 1
+ORDER BY 1
+;
+
+-- expected
+WITH students AS
+(
+  SELECT 9 AS age UNION ALL
+  SELECT 20 AS age UNION ALL
+  SELECT 25 AS age UNION ALL
+  SELECT 31 AS age UNION ALL
+  SELECT 32 AS age UNION ALL
+  SELECT 33 AS age
+)
+SELECT  Len( List_Filter( [10, 20, 30], x -> x <= age ) ) AS age_group
+        , Count( * ) AS count
+FROM students
+GROUP BY 1
+ORDER BY 1
+;
+
+-- result
+"age_group","count"
+"0","1"
+"2","2"
+"3","3"
+
+
+-- provided
+Select ROUND(2.0) i, 2.0 o
+UNION ALL SELECT ROUND(2.3),  2.0
+UNION ALL SELECT ROUND(2.8),  3.0
+UNION ALL SELECT ROUND(2.5),  3.0
+UNION ALL SELECT ROUND(-2.3),     -2.0
+UNION ALL SELECT ROUND(-2.8),     -3.0
+UNION ALL SELECT ROUND(-2.5),     -3.0
+UNION ALL SELECT ROUND(123.7, -1),    120.0
+UNION ALL SELECT ROUND(1.235, 2),     1.24
+UNION ALL SELECT ROUND('2.25'::NUMERIC, 1, 'ROUND_HALF_EVEN'),     2.2
+UNION ALL SELECT ROUND('2.35'::NUMERIC, 1, 'ROUND_HALF_EVEN'),     2.4
+UNION ALL SELECT ROUND('2.251'::NUMERIC, 1, 'ROUND_HALF_EVEN'),    2.3
+UNION ALL SELECT ROUND('-2.5'::NUMERIC, 0, 'ROUND_HALF_EVEN'),     -2
+UNION ALL SELECT ROUND('2.5'::NUMERIC, 0, 'ROUND_HALF_AWAY_FROM_ZERO'),    3
+UNION ALL SELECT ROUND('-2.5'::NUMERIC, 0, 'ROUND_HALF_AWAY_FROM_ZERO'),   -3
+;
+
+-- expected
+Select ROUND(2.0, 0) i,     2.0 o
+UNION ALL SELECT ROUND(2.3, 0),  2.0
+UNION ALL SELECT ROUND(2.8, 0),  3.0
+UNION ALL SELECT ROUND(2.5, 0),  3.0
+UNION ALL SELECT ROUND(-2.3, 0),     -2.0
+UNION ALL SELECT ROUND(-2.8, 0),     -3.0
+UNION ALL SELECT ROUND(-2.5, 0),     -3.0
+UNION ALL SELECT ROUND(123.7, -1),    120.0
+UNION ALL SELECT ROUND(1.235, 2),     1.24
+UNION ALL SELECT ROUND_EVEN('2.25'::NUMERIC, 1),     2.2
+UNION ALL SELECT ROUND_EVEN('2.35'::NUMERIC, 1),     2.4
+UNION ALL SELECT ROUND_EVEN('2.251'::NUMERIC, 1),    2.3
+UNION ALL SELECT ROUND_EVEN('-2.5'::NUMERIC, 0),     -2
+UNION ALL SELECT ROUND('2.5'::NUMERIC, 0),    3
+UNION ALL SELECT ROUND('-2.5'::NUMERIC, 0),   -3
+;
+
+-- result
+"i","o"
+"2.0","2.00"
+"2.0","2.00"
+"3.0","3.00"
+"3.0","3.00"
+"-2.0","-2.00"
+"-3.0","-3.00"
+"-3.0","-3.00"
+"120.0","120.00"
+"1.24","1.24"
+"2.2","2.20"
+"2.4","2.40"
+"2.3","2.30"
+"-2.0","-2.00"
+"3.0","3.00"
+"-3.0","-3.00"
+
+
+-- provided
+SELECT SAFE_ADD(5, 4) a;
+
+-- expected
+SELECT /* Approximation: SAFE variant not supported */ ADD(5, 4) a;
+
+-- result
+"a"
+"9"
+
+
+-- provided
+SELECT SAFE_DIVIDE(5, 4) a;
+
+-- expected
+SELECT /* Approximation: SAFE variant not supported */ DIVIDE(5, 4) a;
+
+-- result
+"a"
+"1"
+
+
+-- provided
+SELECT SAFE_MULTIPLY(5, 4) a;
+
+-- expected
+SELECT /* Approximation: SAFE variant not supported */ MULTIPLY(5, 4) a;
+
+-- result
+"a"
+"20"
+
+
+-- provided
+SELECT SAFE_NEGATE(5) a;
+
+-- expected
+SELECT /* Approximation: SAFE variant not supported */ MULTIPLY(5, -1) a;
+
+-- result
+"a"
+"-5"
+
+
+-- provided
+SELECT SAFE_SUBTRACT(5, 4) a;
+
+-- expected
+SELECT /* Approximation: SAFE variant not supported */ SUBTRACT(5, 4) a;
+
+-- result
+"a"
+"1"
+
+
+-- provided
+SELECT Sign(-5) sign;
+
+-- result
+"sign"
+"-1"
+
+
+-- provided
+SELECT Sin(3.124) sin;
+
+-- result
+"sin"
+"0.01759174611184034"
+
+
+-- provided
+SELECT SQRT(25) sqrt;
+
+-- result
+"sqrt"
+"5.0"
+
+
+-- provided
+SELECT Tan(25) tan;
+
+-- result
+"tan"
+"-0.13352640702153587"
+
+
+-- provided
+SELECT Trunc(2.3) a, Trunc(2.3, 1) b;
+
+-- expected
+SELECT Trunc(2.3) a, Round(2.3, 1) b;
+
+-- result
+"a","b"
+"2","2.3"

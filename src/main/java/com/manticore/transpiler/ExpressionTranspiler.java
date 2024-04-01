@@ -39,6 +39,7 @@ import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
+import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
@@ -83,7 +84,9 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPEAT, REPLACE, REVERSE, RPAD, SAFE_CONVERT_BYTES_TO_STRING, TO_CODE_POINTS, TO_HEX, UNICODE
 
-    , DIV
+    , DIV, IEEE_DIVIDE, IS_INF, IS_NAN, LOG, RAND, RANGE_BUCKET, ROUND
+
+    , SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY, SAFE_NEGATE, SAFE_SUBTRACT, TRUNC
 
     , NVL, UNNEST;
     // @FORMATTER:ON
@@ -106,7 +109,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
   }
 
   enum UnsupportedFunction {
-    ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, NOTHING;
+    ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH;
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
     public static UnsupportedFunction from(String name) {
@@ -415,7 +418,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
       return;
     }
 
-    if (function.getMultipartName().size()>1 && function.getMultipartName().get(0).equalsIgnoreCase("SAFE")) {
+    if (function.getMultipartName().size() > 1
+        && function.getMultipartName().get(0).equalsIgnoreCase("SAFE")) {
       warning("SAFE prefix is not supported.");
       function.getMultipartName().remove(0);
     }
@@ -724,7 +728,76 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           rewrittenExpression = ifFunction;
           break;
         case DIV:
+        case IEEE_DIVIDE:
           function.setName("Divide");
+          break;
+        case IS_INF:
+          function.setName("IsInf");
+          break;
+        case IS_NAN:
+          function.setName("IsNan");
+          break;
+        case LOG:
+          if (parameters != null) {
+            switch (parameters.size()) {
+              case 1:
+                function.setName("Ln");
+                break;
+              case 2:
+                function.setName("Divide");
+                function.setParameters(new Function("Ln", parameters.get(0)),
+                    new Function("Ln", parameters.get(1)));
+                break;
+            }
+          }
+          break;
+        case RAND:
+          function.setName("Random");
+          break;
+        case RANGE_BUCKET:
+          if (parameters != null && parameters.size() == 2) {
+            // Len( List_Filter( [0, 10, 20, 30, 40], x -> x <= 20 ) ) a
+            Function filter = new Function("List_Filter", parameters.get(1),
+                new LambdaExpression("x", new MinorThanEquals(new Column("x"), parameters.get(0))));
+            function.setName("Len");
+            function.setParameters(filter);
+          }
+          break;
+        case ROUND:
+          if (parameters != null) {
+            switch (parameters.size()) {
+              case 1:
+                function.setParameters(parameters.get(0), new LongValue(0));
+                break;
+              case 3:
+                if (parameters.get(2).toString().toUpperCase().contains("ROUND_HALF_EVEN")) {
+                  function.setName("Round_Even");
+                }
+                function.setParameters(parameters.get(0), parameters.get(1));
+                break;
+            }
+          }
+          break;
+        case SAFE_ADD:
+        case SAFE_DIVIDE:
+        case SAFE_MULTIPLY:
+        case SAFE_SUBTRACT:
+          warning("SAFE variant not supported");
+          function.setName(functionName.substring("SAFE_".length()));
+          break;
+        case SAFE_NEGATE:
+          warning("SAFE variant not supported");
+          function.setName("Multiply");
+          function.setParameters(parameters.get(0), new LongValue(-1));
+          break;
+        case TRUNC:
+          if (parameters != null) {
+            switch (parameters.size()) {
+              case 2:
+                function.setName("Round");
+                break;
+            }
+          }
           break;
       }
     }
@@ -1337,6 +1410,12 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
   public void visit(StringValue stringValue) {
     stringValue.setValue(convertUnicode(stringValue.getValue()));
+
+    if (stringValue.getValue().equalsIgnoreCase("+inf")) {
+      stringValue.setValue("+Infinity");
+    } else if (stringValue.getValue().equalsIgnoreCase("-inf")) {
+      stringValue.setValue("-Infinity");
+    }
 
     if ("b".equalsIgnoreCase(stringValue.getPrefix())) {
       // Coalesce(TRY_CAST('абвгд' AS BLOB), encode('абвгд'))

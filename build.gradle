@@ -32,6 +32,10 @@ repositories {
     }
 
     maven {
+        url = uri('https://oss.sonatype.org/content/repositories/snapshots/')
+    }
+
+    maven {
         url = uri('https://oss.sonatype.org/content/groups/public/')
     }
 
@@ -55,7 +59,7 @@ dependencies {
     // we do need better matchers
     testImplementation("org.assertj:assertj-core:+")
 
-    testImplementation 'org.duckdb:duckdb_jdbc:0.10.0'
+    testImplementation 'org.duckdb:duckdb_jdbc:0.10.+'
     testImplementation 'org.apache.commons:commons-compress:+'
     testImplementation 'com.opencsv:opencsv:+'
 

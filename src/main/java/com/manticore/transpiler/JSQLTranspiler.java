@@ -26,6 +26,7 @@ import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.SetOperationList;
 import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.statement.select.Top;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
@@ -243,6 +244,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the transformed query string
    * @throws Exception the exception
    */
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public static String transpileQuery(String qryStr, Dialect dialect) throws Exception {
     Statement st = CCJSqlParserUtil.parse(qryStr);
     if (st instanceof PlainSelect) {
@@ -259,6 +261,16 @@ public class JSQLTranspiler extends SelectDeParser {
           return transpileAmazonRedshiftQuery(select);
         default:
           return transpile(select);
+      }
+    } else if (st instanceof SetOperationList) {
+      SetOperationList setOperationList = (SetOperationList) st;
+
+      switch (dialect) {
+        case GOOGLE_BIG_QUERY:
+          return transpileGoogleBigQuery(setOperationList);
+        default:
+          throw new RuntimeException("The " + st.getClass().getName()
+              + " is not supported yet. Only `PlainSelect` is supported right now.");
       }
     } else {
       throw new RuntimeException("The " + st.getClass().getName()
@@ -287,6 +299,11 @@ public class JSQLTranspiler extends SelectDeParser {
     for (Statement st : statements) {
       if (st instanceof PlainSelect) {
         PlainSelect select = (PlainSelect) st;
+        transpiler.visit(select);
+
+        transpiler.getResultBuilder().append("\n;\n\n");
+      } else if (st instanceof SetOperationList) {
+        SetOperationList select = (SetOperationList) st;
         transpiler.visit(select);
 
         transpiler.getResultBuilder().append("\n;\n\n");
@@ -342,6 +359,13 @@ public class JSQLTranspiler extends SelectDeParser {
   public static String transpileGoogleBigQuery(PlainSelect select) throws Exception {
     JSQLTranspiler transpiler = new JSQLTranspiler();
     transpiler.visit(select);
+
+    return transpiler.getResultBuilder().toString();
+  }
+
+  public static String transpileGoogleBigQuery(SetOperationList setOperationList) throws Exception {
+    JSQLTranspiler transpiler = new JSQLTranspiler();
+    transpiler.visit(setOperationList);
 
     return transpiler.getResultBuilder().toString();
   }
