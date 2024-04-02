@@ -24,6 +24,7 @@ import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExtractExpression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.HexValue;
 import net.sf.jsqlparser.expression.IntervalExpression;
 import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
@@ -87,6 +88,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     , DIV, IEEE_DIVIDE, IS_INF, IS_NAN, LOG, RAND, RANGE_BUCKET, ROUND
 
     , SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY, SAFE_NEGATE, SAFE_SUBTRACT, TRUNC
+
+    , ARRAY_CONCAT_AGG
 
     , NVL, UNNEST;
     // @FORMATTER:ON
@@ -799,6 +802,15 @@ public class ExpressionTranspiler extends ExpressionDeParser {
             }
           }
           break;
+        case ARRAY_CONCAT_AGG:
+          //list_sort(flatten(list(x)), 'ASC', 'NULLS FIRST'))
+          function.setName("List_Sort");
+          function.setParameters(
+                  new Function("Flatten", new Function("List", parameters.get(0)))
+                  , new StringValue("ASC")
+                  , new StringValue("NULLS FIRST")
+          );
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -1428,6 +1440,10 @@ public class ExpressionTranspiler extends ExpressionDeParser {
       // @todo: handle "r"
       super.visit(stringValue.withPrefix(null));
     }
+  }
+
+  public void visit(HexValue hexValue) {
+    super.visit( hexValue.getLongValue() );
   }
 
   public static String convertUnicode(String input) {
