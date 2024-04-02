@@ -17,17 +17,21 @@
  */
 package com.manticore.transpiler;
 
+import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.ExpressionVisitor;
+import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.ExtractExpression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.HexValue;
 import net.sf.jsqlparser.expression.IntervalExpression;
 import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.NullValue;
 import net.sf.jsqlparser.expression.OracleNamedFunctionParameter;
 import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
@@ -51,8 +55,11 @@ import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -89,7 +96,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY, SAFE_NEGATE, SAFE_SUBTRACT, TRUNC
 
-    , ARRAY_CONCAT_AGG
+    , ARRAY_CONCAT_AGG, COUNTIF
 
     , NVL, UNNEST;
     // @FORMATTER:ON
@@ -126,6 +133,10 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     }
 
     public static UnsupportedFunction from(Function f) {
+      return from(f.getName());
+    }
+
+    public static UnsupportedFunction from(AnalyticExpression f) {
       return from(f.getName());
     }
   }
@@ -810,6 +821,72 @@ public class ExpressionTranspiler extends ExpressionDeParser {
                   , new StringValue("ASC")
                   , new StringValue("NULLS FIRST")
           );
+          break;
+        case COUNTIF:
+          // COUNT(IF(x < 0, x, NULL))
+
+          final Set<Column> expressionColumns = new HashSet<>();
+          parameters.get(0).accept(new ExpressionVisitorAdapter() {
+            public void visit(Column column) {
+              expressionColumns.add(column);
+            }
+          });
+          // @todo: clarify if there can be only exactly 1 column
+          //        else, what do to on None or many?
+          assert expressionColumns.size()==1;
+          Column column = expressionColumns.toArray(new Column[0])[0];
+
+          warning("Different NULL handling");
+          function.setName("Count");
+          function.setParameters(
+                  new Function( "If", parameters.get(0), column , new NullValue())
+          );
+
+          break;
+      }
+    }
+    if (rewrittenExpression == null) {
+      super.visit(function);
+    }
+  }
+
+  public void visit(AnalyticExpression function) {
+    String functionName = function.getName();
+
+    if (UnsupportedFunction.from(function) != null) {
+      throw new RuntimeException(
+              "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
+    } else if (functionName.endsWith("$$")) {
+      // work around for transpiling already transpiled functions twice
+      // @todo: figure out a better way to achieve that
+      function.setName(functionName.substring(0, functionName.length() - 2));
+      super.visit(function);
+      return;
+    }
+    Expression rewrittenExpression = null;
+    TranspiledFunction f = TranspiledFunction.from(functionName);
+    if (f != null) {
+      switch (f) {
+        case COUNTIF:
+          // COUNT(IF(x < 0, x, NULL))
+
+          final Set<Column> expressionColumns = new HashSet<>();
+          function.getExpression().accept(new ExpressionVisitorAdapter() {
+            public void visit(Column column) {
+              expressionColumns.add(column);
+            }
+          });
+          // @todo: clarify if there can be only exactly 1 column
+          //        else, what do to on None or many?
+          assert expressionColumns.size()==1;
+          Column column = expressionColumns.toArray(new Column[0])[0];
+
+          warning("Different NULL handling");
+          function.setName("Count");
+          function.setExpression(
+                  new Function( "If", function.getExpression(), column , new NullValue())
+          );
+
           break;
       }
     }

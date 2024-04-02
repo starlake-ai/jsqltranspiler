@@ -137,3 +137,132 @@ FROM (SELECT UNNEST([61441, 161]) as x) as x;
 "bit_and"
 "1"
 
+
+-- provided
+SELECT BIT_OR(x) as bit_or FROM UNNEST([0xF001, 0x00A1]) as x;
+
+-- expected
+SELECT BIT_OR(x) as bit_or
+FROM (SELECT UNNEST([61441, 161]) as x) as x;
+
+-- result
+"bit_or"
+"61601"
+
+
+-- provided
+SELECT BIT_XOR(x) as bit_xor FROM UNNEST([0xF001, 0x00A1]) as x;
+
+-- expected
+SELECT BIT_XOR(x) as bit_xor
+FROM (SELECT UNNEST([61441, 161]) as x) as x;
+
+-- result
+"bit_xor"
+"61600"
+
+
+-- provided
+SELECT
+  x,
+  COUNT(*) OVER (PARTITION BY MOD(x, 3)) AS count_star,
+  COUNT(x) OVER (PARTITION BY MOD(x, 3)) AS count_x
+FROM UNNEST([1, 4, NULL, 4, 5]) AS x
+ORDER BY 1 NULLS FIRST;
+
+-- expected
+SELECT
+  x,
+  COUNT(*) OVER (PARTITION BY MOD(x, 3)) AS count_star,
+  COUNT(x) OVER (PARTITION BY MOD(x, 3)) AS count_x
+FROM (SELECT UNNEST([1, 4, NULL, 4, 5]) AS x) AS x
+ORDER BY 1 NULLS FIRST;
+
+-- result
+"x","count_star","count_x"
+"","1","0"
+"1","3","3"
+"4","3","3"
+"4","3","3"
+"5","1","1"
+
+
+-- provided
+SELECT COUNT(DISTINCT IF(x > 0, x, NULL)) AS distinct_positive
+FROM UNNEST([1, -2, 4, 1, -5, 4, 1, 3, -6, 1]) AS x;
+
+-- expected
+SELECT COUNT(DISTINCT IF(x > 0, x, NULL)) AS distinct_positive
+FROM (SELECT UNNEST([1, -2, 4, 1, -5, 4, 1, 3, -6, 1]) AS x) AS x;
+
+-- result
+"distinct_positive"
+"3"
+
+
+-- provided
+SELECT COUNTIF(x<0) AS num_negative, COUNTIF(x>0) AS num_positive
+FROM UNNEST([5, -2, 3, 6, -10, -7, 4, 0]) AS x;
+
+-- expected
+SELECT COUNT(IF(x < 0, x, NULL)) AS num_negative, COUNT(IF(x > 0, x, NULL)) AS num_positive
+FROM (SELECT UNNEST([5, -2, 3, 6, -10, -7, 4, 0]) AS x) AS x;
+
+-- result
+"num_negative","num_positive"
+"3","4"
+
+
+-- provided
+SELECT
+  x,
+  COUNTIF(x<0) OVER (ORDER BY ABS(x) ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS num_negative
+FROM UNNEST([5, -2, 3, 6, -10, NULL, -7, 4, 0]) AS x
+order by 1 NULLS FIRST;
+
+-- expected
+SELECT
+  x,
+  /* Approximation: Different NULL handling */ COUNT(IF(x < 0, x, NULL)) OVER (ORDER BY ABS(x) ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS num_negative
+FROM (SELECT UNNEST([5, -2, 3, 6, -10, NULL, -7, 4, 0]) AS x) AS x
+order by 1 NULLS FIRST;
+
+-- result
+"x","num_negative"
+"","1"
+"-10","2"
+"-7","2"
+"-2","1"
+"0","1"
+"3","1"
+"4","0"
+"5","0"
+"6","1"
+
+
+-- provided
+WITH
+  Products AS (
+    SELECT 'shirt' AS product_type, 't-shirt' AS product_name, 3 AS product_count UNION ALL
+    SELECT 'shirt', 't-shirt', 8 UNION ALL
+    SELECT 'shirt', 'polo', 25 UNION ALL
+    SELECT 'pants', 'jeans', 6
+  )
+SELECT
+  product_type,
+  product_name,
+  SUM(product_count) AS product_sum,
+  GROUPING(product_type) AS product_type_agg,
+  GROUPING(product_name) AS product_name_agg,
+FROM Products
+GROUP BY GROUPING SETS(product_type, product_name, ())
+ORDER BY product_name, product_type;
+
+-- result
+"product_type","product_name","product_sum","product_type_agg","product_name_agg"
+"","jeans","6.00","1","0"
+"","polo","25.00","1","0"
+"","t-shirt","11.00","1","0"
+"pants","","6.00","0","1"
+"shirt","","36.00","0","1"
+"","","42.00","1","1"
