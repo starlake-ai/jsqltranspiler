@@ -23,7 +23,6 @@ import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.ExpressionVisitor;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.ExtractExpression;
 import net.sf.jsqlparser.expression.Function;
@@ -55,7 +54,6 @@ import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -96,7 +94,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY, SAFE_NEGATE, SAFE_SUBTRACT, TRUNC
 
-    , ARRAY_CONCAT_AGG, COUNTIF
+    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR
+
 
     , NVL, UNNEST;
     // @FORMATTER:ON
@@ -814,13 +813,10 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           }
           break;
         case ARRAY_CONCAT_AGG:
-          //list_sort(flatten(list(x)), 'ASC', 'NULLS FIRST'))
+          // list_sort(flatten(list(x)), 'ASC', 'NULLS FIRST'))
           function.setName("List_Sort");
-          function.setParameters(
-                  new Function("Flatten", new Function("List", parameters.get(0)))
-                  , new StringValue("ASC")
-                  , new StringValue("NULLS FIRST")
-          );
+          function.setParameters(new Function("Flatten", new Function("List", parameters.get(0))),
+              new StringValue("ASC"), new StringValue("NULLS FIRST"));
           break;
         case COUNTIF:
           // COUNT(IF(x < 0, x, NULL))
@@ -832,16 +828,20 @@ public class ExpressionTranspiler extends ExpressionDeParser {
             }
           });
           // @todo: clarify if there can be only exactly 1 column
-          //        else, what do to on None or many?
-          assert expressionColumns.size()==1;
+          // else, what do to on None or many?
+          assert expressionColumns.size() == 1;
           Column column = expressionColumns.toArray(new Column[0])[0];
 
           warning("Different NULL handling");
           function.setName("Count");
-          function.setParameters(
-                  new Function( "If", parameters.get(0), column , new NullValue())
-          );
+          function.setParameters(new Function("If", parameters.get(0), column, new NullValue()));
 
+          break;
+        case LOGICAL_AND:
+          function.setName("Bool_And");
+          break;
+        case LOGICAL_OR:
+          function.setName("Bool_Or");
           break;
       }
     }
@@ -855,7 +855,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
-              "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
+          "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
     } else if (functionName.endsWith("$$")) {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
@@ -877,16 +877,21 @@ public class ExpressionTranspiler extends ExpressionDeParser {
             }
           });
           // @todo: clarify if there can be only exactly 1 column
-          //        else, what do to on None or many?
-          assert expressionColumns.size()==1;
+          // else, what do to on None or many?
+          assert expressionColumns.size() == 1;
           Column column = expressionColumns.toArray(new Column[0])[0];
 
           warning("Different NULL handling");
           function.setName("Count");
-          function.setExpression(
-                  new Function( "If", function.getExpression(), column , new NullValue())
-          );
+          function
+              .setExpression(new Function("If", function.getExpression(), column, new NullValue()));
 
+          break;
+        case LOGICAL_AND:
+          function.setName("Bool_And");
+          break;
+        case LOGICAL_OR:
+          function.setName("Bool_Or");
           break;
       }
     }
@@ -1520,7 +1525,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
   }
 
   public void visit(HexValue hexValue) {
-    super.visit( hexValue.getLongValue() );
+    super.visit(hexValue.getLongValue());
   }
 
   public static String convertUnicode(String input) {

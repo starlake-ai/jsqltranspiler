@@ -253,16 +253,171 @@ SELECT
   product_name,
   SUM(product_count) AS product_sum,
   GROUPING(product_type) AS product_type_agg,
-  GROUPING(product_name) AS product_name_agg,
+  GROUPING(product_name) AS product_name_agg
 FROM Products
 GROUP BY GROUPING SETS(product_type, product_name, ())
 ORDER BY product_name, product_type;
 
 -- result
 "product_type","product_name","product_sum","product_type_agg","product_name_agg"
-"","jeans","6.00","1","0"
-"","polo","25.00","1","0"
-"","t-shirt","11.00","1","0"
-"pants","","6.00","0","1"
-"shirt","","36.00","0","1"
-"","","42.00","1","1"
+"","jeans","6","1","0"
+"","polo","25","1","0"
+"","t-shirt","11","1","0"
+"pants","","6","0","1"
+"shirt","","36","0","1"
+"","","42","1","1"
+
+
+-- provided
+SELECT LOGICAL_AND(x < 3) AS logical_and
+FROM UNNEST([1, 2, 4]) AS x;
+
+-- expected
+SELECT BOOL_AND(x < 3) AS logical_and
+FROM (SELECT UNNEST([1, 2, 4]) AS x) AS x;
+
+-- result
+"logical_and"
+"false"
+
+
+-- provided
+SELECT LOGICAL_OR(x < 3) AS logical_or FROM UNNEST([1, 2, 4]) AS x;
+
+-- expected
+SELECT BOOL_OR(x < 3) AS logical_or
+FROM (SELECT UNNEST([1, 2, 4]) AS x) as x;
+
+-- result
+"logical_or"
+"true"
+
+
+-- provided
+SELECT x, MAX(x) OVER (PARTITION BY MOD(x, 2)) AS max
+FROM UNNEST([8, NULL, 37, 55, NULL, 4]) AS x
+order by 1 nulls first;
+
+-- expected
+SELECT x, MAX(x) OVER (PARTITION BY MOD(x, 2)) AS max
+FROM (select UNNEST([8, NULL, 37, 55, NULL, 4]) AS x) as x
+order by 1 nulls first;
+
+-- result
+"x","max"
+"",""
+"",""
+"4","8"
+"8","8"
+"37","55"
+"55","55"
+
+
+-- provided
+WITH fruits AS (
+  SELECT 'apple'  fruit, 3.55 price UNION ALL
+  SELECT 'banana'  fruit, 2.10 price UNION ALL
+  SELECT 'pear'  fruit, 4.30 price
+)
+SELECT MAX_BY(fruit, price) as fruit
+FROM fruits;
+
+-- result
+"fruit"
+"pear"
+
+
+-- provided
+SELECT x, MIN(x) OVER (PARTITION BY MOD(x, 2)) AS min
+FROM UNNEST([8, NULL, 37, 4, NULL, 55]) AS x
+order by 1 nulls first;
+
+-- expected
+SELECT x, MIN(x) OVER (PARTITION BY MOD(x, 2)) AS min
+FROM (Select UNNEST([8, NULL, 37, 4, NULL, 55]) AS x) as x
+order by 1 nulls first;
+
+-- result
+"x","min"
+"",""
+"",""
+"4","4"
+"8","4"
+"37","37"
+"55","37"
+
+
+-- provided
+WITH fruits AS (
+  SELECT 'apple'  fruit, 3.55 price UNION ALL
+  SELECT 'banana'  fruit, 2.10 price UNION ALL
+  SELECT 'pear'  fruit, 4.30 price
+)
+SELECT MIN_BY(fruit, price) as fruit
+FROM fruits;
+
+-- result
+"fruit"
+"banana"
+
+
+-- provided
+SELECT STRING_AGG(fruit, ' & ' ORDER BY LENGTH(fruit)) AS string_agg
+FROM UNNEST(['apple', 'pear', 'banana', 'pear']) AS fruit;
+
+-- expected
+SELECT STRING_AGG(fruit, ' & ' ORDER BY CASE TYPEOF(FRUIT)
+                                          WHEN 'VARCHAR' THEN LENGTH(FRUIT::VARCHAR)
+                                          WHEN 'BLOB' THEN OCTET_LENGTH(FRUIT::BLOB)
+                                          ELSE -1
+                                          END) AS string_agg
+FROM (SELECT UNNEST(['apple', 'pear', 'banana', 'pear']) AS fruit) as fruit;
+
+-- result
+"string_agg"
+"pear & pear & apple & banana"
+
+
+-- provided
+SELECT
+  fruit,
+  STRING_AGG(fruit, ' & ') OVER (ORDER BY LENGTH(fruit)) AS string_agg
+FROM UNNEST(['apple', NULL, 'pear', 'banana', 'pear']) AS fruit;
+
+-- expected
+SELECT
+  fruit,
+  STRING_AGG(fruit, ' & ') OVER (ORDER BY CASE TYPEOF(FRUIT)
+                                          WHEN 'VARCHAR' THEN LENGTH(FRUIT::VARCHAR)
+                                          WHEN 'BLOB' THEN OCTET_LENGTH(FRUIT::BLOB)
+                                          ELSE -1
+                                          END) AS string_agg
+FROM (SELECT UNNEST(['apple', NULL, 'pear', 'banana', 'pear']) AS fruit) AS fruit;
+
+-- result
+"fruit","string_agg"
+"pear","pear & pear"
+"pear","pear & pear"
+"apple","pear & pear & apple"
+"banana","pear & pear & apple & banana"
+"","pear & pear & apple & banana"
+
+
+-- provided
+SELECT CORR(y, x) AS results
+FROM
+  UNNEST(
+    [
+      STRUCT(1.0 AS y, 5.0 AS x),
+      (3.0, 9.0),
+      (4.0, 7.0)]);
+
+-- expected
+SELECT CORR(Y,X)AS RESULTS
+FROM( SELECT UNNEST([{Y:1.0,X:5.0},(3.0,9.0),(4.0,7.0)], recursive=>true));
+
+-- result
+"results"
+"0.6546536707079772"
+
+
