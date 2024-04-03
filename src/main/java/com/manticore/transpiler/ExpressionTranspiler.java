@@ -94,7 +94,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY, SAFE_NEGATE, SAFE_SUBTRACT, TRUNC
 
-    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR
+    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR, ARRAY, ARRAY_CONCAT, ARRAY_TO_STRING
 
 
     , NVL, UNNEST;
@@ -118,7 +118,11 @@ public class ExpressionTranspiler extends ExpressionDeParser {
   }
 
   enum UnsupportedFunction {
-    ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH;
+    ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH
+
+    , APPROX_QUANTILES, APPROX_TOP_COUNT, APPROX_TOP_SUM
+
+    ;
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
     public static UnsupportedFunction from(String name) {
@@ -687,10 +691,7 @@ public class ExpressionTranspiler extends ExpressionDeParser {
               new WhenClause(new Function("REGEXP_MATCHES", parameters.get(0), parameters.get(1)),
                   new Function("INSTR", parameters.get(0),
                       new Function("REGEXP_EXTRACT", parameters.get(0), parameters.get(1))));
-          CaseExpression caseExpression = new CaseExpression(new LongValue(0), when);
-          visit(caseExpression);
-
-          rewrittenExpression = caseExpression;
+          rewrittenExpression = new CaseExpression(new LongValue(0), when);
           break;
         case REGEXP_REPLACE:
           // pass through
@@ -734,11 +735,9 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           function.setParameters(new Function("Decode", parameters.get(0)));
           break;
         case UNICODE:
-          Function ifFunction = new Function("If",
+          rewrittenExpression = new Function("If",
               new EqualsTo(new Function("Length$$", parameters.get(0)), new LongValue(0)),
               new LongValue(0), function.withName(function.getName() + "$$"));
-          visit(ifFunction);
-          rewrittenExpression = ifFunction;
           break;
         case DIV:
         case IEEE_DIVIDE:
@@ -843,10 +842,37 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         case LOGICAL_OR:
           function.setName("Bool_Or");
           break;
+
+        case ARRAY:
+          function.setName("List_Sort");
+          function.setParameters(new Function("Array$$", parameters));
+          break;
+
+        case ARRAY_CONCAT:
+          rewrittenExpression =
+              Concat.concat(parameters.toArray(new Expression[parameters.size()]));
+          break;
+
+        case ARRAY_TO_STRING:
+          if (parameters != null) {
+            switch (parameters.size()) {
+              case 3:
+                Expression p1 = parameters.get(0);
+                Expression p2 = parameters.get(1);
+
+                // turn it into a Lambda replacing the NULL values with 3rd parameter
+                p1 = new Function("List_Transform", p1, new LambdaExpression("x",
+                    new Function("Coalesce", new Column("x"), parameters.get(2))));
+                function.setParameters(p1, p2);
+            }
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
       super.visit(function);
+    } else {
+      rewrittenExpression.accept(this);
     }
   }
 
@@ -897,6 +923,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     }
     if (rewrittenExpression == null) {
       super.visit(function);
+    } else {
+      rewrittenExpression.accept(this);
     }
   }
 
@@ -922,7 +950,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           CaseExpression caseExpression = new CaseExpression(new LongValue(-1), whenChar, whenBLOB)
               .withSwitchExpression(new Function("typeOf", parameters.get(0)));
 
-          visit(caseExpression);
           return caseExpression;
       }
     }
@@ -949,7 +976,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           CaseExpression caseExpression = new CaseExpression(whenChar)
               .withSwitchExpression(new Function("typeOf", parameters.get(0)));
 
-          visit(caseExpression);
           return caseExpression;
       }
     }
@@ -971,7 +997,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
               .withLeftExpression(new Function("nfc_normalize", parameters.get(0)))
               .withRightExpression(new Function("nfc_normalize", concat));
 
-          visit(like);
           return like;
         case 3:
           throw new RuntimeException(
@@ -995,7 +1020,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     Parenthesis p = new Parenthesis(select);
 
-    visit(p);
     return p;
   }
 
@@ -1012,7 +1036,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     Parenthesis p = new Parenthesis(select);
 
-    visit(p);
     return p;
   }
 
@@ -1076,7 +1099,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
         CastExpression castExpression = new CastExpression().withLeftExpression(function)
             .withType(new ColDataType(dateTimeType.name()));
-        visit(castExpression);
 
         return castExpression;
       default:
@@ -1237,7 +1259,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           function.setName("DATE_TRUNC$$");
           CastExpression castExpression = new CastExpression().withLeftExpression(function)
               .withType(new ColDataType(dateTimeType.name()));
-          visit(castExpression);
           return castExpression;
         }
         break;
@@ -1268,7 +1289,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         function.setName("DATE_TRUNC$$");
         CastExpression castExpression = new CastExpression().withLeftExpression(function)
             .withType(new ColDataType(DateTimeLiteralExpression.DateTime.TIMESTAMPTZ.name()));
-        visit(castExpression);
         return castExpression;
     }
     return null;
@@ -1361,7 +1381,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         warning("timezone not supported");
         castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
             .withType(new ColDataType().withDataType("DATE"));
-        visit(castExpression);
         break;
       case 3:
         function.setName("MAKE_DATE");
@@ -1383,7 +1402,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
             new Addition().withLeftExpression(dateFuncttion).withRightExpression(timeFuncttion);
         castExpression = new CastExpression("Cast").withLeftExpression(add)
             .withType(new ColDataType().withDataType("DATETIME"));
-        visit(castExpression);
         break;
       case 2:
         if (parameters.get(0) instanceof DateTimeLiteralExpression
@@ -1392,7 +1410,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
               .withRightExpression(parameters.get(1));
           castExpression = new CastExpression("Cast").withLeftExpression(add)
               .withType(new ColDataType().withDataType("DATETIME"));
-          visit(castExpression);
         } else if (parameters.get(0) instanceof DateTimeLiteralExpression
             && ((DateTimeLiteralExpression) parameters.get(0))
                 .getType() == DateTimeLiteralExpression.DateTime.TIMESTAMP
@@ -1401,9 +1418,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           warning("timezone not supported");
           castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
               .withType(new ColDataType().withDataType("DATETIME"));
-          visit(castExpression);
         } else {
-          // @todo: veryify if this needs to be ammended
+          // @todo: verify if this needs to be amended
           throw new RuntimeException("Unsupported: DATETIME(string, string) is not supported yet.");
         }
         break;
@@ -1421,7 +1437,6 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         warning("timezone not supported");
         castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
             .withType(new ColDataType().withDataType("TIME"));
-        visit(castExpression);
         break;
       case 3:
         function.setName("MAKE_TIME");
@@ -1446,14 +1461,12 @@ public class ExpressionTranspiler extends ExpressionDeParser {
         case 1:
           castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
               .withType(new ColDataType().withDataType(timestampType));
-          visit(castExpression);
           return castExpression;
         case 2:
           castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
               .withType(new ColDataType().withDataType(timestampType));
           TimezoneExpression timezoneExpression =
               new TimezoneExpression(castExpression, parameters.get(1));
-          visit(timezoneExpression);
           return timezoneExpression;
       }
     }
@@ -1608,9 +1621,13 @@ public class ExpressionTranspiler extends ExpressionDeParser {
   }
 
 
+  // @todo: complete the data type mapping
+  // implement an Enum on Big Query allowed data types
   public final static ColDataType rewriteType(ColDataType colDataType) {
     if (colDataType.getDataType().equalsIgnoreCase("BYTES")) {
       colDataType.setDataType("BLOB");
+    } else if (colDataType.getDataType().equalsIgnoreCase("FLOAT64")) {
+      colDataType.setDataType("FLOAT");
     }
     return colDataType;
   }

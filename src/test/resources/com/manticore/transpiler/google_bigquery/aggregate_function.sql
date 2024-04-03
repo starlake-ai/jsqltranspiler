@@ -421,3 +421,182 @@ FROM( SELECT UNNEST([{Y:1.0,X:5.0},(3.0,9.0),(4.0,7.0)], recursive=>true));
 "0.6546536707079772"
 
 
+-- provided
+SELECT COVAR_POP(y, x) AS results
+FROM
+  UNNEST(
+    [
+      STRUCT(1.0 AS y, 1.0 AS x),
+      (2.0, 6.0),
+      (9.0, 3.0),
+      (2.0, 6.0),
+      (9.0, 3.0)])
+;
+
+-- expected
+SELECT Covar_Pop( y, x ) AS results
+FROM (  SELECT Unnest(  [
+                            { y:1.0,x:1.0 }
+                            , ( 2.0, 6.0 )
+                            , ( 9.0, 3.0 )
+                            , ( 2.0, 6.0 )
+                            , ( 9.0, 3.0 )
+                        ], recursive => TRUE ) )
+;
+
+-- result
+"results"
+"-1.6800000000000002"
+
+
+-- provided
+SELECT COVAR_POP(y, x) AS results
+FROM UNNEST([STRUCT(1.0 AS y, NULL AS x),(9.0, 3.0)])
+
+;
+
+-- expected
+SELECT Covar_Pop( y, x ) AS results
+FROM (  SELECT Unnest(  [
+                            { y:1.0,x:NULL }
+                            , ( 9.0, 3.0 )
+                        ], recursive => TRUE ) )
+;
+
+-- result
+"results"
+"0.0"
+
+
+-- provided
+SELECT COVAR_POP(y, x) AS results
+FROM
+  UNNEST(
+    [
+      STRUCT(1.0 AS y, 1.0 AS x),
+      (2.0, 6.0),
+      (9.0, 3.0),
+      (2.0, 6.0),
+      (CAST('Infinity' as FLOAT64), 3.0)])
+;
+
+-- expected
+SELECT Covar_Pop( y, x ) AS results
+FROM (  SELECT Unnest(  [
+                            { y:1.0, x:1.0 }
+                            , ( 2.0, 6.0 )
+                            , ( 9.0, 3.0 )
+                            , ( 2.0, 6.0 )
+                            , (  Cast( 'Infinity' AS FLOAT ), 3.0 )
+                        ], recursive => TRUE ) )
+;
+
+-- result
+"results"
+"NaN"
+
+
+-- provided
+SELECT COVAR_SAMP(y, x) AS results
+FROM
+  UNNEST(
+    [
+      STRUCT(1.0 AS y, 1.0 AS x),
+      (2.0, 6.0),
+      (9.0, 3.0),
+      (2.0, 6.0),
+      (9.0, 3.0)])
+;
+
+-- expected
+SELECT Covar_Samp( y, x ) AS results
+FROM (  SELECT Unnest(  [
+                            { y:1.0,x:1.0 }
+                            , ( 2.0, 6.0 )
+                            , ( 9.0, 3.0 )
+                            , ( 2.0, 6.0 )
+                            , ( 9.0, 3.0 )
+                        ], recursive => TRUE ) )
+;
+
+-- result
+"results"
+"-2.1"
+
+
+-- provided
+SELECT COVAR_SAMP(y, x) AS results
+FROM
+  UNNEST(
+    [
+      STRUCT(1.0 AS y, 1.0 AS x),
+      (2.0, 6.0),
+      (9.0, 3.0),
+      (2.0, 6.0),
+      (NULL, 3.0)])
+;
+
+-- expected
+SELECT Covar_Samp( y, x ) AS results
+FROM (  SELECT Unnest(  [
+                            { y:1.0,x:1.0 }
+                            , ( 2.0, 6.0 )
+                            , ( 9.0, 3.0 )
+                            , ( 2.0, 6.0 )
+                            , ( NULL, 3.0 )
+                        ], recursive => TRUE ) )
+;
+
+-- result
+"results"
+"-1.3333333333333333"
+
+
+-- provided
+SELECT STDDEV_SAMP(x) AS results FROM UNNEST([10, 14, 18]) AS x
+;
+
+-- expected
+SELECT Stddev_Samp( x ) AS results
+FROM (  SELECT Unnest(  [ 10, 14, 18] ) AS x  ) AS x
+;
+
+-- result
+"results"
+"4.0"
+
+
+-- provided
+SELECT STDDEV_POP(x) AS results FROM UNNEST([10, 14, 18]) AS x;
+
+-- expected
+SELECT STDDEV_POP(x) AS results FROM (SELECT UNNEST([10, 14, 18]) AS x) AS x;
+
+-- result
+"results"
+"3.265986323710904"
+
+
+-- provided
+SELECT VAR_POP(x) AS results FROM UNNEST([10, 14, 18]) AS x;
+
+
+-- expected
+SELECT VAR_POP(x) AS results FROM (SELECT UNNEST([10, 14, 18]) AS x) AS x;
+
+-- result
+"results"
+"10.666666666666666"
+
+
+-- provided
+SELECT VAR_SAMP(x) AS results FROM UNNEST([10, 14, 18]) AS x;
+
+
+-- expected
+SELECT VAR_SAMP(x) AS results FROM (SELECT UNNEST([10, 14, 18]) AS x) AS x;
+
+-- result
+"results"
+"16.0"
+

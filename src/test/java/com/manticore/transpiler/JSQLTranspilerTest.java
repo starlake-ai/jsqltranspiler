@@ -87,7 +87,8 @@ class JSQLTranspilerTest {
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override
     public boolean accept(File dir, String name) {
-      return name.toLowerCase().endsWith(".sql");
+      String filename = name.toLowerCase().trim();
+      return name.endsWith(".sql") && !name.startsWith("disabled");
     }
   };
 
@@ -157,7 +158,7 @@ class JSQLTranspilerTest {
             k = line.substring(2).trim().toLowerCase();
           }
 
-          if (line.toLowerCase().replaceAll("\\s", "").startsWith("--provided")) {
+          if (line.toLowerCase().replaceAll("\\s", "").startsWith("--provid")) {
             if (test.providedSqlStr != null
                 && (test.expectedTally >= 0 || test.expectedResult != null)) {
               LOGGER.fine("Found multiple test descriptions in " + file.getName());
@@ -176,20 +177,20 @@ class JSQLTranspilerTest {
           endContent = startContent && !line.startsWith("--")
               && (line.trim().endsWith(";")
                   || (k.equalsIgnoreCase("count") || k.equalsIgnoreCase("tally")) && line.isEmpty()
-                  || k.startsWith("result") && line.isEmpty());
+                  || (k.startsWith("result") || k.startsWith("return")) && line.isEmpty());
 
           if (startContent && !line.isEmpty()) {
             stringBuilder.append(line).append("\n");
           }
 
           if (endContent) {
-            if (k.equalsIgnoreCase("provided")) {
+            if (k.startsWith("provid")) {
               test.providedSqlStr = stringBuilder.toString();
-            } else if (k.equalsIgnoreCase("expected")) {
+            } else if (k.startsWith("expect")) {
               test.expectedSqlStr = stringBuilder.toString();
-            } else if (k.equalsIgnoreCase("count") || k.equalsIgnoreCase("tally")) {
+            } else if (k.startsWith("count") || k.startsWith("tally")) {
               test.expectedTally = Integer.parseInt(stringBuilder.toString().trim());
-            } else if (k.startsWith("result")) {
+            } else if (k.startsWith("result") || k.startsWith("return")) {
               test.expectedResult = stringBuilder.toString().trim();
             }
             stringBuilder.setLength(0);
