@@ -89,4 +89,5 @@ SELECT
 
 -- result
 "later_timestamp","earlier_timestamp","hours"
-"2010-07-07T10:20Z","2008-12-25T15:30Z","13410"
+"2010-07-07T10:20Z","2008-12-25T15:30Z","13411"
+

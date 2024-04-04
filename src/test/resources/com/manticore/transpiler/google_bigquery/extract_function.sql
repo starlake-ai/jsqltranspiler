@@ -135,3 +135,4 @@ FROM Input;
 -- result
 "the_day_utc","the_day_california"
 "25","24"
+

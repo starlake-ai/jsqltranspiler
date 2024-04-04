@@ -94,8 +94,11 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
     , SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY, SAFE_NEGATE, SAFE_SUBTRACT, TRUNC
 
-    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR, ARRAY, ARRAY_CONCAT, ARRAY_TO_STRING
+    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR, ARRAY, ARRAY_CONCAT, ARRAY_TO_STRING, GENERATE_ARRAY, GENERATE_DATE_ARRAY, GENERATE_TIMESTAMP_ARRAY
 
+    , FIRST_VALUE, LAST_VALUE, PERCENTILE_CONT, PERCENTILE_DISC
+
+    , GENERATE_UUID
 
     , NVL, UNNEST;
     // @FORMATTER:ON
@@ -121,6 +124,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH
 
     , APPROX_QUANTILES, APPROX_TOP_COUNT, APPROX_TOP_SUM
+
+    , SEARCH, VECTOR_SEARCH, APPENDS, EXTERNAL_OBJECT_TRANSFORM, GAP_FILL
 
     ;
 
@@ -867,6 +872,33 @@ public class ExpressionTranspiler extends ExpressionDeParser {
             }
           }
           break;
+
+        case GENERATE_ARRAY:
+          function.setName("Generate_Series");
+          break;
+
+        case GENERATE_DATE_ARRAY:
+          function.setName("Generate_Series");
+          function.setParameters(
+                  new CastExpression(parameters.get(0), "DATE")
+                  , new CastExpression(parameters.get(1), "DATE")
+                  , new CastExpression(parameters.get(2), "INTERVAL")
+          );
+          rewrittenExpression = new CastExpression(function, "DATE[]");
+          break;
+
+        case GENERATE_TIMESTAMP_ARRAY:
+          function.setName("Generate_Series");
+          function.setParameters(
+                  new CastExpression(parameters.get(0), "TIMESTAMP")
+                  , new CastExpression(parameters.get(1), "TIMESTAMP")
+                  , new CastExpression(parameters.get(2), "INTERVAL")
+          );
+          break;
+
+        case GENERATE_UUID:
+          function.setName("UUID");
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -918,6 +950,18 @@ public class ExpressionTranspiler extends ExpressionDeParser {
           break;
         case LOGICAL_OR:
           function.setName("Bool_Or");
+          break;
+        case FIRST_VALUE:
+          function.setName("First");
+          break;
+        case LAST_VALUE:
+          function.setName("First");
+          break;
+        case PERCENTILE_CONT:
+          function.setName("Quantile_Cont");
+          break;
+        case PERCENTILE_DISC:
+          function.setName("Quantile_Disc");
           break;
       }
     }

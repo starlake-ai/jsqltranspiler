@@ -437,3 +437,5 @@ SELECT Trunc(2.3) a, Round(2.3, 1) b;
 -- result
 "a","b"
 "2","2.3"
+
+

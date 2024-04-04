@@ -26,4 +26,5 @@ SELECT LAST_DAY(DATE '2008-11-25') AS last_day
 
 -- result
 "last_day"
-"2008-11-35"
+"2008-11-30"
+

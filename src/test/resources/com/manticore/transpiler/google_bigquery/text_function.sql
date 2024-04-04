@@ -918,3 +918,4 @@ SELECT  If( Length( 'âbcd' ) = 0, 0, Unicode( 'âbcd' ) ) AS a
 -- result
 "A","B","C","D"
 "226","226","0",""
+

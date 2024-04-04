@@ -14,3 +14,4 @@ SELECT
 -- result
 "time_hms","time_dt","time_tstz"
 "15:30:00","15:30:00","07:30:00"
+

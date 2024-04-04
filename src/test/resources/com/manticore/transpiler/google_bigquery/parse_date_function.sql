@@ -83,3 +83,4 @@ SELECT Cast(strptime('Thu Dec 25 07:30:00 2008', '%a %b %-d %-H:%M:%S %Y') AS TI
 -- result
 "parsed"
 "2008-12-25 07:30:00"
+

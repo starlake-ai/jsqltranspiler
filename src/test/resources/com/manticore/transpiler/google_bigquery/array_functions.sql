@@ -67,3 +67,93 @@ FROM example;
 "[3, 2, 1, 3, 2, 1]"
 "[5, 4]"
 "[]"
+
+
+-- provided
+SELECT GENERATE_ARRAY(1, 5) AS example_array;
+
+-- expected
+SELECT GENERATE_SERIES(1, 5) AS example_array;
+
+-- result
+"example_array"
+"[1, 2, 3, 4, 5]"
+
+
+-- provided
+SELECT GENERATE_ARRAY(0, 10, 3) AS example_array;
+
+-- expected
+SELECT GENERATE_SERIES(0, 10, 3) AS example_array;
+
+-- result
+"example_array"
+"[0, 3, 6, 9]"
+
+
+-- provided
+SELECT GENERATE_DATE_ARRAY(date_start, date_end, INTERVAL 1 WEEK) AS date_range
+FROM (
+  SELECT DATE '2016-01-01' AS date_start, DATE '2016-01-31' AS date_end
+  UNION ALL SELECT DATE '2016-04-01', DATE '2016-04-30'
+  UNION ALL SELECT DATE '2016-07-01', DATE '2016-07-31'
+  UNION ALL SELECT DATE '2016-10-01', DATE '2016-10-31'
+) AS items;
+
+
+-- expected
+SELECT GENERATE_SERIES(date_start::DATE, date_end::DATE, INTERVAL 1 WEEK::INTERVAL)::DATE[] AS date_range
+FROM (
+  SELECT DATE '2016-01-01' AS date_start, DATE '2016-01-31' AS date_end
+  UNION ALL SELECT DATE '2016-04-01', DATE '2016-04-30'
+  UNION ALL SELECT DATE '2016-07-01', DATE '2016-07-31'
+  UNION ALL SELECT DATE '2016-10-01', DATE '2016-10-31'
+) AS items;
+
+-- result
+"date_range"
+"[2016-01-01, 2016-01-08, 2016-01-15, 2016-01-22, 2016-01-29]"
+"[2016-04-01, 2016-04-08, 2016-04-15, 2016-04-22, 2016-04-29]"
+"[2016-07-01, 2016-07-08, 2016-07-15, 2016-07-22, 2016-07-29]"
+"[2016-10-01, 2016-10-08, 2016-10-15, 2016-10-22, 2016-10-29]"
+
+
+-- provided
+SELECT GENERATE_TIMESTAMP_ARRAY(start_timestamp, end_timestamp, INTERVAL 1 HOUR)
+  AS timestamp_array
+FROM
+  (SELECT
+    TIMESTAMP '2016-10-05 00:00:00' AS start_timestamp,
+    TIMESTAMP '2016-10-05 02:00:00' AS end_timestamp
+   UNION ALL
+   SELECT
+    TIMESTAMP '2016-10-05 12:00:00' AS start_timestamp,
+    TIMESTAMP '2016-10-05 14:00:00' AS end_timestamp
+   UNION ALL
+   SELECT
+    TIMESTAMP '2016-10-05 23:59:00' AS start_timestamp,
+    TIMESTAMP '2016-10-06 01:59:00' AS end_timestamp);
+
+
+-- expected
+SELECT GENERATE_SERIES(start_timestamp::TIMESTAMP, end_timestamp::TIMESTAMP, INTERVAL 1 HOUR::INTERVAL)
+  AS timestamp_array
+FROM
+  (SELECT
+    TIMESTAMP '2016-10-05 00:00:00' AS start_timestamp,
+    TIMESTAMP '2016-10-05 02:00:00' AS end_timestamp
+   UNION ALL
+   SELECT
+    TIMESTAMP '2016-10-05 12:00:00' AS start_timestamp,
+    TIMESTAMP '2016-10-05 14:00:00' AS end_timestamp
+   UNION ALL
+   SELECT
+    TIMESTAMP '2016-10-05 23:59:00' AS start_timestamp,
+    TIMESTAMP '2016-10-06 01:59:00' AS end_timestamp);
+
+-- result
+"timestamp_array"
+"[2016-10-05 00:00:00.0, 2016-10-05 01:00:00.0, 2016-10-05 02:00:00.0]"
+"[2016-10-05 12:00:00.0, 2016-10-05 13:00:00.0, 2016-10-05 14:00:00.0]"
+"[2016-10-05 23:59:00.0, 2016-10-06 00:59:00.0, 2016-10-06 01:59:00.0]"
+
