@@ -18,7 +18,7 @@ How to use it
 
   .. code:: java
 
-    import com.manticore.transpiler.JSQLTranspiler;
+    import ai.starlake.transpiler.JSQLTranspiler;
     String providedSQL="SELECT Nvl(null, 1) a";
     String expectedSQL="SELECT Coalesce(null, 1) a";
     String result = JSQLTranspiler.transpile(providedSQL, Dialect.AMAZON_REDSHIFT);
@@ -60,7 +60,7 @@ Command Line Options (CLI)
    
   .. code:: Bash
         
-    java -jar JSQLTranspiler.jar \
+    java -jar jsqltranspiler.jar \
         "SELECT Nvl( NULL, 1 ) a;
         SELECT TOP 10 qtysold, sellerid
         FROM sales

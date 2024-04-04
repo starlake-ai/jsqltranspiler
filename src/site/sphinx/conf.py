@@ -6,7 +6,7 @@ add_function_parentheses = True
 
 extensions = ['myst_parser', 'sphinx.ext.autodoc', 'sphinx.ext.autosectionlabel', 'sphinx.ext.extlinks', 'sphinx-prompt', 'sphinx_substitution_extensions', 'sphinx_issues', 'sphinx_tabs.tabs', 'pygments.sphinxext', ]
 
-issues_github_path = "manticore-projects/JSQLTranspiler"
+issues_github_path = "starlake-ai/JSQLTranspiler"
 
 source_encoding = 'utf-8-sig'
 pygments_style = 'friendly'
@@ -43,7 +43,7 @@ html_context = {
     'landing_page': {
         'menu': [
             {'title': 'Online Demo', 'url': 'http://217.160.215.75:8080/jsqltranspiler/demo.html'},
-            {'title': 'Issue Tracker', 'url': 'https://github.com/manticore-projects/JSQLTranspiler/issues'}
+            {'title': 'Issue Tracker', 'url': 'https://github.com/starlake-ai/JSQLTranspiler/issues'}
         ]
     }
 }

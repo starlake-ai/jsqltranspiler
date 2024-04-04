@@ -1,4 +1,4 @@
-# JSQLTranspiler [Website](https://manticore-projects.com/JSQLTranspiler)
+# JSQLTranspiler [Website](https://starlake-ai.com/JSQLTranspiler)
 
 A pure Java stand-alone SQL Transpiler for translating various large RDBMS SQL Dialects into a few smaller RDBMS Dialects for Unit Testing. Based on JSQLParser.
 
@@ -48,7 +48,7 @@ SELECT
 ### Java Library
 
 ```java
-import com.manticore.transpiler.JSQLTranspiler;
+import ai.starlake.transpiler.JSQLTranspiler;
 
 String providedSQL="SELECT Nvl(null, 1) a";
 String expectedSQL="SELECT Coalesce(null, 1) a";

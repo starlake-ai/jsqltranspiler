@@ -1,4 +1,4 @@
-package com.manticore.transpiler;
+package ai.starlake.transpiler;
 
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.schema.Column;

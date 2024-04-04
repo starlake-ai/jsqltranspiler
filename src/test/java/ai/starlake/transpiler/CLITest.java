@@ -1,4 +1,4 @@
-package com.manticore.transpiler;
+package ai.starlake.transpiler;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Assertions;
@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 
 public class CLITest extends JSQLTranspilerTest {
-  public final static String TEST_FOLDER_STR = "build/resources/test/com/manticore/transpiler";
+  public final static String TEST_FOLDER_STR = "build/resources/test/ai/starlake/transpiler";
 
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
   @MethodSource("getSqlTestMap")

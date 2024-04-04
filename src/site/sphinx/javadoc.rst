@@ -15,15 +15,15 @@
 JSQLTranspiler 0.1-SNAPSHOT API
 #######################################################################
 
-Base Package: com.manticore.jsqlformatter
+Base Package: ai.starlake.jsqltranspiler
 
 
-..  _com.manticore.transpiler:
+..  _ai.starlake.transpiler:
 ***********************************************************************
 Base
 ***********************************************************************
 
-..  _com.manticore.transpiler.JSQLTranspiler.Dialect
+..  _ai.starlake.transpiler.JSQLTranspiler.Dialect
 
 =======================================================================
 JSQLTranspiler.Dialect
@@ -34,7 +34,7 @@ JSQLTranspiler.Dialect
 | The enum Dialect.
 
 
-..  _com.manticore.transpiler.ExpressionTranspiler:
+..  _ai.starlake.transpiler.ExpressionTranspiler:
 
 =======================================================================
 ExpressionTranspiler
@@ -51,14 +51,14 @@ ExpressionTranspiler
 
 | **isDatePart** (expression, dialect) → boolean
 |          Expression expression
-|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` dialect
+|          :ref:`Dialect<ai.starlake.transpiler.JSQLTranspiler.Dialect>` dialect
 |          returns boolean
 
 
 
 | **isDateTimePart** (expression, dialect) → boolean
 |          Expression expression
-|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` dialect
+|          :ref:`Dialect<ai.starlake.transpiler.JSQLTranspiler.Dialect>` dialect
 |          returns boolean
 
 
@@ -116,7 +116,7 @@ ExpressionTranspiler
 
 
 
-..  _com.manticore.transpiler.JSQLTranspiler:
+..  _ai.starlake.transpiler.JSQLTranspiler:
 
 =======================================================================
 JSQLTranspiler
@@ -153,7 +153,7 @@ JSQLTranspiler
 | **transpileQuery** (qryStr, dialect) → :ref:`String<java.lang.String>`
 | Transpile a query string in the defined dialect into DuckDB compatible SQL.
 |          :ref:`String<java.lang.String>` qryStr  | qryStr the original query string
-|          :ref:`Dialect<com.manticore.transpiler.JSQLTranspiler.Dialect>` dialect  | dialect the dialect of the query string
+|          :ref:`Dialect<ai.starlake.transpiler.JSQLTranspiler.Dialect>` dialect  | dialect the dialect of the query string
 |          returns :ref:`String<java.lang.String>`  | the transformed query string
 
 
@@ -199,9 +199,9 @@ JSQLTranspiler
 
 
 
-| **getExpressionTranspiler** () → :ref:`ExpressionTranspiler<com.manticore.transpiler.ExpressionTranspiler>`
+| **getExpressionTranspiler** () → :ref:`ExpressionTranspiler<ai.starlake.transpiler.ExpressionTranspiler>`
 | Gets expression transpiler.
-|          returns :ref:`ExpressionTranspiler<com.manticore.transpiler.ExpressionTranspiler>`  | the expression transpiler
+|          returns :ref:`ExpressionTranspiler<ai.starlake.transpiler.ExpressionTranspiler>`  | the expression transpiler
 
 
 

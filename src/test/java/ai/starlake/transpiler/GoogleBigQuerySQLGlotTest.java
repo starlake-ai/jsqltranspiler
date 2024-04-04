@@ -1,21 +1,4 @@
-/**
- * Manticore Projects JSQLTranspiler is a multiple SQL Dialect to DuckDB Translation Software.
- * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
- * by the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-package com.manticore.transpiler;
+package ai.starlake.transpiler;
 
 import com.opencsv.CSVWriter;
 import com.opencsv.ResultSetHelperService;
@@ -37,7 +20,7 @@ import java.util.stream.Stream;
 @Disabled
 public class GoogleBigQuerySQLGlotTest extends JSQLTranspilerTest {
   public final static String TEST_FOLDER_STR =
-      "build/resources/test/com/manticore/transpiler/google_bigquery";
+      "build/resources/test/ai/starlake/transpiler/google_bigquery";
 
   static Stream<Arguments> getSqlTestMap() {
     return unrollParameterMap(getSqlTestMap(new File(TEST_FOLDER_STR).listFiles(FILENAME_FILTER),
