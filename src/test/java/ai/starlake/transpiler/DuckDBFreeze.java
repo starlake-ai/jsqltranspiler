@@ -1,4 +1,4 @@
-package com.manticore.transpiler;
+package ai.starlake.transpiler;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;

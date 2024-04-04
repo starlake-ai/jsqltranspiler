@@ -10,7 +10,7 @@ Git
 ===================
 .. code:: Bash
 
-   git clone https://github.com/manticore-projects/JSQLTranspiler.git
+   git clone https://github.com/starlake-ai/JSQLTranspiler.git
    cd JSQLTranspiler
    ./gradlew build
 
@@ -24,7 +24,7 @@ Maven Repo
         :substitutions:
 
         <dependency>
-            <groupId>com.manticore-projects.jsqlformatter</groupId>
+            <groupId>com.starlake-ai.jsqltranspiler</groupId>
             <artifactId>jsqltranspiler</artifactId>
             <version>|JSQLTRANSPILER_VERSION|</version>
         </dependency>
@@ -44,7 +44,7 @@ Maven Repo
             </repository>
         </repositories>
         <dependency>
-            <groupId>com.manticore-projects.jsqlformatter</groupId>
+            <groupId>com.starlake-ai.jsqltranspiler</groupId>
             <artifactId>jsqltranspiler</artifactId>
             <version>|JSQLTRANSPILER_SNAPSHOT_VERSION|</version>
         </dependency>
@@ -59,7 +59,7 @@ Maven Repo
         }
 
         dependencies {
-            implementation 'com.manticore-projects.jsqlformatter:jsqltranspiler:|JSQLTRANSPILER_VERSION|'
+            implementation 'com.starlake-ai.jsqltranspiler:jsqltranspiler:|JSQLTRANSPILER_VERSION|'
         }
 
 .. tab:: Gradle Snapshot
@@ -74,7 +74,7 @@ Maven Repo
         }
 
         dependencies {
-            implementation 'com.manticore-projects.jsqlformatter:jsqltranspiler:|JSQLTRANSPILER_SNAPSHOT_VERSION|'
+            implementation 'com.starlake-ai.jsqltranspiler:jsqltranspiler:|JSQLTRANSPILER_SNAPSHOT_VERSION|'
         }
 
 

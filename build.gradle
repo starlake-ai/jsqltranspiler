@@ -67,7 +67,7 @@ dependencies {
     testImplementation 'org.apache.commons:commons-exec:+'
 
     // Java Doc in XML Format
-    xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
+    xmlDoclet 'com.starlake-ai.tools:xml-doclet:+'
 }
 
 def getVersion = { boolean considerSnapshot ->
@@ -111,7 +111,7 @@ def getVersion = { boolean considerSnapshot ->
             :  "${major}.${minor}${snapshot}"
 }
 version = getVersion(true)
-group = 'com.manticore-projects.jsqlformatter'
+group = 'com.starlake-ai.jsqltranspiler'
 description = 'JSQLTranspiler'
 
 java {
@@ -127,7 +127,7 @@ java {
 }
 
 application {
-    mainClass.set("com.manticore.transpiler.JSQLTranspiler")
+    mainClass.set("ai.starlake.transpiler.JSQLTranspiler")
 }
 
 javadoc {
@@ -145,7 +145,7 @@ tasks.register('xmldoc', Javadoc) {
 
     options.addBooleanOption("rst", true)
     options.addBooleanOption("withFloatingToc", true)
-    options.addStringOption("basePackage", "com.manticore.jsqlformatter")
+    options.addStringOption("basePackage", "ai.starlake.jsqltranspiler")
 
     dependsOn(compileJava)
     doLast {
@@ -158,7 +158,7 @@ tasks.register('xmldoc', Javadoc) {
 
 jar {
     manifest {
-        attributes('Main-Class': 'com.manticore.transpiler.JSQLTranspiler')
+        attributes('Main-Class': 'ai.starlake.transpiler.JSQLTranspiler')
     }
 }
 
@@ -179,7 +179,7 @@ test {
         // Use the Gradle task in order to allow caching
         download.run {
             src 'https://docs.aws.amazon.com/redshift/latest/gsg/samples/tickitdb.zip'
-            dest "build/resources/test/com/manticore/transpiler/tickitdb.zip"
+            dest "build/resources/test/ai/starlake/transpiler/tickitdb.zip"
             overwrite false
             onlyIfModified true
             tempAndMove true
@@ -200,7 +200,6 @@ license {
 }
 
 coveralls {
-    // /home/runner/work/jsqlformatter/jsqlformatter/build/reports/jacoco/test/jacocoTestReport.xml
     jacocoReportPath  layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml')
 }
 
@@ -319,11 +318,11 @@ publishing {
             pom {
                 name = 'JSQLTranspiler library'
                 description = 'Rewrite Big RDBMS queries into DuckDB compatible queries'
-                url = 'https://manticore-projects.com/JSQLTranspiler'
+                url = 'https://github.com/starlake-ai/jsqltranspiler'
                 licenses {
                     license {
-                        name = 'GNU Affero General Public License Version 3'
-                        url = 'https://www.gnu.org/licenses/agpl-3.0.html'
+                        name = 'Apache License'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
                     }
                 }
                 developers {
@@ -332,11 +331,6 @@ publishing {
                         name = 'Andreas Reichel'
                         email = 'andreas@manticore-projects.com'
                     }
-                }
-                scm {
-                    connection = 'scm:git@github.com:manticore-projects/JSQLTranspiler.git'
-                    developerConnection = 'scm:git:ssh://git@github.com:manticore-projects/jsqlformatter.git'
-                    url = 'http://manticore-projects.com/JSQLTranspiler/index.html'
                 }
             }
         }

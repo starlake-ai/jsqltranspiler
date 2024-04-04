@@ -109,5 +109,5 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
     Andreas Reichel, 2024-03-13
   * **Initial commit**
     
-    manticore-projects, 2024-03-13
+    starlake-ai, 2024-03-13
 
