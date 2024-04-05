@@ -67,7 +67,7 @@ dependencies {
     testImplementation 'org.apache.commons:commons-exec:+'
 
     // Java Doc in XML Format
-    xmlDoclet 'com.starlake-ai.tools:xml-doclet:+'
+    xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
 }
 
 def getVersion = { boolean considerSnapshot ->

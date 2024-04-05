@@ -8,6 +8,38 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **This commit to fix the final package names and keep Andreas Reichel as the only developer of this initial version.**
+    
+    Hayssam Saleh, 2024-04-04
+
+Version 0.1
+=============================================================
+
+
+  * **feat: Complete the Aggregate functions**
+    
+    Andreas Reichel, 2024-04-04
+  * **feat: Array functions**
+    
+    Andreas Reichel, 2024-04-03
+  * **feat: more Aggregate functions**
+    
+    Andreas Reichel, 2024-04-02
+  * **feat: more Aggregate functions**
+    
+    Andreas Reichel, 2024-04-02
+  * **feat: Aggregate Functions, wip**
+    
+    Andreas Reichel, 2024-04-02
+  * **feat: complete the BigQuery Math functions**
+    
+    Andreas Reichel, 2024-04-01
+  * **feat: add MATH functions**
+    
+    Andreas Reichel, 2024-03-31
+  * **feat: completed the TEXT functions**
+    
+    Andreas Reichel, 2024-03-31
   * **feat: more String functions incl. Lambda based transpilation**
     
     Andreas Reichel, 2024-03-30
@@ -109,5 +141,5 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
     Andreas Reichel, 2024-03-13
   * **Initial commit**
     
-    starlake-ai, 2024-03-13
+    manticore-projects, 2024-03-13
 

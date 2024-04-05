@@ -27,7 +27,7 @@ public class DebugTest extends JSQLTranspilerTest {
 
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
   @MethodSource("getSqlTestMap")
-  void transpile(File f, int idx, SQLTest t) throws Exception {
+  protected void transpile(File f, int idx, SQLTest t) throws Exception {
     super.transpile(f, idx, t);
   }
 

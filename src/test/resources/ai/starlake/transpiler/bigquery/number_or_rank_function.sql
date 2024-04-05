@@ -164,7 +164,7 @@ WITH finishers AS
 SELECT name,
   finish_time,
   division,
-  ROW_NUMBER() OVER (PARTITION BY division ORDER BY finish_time ASC) AS finish_rank
+  ROW_NUMBER() OVER (PARTITION BY division ORDER BY finish_time ASC, name DESC) AS finish_rank
 FROM finishers
 order by 3,2,1;
 

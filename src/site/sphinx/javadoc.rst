@@ -12,7 +12,7 @@
 
 
 #######################################################################
-JSQLTranspiler 0.1-SNAPSHOT API
+JSQLTranspiler 0.2-SNAPSHOT API
 #######################################################################
 
 Base Package: ai.starlake.jsqltranspiler
@@ -34,18 +34,18 @@ JSQLTranspiler.Dialect
 | The enum Dialect.
 
 
-..  _ai.starlake.transpiler.ExpressionTranspiler:
+..  _ai.starlake.transpiler.JSQLExpressionTranspiler:
 
 =======================================================================
-ExpressionTranspiler
+JSQLExpressionTranspiler
 =======================================================================
 
-*extends:* ExpressionDeParser 
+*extends:* ExpressionDeParser *provides:* :ref:`BigQueryExpressionTranspiler<ai.starlake.transpiler.bigquery.BigQueryExpressionTranspiler>`, :ref:`DatabricksExpressionTranspiler<ai.starlake.transpiler.databricks.DatabricksExpressionTranspiler>`, :ref:`RedshiftExpressionTranspiler<ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler>`, :ref:`SnowflakeExpressionTranspiler<ai.starlake.transpiler.snowflake.SnowflakeExpressionTranspiler>` 
 
 | The type Expression transpiler.
 
-| **ExpressionTranspiler** (selectVisitor, buffer)
-|          SelectVisitor selectVisitor
+| **JSQLExpressionTranspiler** (transpiler, buffer)
+|          :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` transpiler
 |          :ref:`StringBuilder<java.lang.StringBuilder>` buffer
 
 
@@ -87,12 +87,20 @@ ExpressionTranspiler
 |          Function function
 
 
+| **visit** (function)
+|          AnalyticExpression function
+
+
 | **visit** (extractExpression)
 |          ExtractExpression extractExpression
 
 
 | **visit** (stringValue)
 |          StringValue stringValue
+
+
+| **visit** (hexValue)
+|          HexValue hexValue
 
 
 | **convertUnicode** (input) → :ref:`String<java.lang.String>`
@@ -103,6 +111,10 @@ ExpressionTranspiler
 
 | **visit** (castExpression)
 |          CastExpression castExpression
+
+
+| **visit** (structType)
+|          StructType structType
 
 
 | **rewriteType** (colDataType) → ColDataType
@@ -122,12 +134,15 @@ ExpressionTranspiler
 JSQLTranspiler
 =======================================================================
 
-*extends:* SelectDeParser 
+*extends:* SelectDeParser *provides:* :ref:`BigQueryTranspiler<ai.starlake.transpiler.bigquery.BigQueryTranspiler>`, :ref:`DatabricksTranspiler<ai.starlake.transpiler.databricks.DatabricksTranspiler>`, :ref:`RedshiftTranspiler<ai.starlake.transpiler.redshift.RedshiftTranspiler>`, :ref:`SnowflakeTranspiler<ai.starlake.transpiler.snowflake.SnowflakeTranspiler>` 
 
 | The type Jsql transpiler.
 
-| **JSQLTranspiler** ()
-| Instantiates a new Jsql transpiler.
+
+                Instantiates a new transpiler.
+                |          :ref:`Class<java.lang.Class>` expressionTranspilerClass
+
+            | **JSQLTranspiler** ()
 
 
 | **getAbsoluteFile** (filename) → :ref:`File<java.io.File>`
@@ -150,6 +165,7 @@ JSQLTranspiler
 |          :ref:`String<java.lang.String>` args  | args the input arguments
 
 
+| *@SuppressWarnings*
 | **transpileQuery** (qryStr, dialect) → :ref:`String<java.lang.String>`
 | Transpile a query string in the defined dialect into DuckDB compatible SQL.
 |          :ref:`String<java.lang.String>` qryStr  | qryStr the original query string
@@ -166,42 +182,36 @@ JSQLTranspiler
 
 | **transpile** (select) → :ref:`String<java.lang.String>`
 | Transpile string.
-|          PlainSelect select  | select the select
+|          Select select  | select the select
 |          returns :ref:`String<java.lang.String>`  | the string
 
 
 
 | **transpileGoogleBigQuery** (select) → :ref:`String<java.lang.String>`
 | Transpile google big query string.
-|          PlainSelect select  | select the select
+|          Select select  | select the select
 |          returns :ref:`String<java.lang.String>`  | the string
 
 
 
 | **transpileDatabricksQuery** (select) → :ref:`String<java.lang.String>`
 | Transpile databricks query string.
-|          PlainSelect select  | select the select
+|          Select select  | select the select
 |          returns :ref:`String<java.lang.String>`  | the string
 
 
 
 | **transpileSnowflakeQuery** (select) → :ref:`String<java.lang.String>`
 | Transpile snowflake query string.
-|          PlainSelect select  | select the select
+|          Select select  | select the select
 |          returns :ref:`String<java.lang.String>`  | the string
 
 
 
 | **transpileAmazonRedshiftQuery** (select) → :ref:`String<java.lang.String>`
 | Transpile amazon redshift query string.
-|          PlainSelect select  | select the select
+|          Select select  | select the select
 |          returns :ref:`String<java.lang.String>`  | the string
-
-
-
-| **getExpressionTranspiler** () → :ref:`ExpressionTranspiler<ai.starlake.transpiler.ExpressionTranspiler>`
-| Gets expression transpiler.
-|          returns :ref:`ExpressionTranspiler<ai.starlake.transpiler.ExpressionTranspiler>`  | the expression transpiler
 
 
 
@@ -217,5 +227,134 @@ JSQLTranspiler
 
 | **visit** (tableFunction)
 |          TableFunction tableFunction
+
+
+
+..  _ai.starlake.transpiler.bigquery:
+***********************************************************************
+uery
+***********************************************************************
+
+..  _ai.starlake.transpiler.bigquery.BigQueryExpressionTranspiler:
+
+=======================================================================
+BigQueryExpressionTranspiler
+=======================================================================
+
+*extends:* :ref:`JSQLExpressionTranspiler<ai.starlake.transpiler.JSQLExpressionTranspiler>` 
+
+| **BigQueryExpressionTranspiler** (transpiler, buffer)
+|          :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` transpiler
+|          :ref:`StringBuilder<java.lang.StringBuilder>` buffer
+
+
+
+..  _ai.starlake.transpiler.bigquery.BigQueryTranspiler:
+
+=======================================================================
+BigQueryTranspiler
+=======================================================================
+
+*extends:* :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` 
+
+| **BigQueryTranspiler** ()
+
+
+
+..  _ai.starlake.transpiler.databricks:
+***********************************************************************
+bricks
+***********************************************************************
+
+..  _ai.starlake.transpiler.databricks.DatabricksExpressionTranspiler:
+
+=======================================================================
+DatabricksExpressionTranspiler
+=======================================================================
+
+*extends:* :ref:`JSQLExpressionTranspiler<ai.starlake.transpiler.JSQLExpressionTranspiler>` 
+
+| **DatabricksExpressionTranspiler** (transpiler, buffer)
+|          :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` transpiler
+|          :ref:`StringBuilder<java.lang.StringBuilder>` buffer
+
+
+
+..  _ai.starlake.transpiler.databricks.DatabricksTranspiler:
+
+=======================================================================
+DatabricksTranspiler
+=======================================================================
+
+*extends:* :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` 
+
+| **DatabricksTranspiler** ()
+
+
+
+..  _ai.starlake.transpiler.redshift:
+***********************************************************************
+hift
+***********************************************************************
+
+..  _ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler:
+
+=======================================================================
+RedshiftExpressionTranspiler
+=======================================================================
+
+*extends:* :ref:`JSQLExpressionTranspiler<ai.starlake.transpiler.JSQLExpressionTranspiler>` 
+
+| **RedshiftExpressionTranspiler** (transpiler, buffer)
+|          :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` transpiler
+|          :ref:`StringBuilder<java.lang.StringBuilder>` buffer
+
+
+| *@SuppressWarnings*
+| **visit** (function)
+|          Function function
+
+
+
+..  _ai.starlake.transpiler.redshift.RedshiftTranspiler:
+
+=======================================================================
+RedshiftTranspiler
+=======================================================================
+
+*extends:* :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` 
+
+| **RedshiftTranspiler** ()
+
+
+
+..  _ai.starlake.transpiler.snowflake:
+***********************************************************************
+flake
+***********************************************************************
+
+..  _ai.starlake.transpiler.snowflake.SnowflakeExpressionTranspiler:
+
+=======================================================================
+SnowflakeExpressionTranspiler
+=======================================================================
+
+*extends:* :ref:`JSQLExpressionTranspiler<ai.starlake.transpiler.JSQLExpressionTranspiler>` 
+
+| **SnowflakeExpressionTranspiler** (transpiler, buffer)
+|          :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` transpiler
+|          :ref:`StringBuilder<java.lang.StringBuilder>` buffer
+
+
+
+..  _ai.starlake.transpiler.snowflake.SnowflakeTranspiler:
+
+=======================================================================
+SnowflakeTranspiler
+=======================================================================
+
+*extends:* :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` 
+
+| **SnowflakeTranspiler** ()
 
 

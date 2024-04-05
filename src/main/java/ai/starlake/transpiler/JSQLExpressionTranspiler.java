@@ -1,3 +1,19 @@
+/**
+ * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
+ * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com> on behalf of Starlake.AI
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package ai.starlake.transpiler;
 
 import net.sf.jsqlparser.expression.AnalyticExpression;
@@ -34,7 +50,6 @@ import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
 import java.util.Arrays;
@@ -48,7 +63,7 @@ import java.util.regex.Pattern;
  * The type Expression transpiler.
  */
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
-public class ExpressionTranspiler extends ExpressionDeParser {
+public class JSQLExpressionTranspiler extends ExpressionDeParser {
   enum TranspiledFunction {
     // @FORMATTER:OFF
     CURRENT_DATE, CURRENT_DATETIME, CURRENT_TIME, CURRENT_TIMESTAMP
@@ -132,8 +147,8 @@ public class ExpressionTranspiler extends ExpressionDeParser {
     }
   }
 
-  public ExpressionTranspiler(SelectVisitor selectVisitor, StringBuilder buffer) {
-    super(selectVisitor, buffer);
+  public JSQLExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
+    super(transpiler, buffer);
   }
 
   public static boolean isDatePart(Expression expression, JSQLTranspiler.Dialect dialect) {
@@ -862,21 +877,17 @@ public class ExpressionTranspiler extends ExpressionDeParser {
 
         case GENERATE_DATE_ARRAY:
           function.setName("Generate_Series");
-          function.setParameters(
-                  new CastExpression(parameters.get(0), "DATE")
-                  , new CastExpression(parameters.get(1), "DATE")
-                  , new CastExpression(parameters.get(2), "INTERVAL")
-          );
+          function.setParameters(new CastExpression(parameters.get(0), "DATE"),
+              new CastExpression(parameters.get(1), "DATE"),
+              new CastExpression(parameters.get(2), "INTERVAL"));
           rewrittenExpression = new CastExpression(function, "DATE[]");
           break;
 
         case GENERATE_TIMESTAMP_ARRAY:
           function.setName("Generate_Series");
-          function.setParameters(
-                  new CastExpression(parameters.get(0), "TIMESTAMP")
-                  , new CastExpression(parameters.get(1), "TIMESTAMP")
-                  , new CastExpression(parameters.get(2), "INTERVAL")
-          );
+          function.setParameters(new CastExpression(parameters.get(0), "TIMESTAMP"),
+              new CastExpression(parameters.get(1), "TIMESTAMP"),
+              new CastExpression(parameters.get(2), "INTERVAL"));
           break;
 
         case GENERATE_UUID:

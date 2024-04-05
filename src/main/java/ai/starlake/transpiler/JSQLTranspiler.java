@@ -1,6 +1,23 @@
-
+/**
+ * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
+ * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com> on behalf of Starlake.AI
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package ai.starlake.transpiler;
 
+import ai.starlake.transpiler.bigquery.BigQueryTranspiler;
+import ai.starlake.transpiler.redshift.RedshiftTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.parser.SimpleNode;
@@ -9,6 +26,7 @@ import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SetOperationList;
 import net.sf.jsqlparser.statement.select.TableFunction;
@@ -28,6 +46,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,18 +63,30 @@ public class JSQLTranspiler extends SelectDeParser {
    * The constant LOGGER.
    */
   public final static Logger LOGGER = Logger.getLogger(JSQLTranspiler.class.getName());
-  private final ExpressionTranspiler expressionTranspiler;
-  private final StringBuilder resultBuilder;
+  protected final JSQLExpressionTranspiler expressionTranspiler;
+  protected StringBuilder resultBuilder;
 
   /**
-   * Instantiates a new Jsql transpiler.
+   * Instantiates a new transpiler.
    */
-  public JSQLTranspiler() {
+  protected JSQLTranspiler(Class<? extends JSQLExpressionTranspiler> expressionTranspilerClass) {
     this.resultBuilder = new StringBuilder();
     this.setBuffer(resultBuilder);
 
-    expressionTranspiler = new ExpressionTranspiler(this, this.resultBuilder);
-    this.setExpressionVisitor(expressionTranspiler);
+    try {
+      this.expressionTranspiler =
+          expressionTranspilerClass.getConstructor(JSQLTranspiler.class, StringBuilder.class)
+              .newInstance(this, this.resultBuilder);
+      this.setExpressionVisitor(expressionTranspiler);
+    } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
+        | IllegalAccessException e) {
+      // this can't happen
+      throw new RuntimeException(e);
+    }
+  }
+
+  public JSQLTranspiler() {
+    this(JSQLExpressionTranspiler.class);
   }
 
   /**
@@ -231,8 +262,8 @@ public class JSQLTranspiler extends SelectDeParser {
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public static String transpileQuery(String qryStr, Dialect dialect) throws Exception {
     Statement st = CCJSqlParserUtil.parse(qryStr);
-    if (st instanceof PlainSelect) {
-      PlainSelect select = (PlainSelect) st;
+    if (st instanceof Select) {
+      Select select = (Select) st;
 
       switch (dialect) {
         case GOOGLE_BIG_QUERY:
@@ -281,14 +312,9 @@ public class JSQLTranspiler extends SelectDeParser {
       // parser.withAllowComplexParsing(true);
     });
     for (Statement st : statements) {
-      if (st instanceof PlainSelect) {
-        PlainSelect select = (PlainSelect) st;
-        transpiler.visit(select);
-
-        transpiler.getResultBuilder().append("\n;\n\n");
-      } else if (st instanceof SetOperationList) {
-        SetOperationList select = (SetOperationList) st;
-        transpiler.visit(select);
+      if (st instanceof Select) {
+        Select select = (Select) st;
+        select.accept(transpiler);
 
         transpiler.getResultBuilder().append("\n;\n\n");
       } else {
@@ -326,9 +352,9 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpile(PlainSelect select) throws Exception {
+  public static String transpile(Select select) throws Exception {
     JSQLTranspiler transpiler = new JSQLTranspiler();
-    transpiler.visit(select);
+    select.accept(transpiler);
 
     return transpiler.getResultBuilder().toString();
   }
@@ -340,16 +366,9 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpileGoogleBigQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler();
-    transpiler.visit(select);
-
-    return transpiler.getResultBuilder().toString();
-  }
-
-  public static String transpileGoogleBigQuery(SetOperationList setOperationList) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler();
-    transpiler.visit(setOperationList);
+  public static String transpileGoogleBigQuery(Select select) throws Exception {
+    BigQueryTranspiler transpiler = new BigQueryTranspiler();
+    select.accept(transpiler);
 
     return transpiler.getResultBuilder().toString();
   }
@@ -361,9 +380,9 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpileDatabricksQuery(PlainSelect select) throws Exception {
+  public static String transpileDatabricksQuery(Select select) throws Exception {
     JSQLTranspiler transpiler = new JSQLTranspiler();
-    transpiler.visit(select);
+    select.accept(transpiler);
 
     return transpiler.getResultBuilder().toString();
   }
@@ -375,9 +394,9 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpileSnowflakeQuery(PlainSelect select) throws Exception {
+  public static String transpileSnowflakeQuery(Select select) throws Exception {
     JSQLTranspiler transpiler = new JSQLTranspiler();
-    transpiler.visit(select);
+    select.accept(transpiler);
 
     return transpiler.getResultBuilder().toString();
   }
@@ -389,20 +408,11 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpileAmazonRedshiftQuery(PlainSelect select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler();
-    transpiler.visit(select);
+  public static String transpileAmazonRedshiftQuery(Select select) throws Exception {
+    RedshiftTranspiler transpiler = new RedshiftTranspiler();
+    select.accept(transpiler);
 
     return transpiler.getResultBuilder().toString();
-  }
-
-  /**
-   * Gets expression transpiler.
-   *
-   * @return the expression transpiler
-   */
-  public ExpressionTranspiler getExpressionTranspiler() {
-    return expressionTranspiler;
   }
 
   /**

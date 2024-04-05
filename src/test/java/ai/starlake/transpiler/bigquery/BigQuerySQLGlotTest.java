@@ -1,5 +1,7 @@
-package ai.starlake.transpiler;
+package ai.starlake.transpiler.bigquery;
 
+import ai.starlake.transpiler.JSQLTranspiler;
+import ai.starlake.transpiler.JSQLTranspilerTest;
 import com.opencsv.CSVWriter;
 import com.opencsv.ResultSetHelperService;
 import org.assertj.core.api.Assertions;
@@ -18,7 +20,7 @@ import java.sql.Statement;
 import java.util.stream.Stream;
 
 @Disabled
-public class GoogleBigQuerySQLGlotTest extends JSQLTranspilerTest {
+public class BigQuerySQLGlotTest extends JSQLTranspilerTest {
   public final static String TEST_FOLDER_STR =
       "build/resources/test/ai/starlake/transpiler/google_bigquery";
 
@@ -29,7 +31,7 @@ public class GoogleBigQuerySQLGlotTest extends JSQLTranspilerTest {
 
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
   @MethodSource("getSqlTestMap")
-  void transpile(File f, int idx, SQLTest t) throws Exception {
+  protected void transpile(File f, int idx, SQLTest t) throws Exception {
 
     StringBuilder script = new StringBuilder();
     script.append("#!/usr/bin/python\n\n");

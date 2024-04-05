@@ -48,11 +48,11 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 
-class JSQLTranspilerTest {
+public class JSQLTranspilerTest {
   final static Logger LOGGER = Logger.getLogger(JSQLTranspilerTest.class.getName());
   private final static String EXTRACTION_PATH =
       System.getProperty("java.io.tmpdir") + File.separator + UUID.randomUUID();
-  static Connection connDuck;
+  public static Connection connDuck;
   private static boolean isInitialised = false;
 
   private static final Pattern SQL_COMMENT_PATTERN =
@@ -75,16 +75,16 @@ class JSQLTranspilerTest {
     }
   };
 
-  static class SQLTest {
+  public static class SQLTest {
     final JSQLTranspiler.Dialect inputDialect;
     final JSQLTranspiler.Dialect outputDialect;
 
-    String providedSqlStr;
-    String expectedSqlStr;
+    public String providedSqlStr;
+    public String expectedSqlStr;
 
-    int expectedTally = -1;
+    public int expectedTally = -1;
 
-    String expectedResult = null;
+    public String expectedResult = null;
 
     SQLTest(JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
       this.inputDialect = inputDialect;
@@ -102,7 +102,7 @@ class JSQLTranspilerTest {
         JSQLTranspiler.Dialect.ANY, JSQLTranspiler.Dialect.DUCK_DB));
   }
 
-  static Stream<Arguments> unrollParameterMap(Map<File, List<SQLTest>> map) {
+  protected static Stream<Arguments> unrollParameterMap(Map<File, List<SQLTest>> map) {
     Set<Map.Entry<File, List<SQLTest>>> entries = map.entrySet();
 
     ArrayList<Object[]> data = new ArrayList<>();
@@ -118,7 +118,7 @@ class JSQLTranspilerTest {
         .map(row -> Arguments.of(row[0], row[1], row[2]));
   }
 
-  static Map<File, List<SQLTest>> getSqlTestMap(File[] testFiles,
+  protected static Map<File, List<SQLTest>> getSqlTestMap(File[] testFiles,
       JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
     LinkedHashMap<File, List<SQLTest>> sqlMap = new LinkedHashMap<>();
 
@@ -368,7 +368,7 @@ class JSQLTranspilerTest {
 
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
   @MethodSource("getSqlTestMap")
-  void transpile(File f, int idx, SQLTest t) throws Exception {
+  protected void transpile(File f, int idx, SQLTest t) throws Exception {
 
     // ONLY if expected differs from provided:
     // Expect this query to fail since DuckDB does not support `TOP <integer>`
