@@ -374,16 +374,20 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (timestamp instanceof DateTimeLiteralExpression) {
       // @todo: improve JSQLParser so `getValue()` will return the unquoted String
       return hasTimeZoneInfo(((DateTimeLiteralExpression) timestamp).getValue());
+    } else if (timestamp instanceof CastExpression) {
+      CastExpression castExpression = (CastExpression) timestamp;
+      return (castExpression.isTimeStamp() || castExpression.isTime())
+          && hasTimeZoneInfo(castExpression.getLeftExpression());
     } else if (timestamp instanceof StringValue) {
       return hasTimeZoneInfo(((StringValue) timestamp).getValue());
     } else {
-      throw new RuntimeException(
-          "Only StringValue or DateTimeLiteralExpression can be tested for TimeZoneInfo.");
+      return false;
     }
   }
 
   public static Expression rewriteDateLiteral(Expression p,
       DateTimeLiteralExpression.DateTime dateTimeType) {
+
     if (p instanceof StringValue && dateTimeType != null) {
       StringValue stringValue = (StringValue) p;
       if (dateTimeType == DateTimeLiteralExpression.DateTime.TIMESTAMP
@@ -403,6 +407,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         dateTimeLiteralExpression.setType(DateTimeLiteralExpression.DateTime.TIMESTAMPTZ);
       }
       return dateTimeLiteralExpression;
+    } else if (p instanceof CastExpression) {
+      CastExpression castExpression = (CastExpression) p;
+      if (castExpression.getColDataType().getDataType().equalsIgnoreCase("TIMESTAMP")
+          && hasTimeZoneInfo(castExpression.getLeftExpression())) {
+        castExpression.getColDataType().setDataType("TIMESTAMPTZ");
+      }
+      return castExpression;
     } else {
       return p;
     }
@@ -1414,10 +1425,15 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     switch (parameters.size()) {
       case 1:
         // DATE(DATETIME '2016-12-25 23:59:59') AS date_dt
+        castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
+            .withType(new ColDataType().withDataType("DATE"));
+        break;
       case 2:
         // DATE(TIMESTAMP '2016-12-25 05:30:00+07', 'America/Los_Angeles') AS date_tstz
-        warning("timezone not supported");
-        castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
+        // --> CAST(TIMESTAMPTZ '2016-12-25 05:30:00+07' AT TIME ZONE 'America/Los_Angeles' AS DATE)
+        // AS date_tstz;
+        castExpression = new CastExpression("Cast")
+            .withLeftExpression(new TimezoneExpression(parameters.get(0), parameters.get(1)))
             .withType(new ColDataType().withDataType("DATE"));
         break;
       case 3:
@@ -1431,34 +1447,36 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     CastExpression castExpression = null;
     switch (parameters.size()) {
       case 6:
-        Function dateFuncttion = new Function().withName("MAKE_DATE")
+        Function dateFunction = new Function().withName("MAKE_DATE")
             .withParameters(parameters.get(0), parameters.get(1), parameters.get(2));
 
-        Function timeFuncttion = new Function().withName("MAKE_TIME")
+        Function timeFunction = new Function().withName("MAKE_TIME")
             .withParameters(parameters.get(3), parameters.get(4), parameters.get(5));
         Addition add =
-            new Addition().withLeftExpression(dateFuncttion).withRightExpression(timeFuncttion);
+            new Addition().withLeftExpression(dateFunction).withRightExpression(timeFunction);
         castExpression = new CastExpression("Cast").withLeftExpression(add)
             .withType(new ColDataType().withDataType("DATETIME"));
         break;
       case 2:
-        if (parameters.get(0) instanceof DateTimeLiteralExpression
-            && parameters.get(1) instanceof DateTimeLiteralExpression) {
+        if (parameters.get(0) instanceof CastExpression
+            && ((CastExpression) parameters.get(0)).isDate()
+            && parameters.get(1) instanceof CastExpression
+            && ((CastExpression) parameters.get(1)).isTime()) {
           add = new Addition().withLeftExpression(parameters.get(0))
               .withRightExpression(parameters.get(1));
           castExpression = new CastExpression("Cast").withLeftExpression(add)
               .withType(new ColDataType().withDataType("DATETIME"));
-        } else if (parameters.get(0) instanceof DateTimeLiteralExpression
-            && ((DateTimeLiteralExpression) parameters.get(0))
-                .getType() == DateTimeLiteralExpression.DateTime.TIMESTAMP
+        } else if (parameters.get(0) instanceof CastExpression
+            && ((CastExpression) parameters.get(0)).isTimeStamp()
             && parameters.get(1) instanceof StringValue) {
-
-          warning("timezone not supported");
-          castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
+          castExpression = new CastExpression("Cast")
+              .withLeftExpression(new TimezoneExpression(parameters.get(0), parameters.get(1)))
               .withType(new ColDataType().withDataType("DATETIME"));
         } else {
           // @todo: verify if this needs to be amended
-          throw new RuntimeException("Unsupported: DATETIME(string, string) is not supported yet.");
+          throw new RuntimeException(
+              "Unsupported: DATETIME(" + parameters.get(0).getClass().getName() + ", "
+                  + parameters.get(1).getClass().getName() + ") is not supported yet.");
         }
         break;
     }
@@ -1470,10 +1488,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     switch (parameters.size()) {
       case 1:
         // TIME(DATETIME '2016-12-25 23:59:59') AS date_dt
+        castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
+            .withType(new ColDataType().withDataType("TIME"));
+        break;
       case 2:
         // TIME(TIMESTAMP '2016-12-25 05:30:00+07', 'America/Los_Angeles') AS date_tstz
-        warning("timezone not supported");
-        castExpression = new CastExpression("Cast").withLeftExpression(parameters.get(0))
+        castExpression = new CastExpression("Cast")
+            .withLeftExpression(new TimezoneExpression(parameters.get(0), parameters.get(1)))
             .withType(new ColDataType().withDataType("TIME"));
         break;
       case 3:
@@ -1607,7 +1628,16 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   public void visit(CastExpression castExpression) {
-    if (castExpression.isUseCastKeyword()) {
+    if (castExpression.isOf(CastExpression.DataType.TIMESTAMP)
+        && hasTimeZoneInfo(castExpression.getLeftExpression())) {
+      castExpression.getColDataType().setDataType("TIMESTAMPTZ");
+    }
+
+    if (castExpression.isImplicitCast()) {
+      this.buffer.append(rewriteType(castExpression.getColDataType()));
+      this.buffer.append(" ");
+      castExpression.getLeftExpression().accept(this);
+    } else if (castExpression.isUseCastKeyword()) {
       this.buffer.append(castExpression.keyword).append("(");
       castExpression.getLeftExpression().accept(this);
       this.buffer.append(" AS ");
