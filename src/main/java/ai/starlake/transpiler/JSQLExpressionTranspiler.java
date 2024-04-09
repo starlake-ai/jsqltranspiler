@@ -982,21 +982,20 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       switch (parameters.size()) {
         case 1:
           /*
-          case typeof(bytes)
-            when 'VARCHAR' then length(Cast(bytes AS VARCHAR))
-            when 'BLOB' then octet_length(Cast(bytes as BLOB))
-            else 0
-            end
+          case typeof(encode('français'))
+            when 'BLOB' then octet_length( try_cast(encode('français') AS BLOB))
+            when 'VARCHAR' then length(try_cast(encode('français') AS VARCHAR))
+            end as bytes
           */
 
           WhenClause whenChar = new WhenClause().withWhenExpression(new StringValue("VARCHAR"))
               .withThenExpression(new Function("Length$$")
-                  .withParameters(new CastExpression(parameters.get(0), "VARCHAR")));
+                  .withParameters( new CastExpression("Try_Cast$$", parameters.get(0), "VARCHAR")));
           WhenClause whenBLOB = new WhenClause().withWhenExpression(new StringValue("BLOB"))
               .withThenExpression(new Function("octet_length")
-                  .withParameters(new CastExpression(parameters.get(0), "BLOB")));
+                  .withParameters(new CastExpression("Try_Cast$$", parameters.get(0), "BLOB")));
 
-          CaseExpression caseExpression = new CaseExpression(new LongValue(-1), whenChar, whenBLOB)
+          CaseExpression caseExpression = new CaseExpression( whenChar, whenBLOB)
               .withSwitchExpression(new Function("typeOf", parameters.get(0)));
 
           return caseExpression;
@@ -1536,9 +1535,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     // octet_length( Coalesce(try_cast(characters AS BLOB), encode(try_cast(characters AS
     // VARCHAR))))
 
-    CastExpression cast1 = new CastExpression("Try_Cast", parameters.get(0), "BLOB");
+    CastExpression cast1 = new CastExpression("Try_Cast$$", parameters.get(0), "BLOB");
     Function encode =
-        new Function("Encode", new CastExpression("Try_Cast", parameters.get(0), "VARCHAR"));
+        new Function("Encode", new CastExpression("Try_Cast$$", parameters.get(0), "VARCHAR"));
 
     function.setName("OCTET_LENGTH");
     function.setParameters(new Function("Coalesce", cast1, encode));
@@ -1633,6 +1632,19 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       castExpression.getColDataType().setDataType("TIMESTAMPTZ");
     }
 
+    // call Encode when it looks like a String cast to BLOB
+//    if (castExpression.isBLOB() &&
+//            ( castExpression.getLeftExpression() instanceof StringValue
+//              /*
+//              || castExpression.getLeftExpression() instanceof Concat
+//              || ( castExpression.getLeftExpression() instanceof Function
+//                    && !castExpression.getLeftExpression(Function.class).getName().equalsIgnoreCase("encode") )
+//              */
+//            )
+//    ) {
+//      castExpression.setLeftExpression( new Function("Encode$$", castExpression.getLeftExpression()));
+//    }
+
     if (castExpression.isImplicitCast()) {
       this.buffer.append(rewriteType(castExpression.getColDataType()));
       this.buffer.append(" ");
@@ -1692,7 +1704,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   // @todo: complete the data type mapping
   // implement an Enum on Big Query allowed data types
   public final static ColDataType rewriteType(ColDataType colDataType) {
-    if (colDataType.getDataType().equalsIgnoreCase("BYTES")) {
+    if (CastExpression.isOf(colDataType, CastExpression.DataType.BYTES, CastExpression.DataType.VARBYTE)) {
       colDataType.setDataType("BLOB");
     } else if (colDataType.getDataType().equalsIgnoreCase("FLOAT64")) {
       colDataType.setDataType("FLOAT");

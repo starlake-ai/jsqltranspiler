@@ -35,7 +35,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
 
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    BPCHARCMP;
+    BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN ;
     // @FORMATTER:ON
 
 
@@ -112,11 +112,21 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     if (f != null) {
       switch (f) {
         case BPCHARCMP:
+        case BTTEXT_PATTERN_CMP:
           rewrittenExpression = new CaseExpression(new LongValue(0),
               new WhenClause(new GreaterThan(parameters.get(0), parameters.get(1)),
                   new LongValue(1)),
               new WhenClause(new MinorThan(parameters.get(0), parameters.get(1)),
                   new LongValue(-1)));
+          break;
+        case BTRIM:
+          function.setName("TRIM");
+          break;
+        case CHAR_LENGTH:
+        case CHARACTER_LENGTH:
+        case LEN:
+        case TEXTLEN:
+          function.setName("LENGTH");
           break;
       }
     }
