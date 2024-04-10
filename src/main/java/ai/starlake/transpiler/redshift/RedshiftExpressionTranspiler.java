@@ -95,7 +95,9 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     } else if (functionName.endsWith("$$")) {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
-      function.setName(functionName.substring(0, functionName.length() - 2));
+
+      // careful: we must not strip the $$ PREFIX here since SUPER will call JSQLExpressionTranspiler
+      // function.setName(functionName.substring(0, functionName.length() - 2));
       super.visit(function);
       return;
     }

@@ -79,20 +79,26 @@ SELECT  'xyzaxyzbxyzcxyz' AS untrim
 
 
 -- provided
-SELECT LEN(CAST('français' AS VARBYTE)) as bytes, LEN('français');
+SELECT LENGTH(CAST('français' AS VARBYTE)) as bytes, LENGTH('français') as chars;
 
 -- expected
-SELECT case typeof(encode('français'))
-            when 'BLOB' then octet_length( try_cast(encode('français') AS BLOB))
-            when 'VARCHAR' then length(try_cast(encode('français') AS VARCHAR))
-            end as bytes
-       , case typeof('français')
-            when 'BLOB' then octet_length(try_cast('français' AS BLOB))
-            when 'VARCHAR' then length(try_cast('français' AS VARCHAR))
-            end as chars
+SELECT  CASE Typeof( Encode( 'français' ) )
+            WHEN 'VARCHAR'
+                THEN Length(  Try_Cast( Encode( 'français' ) AS VARCHAR ) )
+            WHEN 'BLOB'
+                THEN Octet_Length(  Try_Cast( Encode( 'français' ) AS BLOB ) )
+            END AS bytes
+        , CASE Typeof( 'français' )
+            WHEN 'VARCHAR'
+                THEN Length(  Try_Cast( 'français' AS VARCHAR ) )
+            WHEN 'BLOB'
+                THEN Octet_Length(  Try_Cast( 'français' AS BLOB ) )
+            END as chars
 ;
 
 -- result
 "bytes","chars"
 "9","8"
+
+
 

@@ -1633,17 +1633,23 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
 
     // call Encode when it looks like a String cast to BLOB
-//    if (castExpression.isBLOB() &&
-//            ( castExpression.getLeftExpression() instanceof StringValue
-//              /*
-//              || castExpression.getLeftExpression() instanceof Concat
-//              || ( castExpression.getLeftExpression() instanceof Function
-//                    && !castExpression.getLeftExpression(Function.class).getName().equalsIgnoreCase("encode") )
-//              */
-//            )
-//    ) {
-//      castExpression.setLeftExpression( new Function("Encode$$", castExpression.getLeftExpression()));
-//    }
+    if ( (castExpression.keyword==null || !castExpression.keyword.endsWith("$$"))
+            && castExpression.isBLOB() &&
+            ( castExpression.getLeftExpression() instanceof StringValue
+              || castExpression.getLeftExpression() instanceof Concat
+              || ( castExpression.getLeftExpression() instanceof Function
+                    && !castExpression.getLeftExpression(Function.class).getName().equalsIgnoreCase("encode") )
+            )
+    ) {
+      Function f = new Function("Encode$$", castExpression.getLeftExpression());
+      f.accept(this);
+
+      return;
+    }
+
+    if (castExpression.keyword!=null && castExpression.keyword.endsWith("$$")) {
+      castExpression.keyword = castExpression.keyword.substring(0, castExpression.keyword.length()-2);
+    }
 
     if (castExpression.isImplicitCast()) {
       this.buffer.append(rewriteType(castExpression.getColDataType()));
