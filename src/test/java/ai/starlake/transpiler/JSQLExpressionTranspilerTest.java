@@ -1,6 +1,7 @@
 package ai.starlake.transpiler;
 
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.schema.Column;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -58,5 +59,15 @@ class JSQLExpressionTranspilerTest {
     Assertions.assertFalse(JSQLExpressionTranspiler.hasTimeZoneInfo("2024-03-20 12:34:56.789"));
     Assertions.assertTrue(JSQLExpressionTranspiler.hasTimeZoneInfo("2008-12-25 15:30:00+00"));
     Assertions.assertTrue(JSQLExpressionTranspiler.hasTimeZoneInfo("2008-12-25 15:30:00+00"));
+  }
+
+  @Test
+  void testBytesStringToUnicode() {
+    StringValue stringValue = new StringValue("\\x61\\x62c").withPrefix("b");
+
+    stringValue.setValue( JSQLExpressionTranspiler.convertByteStringToUnicode( stringValue.getValue() ));
+    stringValue.setPrefix( null );
+
+    Assertions.assertEquals("abc", stringValue.getValue());
   }
 }

@@ -18,10 +18,10 @@ FROM example;
 -- expected
 WITH example AS (
         SELECT  'абвгд' AS characters
-                , Coalesce( try_cast( 'абвгд' AS BLOB ), Encode( 'абвгд' ) ) AS bytes  )
+                , Encode( 'абвгд' ) AS bytes  )
 SELECT  characters
-        , Octet_Length( Coalesce(  try_cast( characters AS BLOB ), Encode(  try_cast( characters AS VARCHAR ) ) ) ) AS string_example
-        , Octet_Length( Coalesce(  try_cast( bytes AS BLOB ), Encode(  try_cast( bytes AS VARCHAR ) ) ) ) AS bytes_example
+        , Octet_Length( Coalesce(  Try_Cast( characters AS BLOB ), Encode(  Try_Cast( characters AS VARCHAR ) ) ) ) AS string_example
+        , Octet_Length( Coalesce(  Try_Cast( bytes AS BLOB ), Encode(  Try_Cast( bytes AS VARCHAR ) ) ) ) AS bytes_example
 FROM example
 ;
 
@@ -276,21 +276,19 @@ FROM example;
 -- expected
 WITH example AS (
         SELECT  'абвгд' AS characters
-                , Coalesce(  try_cast( 'абвгд' AS BLOB ), Encode( 'абвгд' ) ) AS bytes  )
+                , Encode( 'абвгд' ) AS bytes  )
 SELECT  characters
-        , CASE TYPEOF(characters)
-                WHEN 'VARCHAR'
-                    THEN Length( characters::VARCHAR )
-                WHEN 'BLOB'
-                    THEN Octet_Length( characters::BLOB )
-                ELSE - 1
+        , CASE Typeof( characters )
+            WHEN 'VARCHAR'
+                THEN Length(  Try_Cast( characters AS VARCHAR ) )
+            WHEN 'BLOB'
+                THEN Octet_Length(  Try_Cast( characters AS BLOB ) )
             END AS string_example
-        , CASE TYPEOF(bytes)
-                WHEN 'VARCHAR'
-                    THEN Length( bytes::VARCHAR )
-                WHEN 'BLOB'
-                    THEN Octet_Length( bytes::BLOB )
-                ELSE - 1
+        , CASE Typeof( bytes )
+            WHEN 'VARCHAR'
+                THEN Length(  Try_Cast( bytes AS VARCHAR ) )
+            WHEN 'BLOB'
+                THEN Octet_Length(  Try_Cast( bytes AS BLOB ) )
             END AS bytes_example
 FROM example
 ;
@@ -688,7 +686,7 @@ SELECT SAFE_CONVERT_BYTES_TO_STRING(b'\x61') as safe_convert
 ;
 
 -- expected
-SELECT DECODE(COALESCE(TRY_CAST('\x61' AS BLOB),ENCODE('\x61')))AS SAFE_CONVERT
+SELECT Decode( Encode( 'a' ) ) AS safe_convert
 ;
 
 -- result
@@ -797,9 +795,8 @@ FROM items;
 SELECT TO_BASE64(b'\x377\x340') AS base64_string;
 
 -- expected
-SELECT TO_BASE64( Coalesce(Try_CAST('\x377\x340' AS BLOB), Encode('\x377\x340'))) AS base64_string;
+SELECT TO_BASE64(ENCODE('7740')) AS base64_string;
 
---@todo: verify if this example is correct and makes sense
 --result
 "base64_string"
 "Nzc0MA=="
@@ -829,12 +826,11 @@ SELECT TO_HEX(byte_str) AS hex_str
 FROM Input;
 
 -- expected
-WITH Input AS (
-  SELECT COALESCE( TRY_CAST('foobar' AS BLOB) , ENCODE('foobar') ) byte_str
-)
-SELECT TO_HEX(decode(byte_str)) AS hex_str
-FROM Input;
-
+WITH input AS (
+        SELECT Encode( 'foobar' ) byte_str  )
+SELECT To_Hex( Decode( byte_str ) ) AS hex_str
+FROM input
+;
 -- result
 "hex_str"
 "666F6F626172"

@@ -990,12 +990,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
           WhenClause whenChar = new WhenClause().withWhenExpression(new StringValue("VARCHAR"))
               .withThenExpression(new Function("Length$$")
-                  .withParameters( new CastExpression("Try_Cast$$", parameters.get(0), "VARCHAR")));
+                  .withParameters(new CastExpression("Try_Cast$$", parameters.get(0), "VARCHAR")));
           WhenClause whenBLOB = new WhenClause().withWhenExpression(new StringValue("BLOB"))
               .withThenExpression(new Function("octet_length")
                   .withParameters(new CastExpression("Try_Cast$$", parameters.get(0), "BLOB")));
 
-          CaseExpression caseExpression = new CaseExpression( whenChar, whenBLOB)
+          CaseExpression caseExpression = new CaseExpression(whenChar, whenBLOB)
               .withSwitchExpression(new Function("typeOf", parameters.get(0)));
 
           return caseExpression;
@@ -1574,22 +1574,21 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   public void visit(StringValue stringValue) {
-    stringValue.setValue(convertUnicode(stringValue.getValue()));
-
-    if (stringValue.getValue().equalsIgnoreCase("+inf")) {
-      stringValue.setValue("+Infinity");
-    } else if (stringValue.getValue().equalsIgnoreCase("-inf")) {
-      stringValue.setValue("-Infinity");
-    }
-
     if ("b".equalsIgnoreCase(stringValue.getPrefix())) {
-      // Coalesce(TRY_CAST('абвгд' AS BLOB), encode('абвгд'))
-      CastExpression castExpression =
-          new CastExpression("Try_Cast", stringValue.withPrefix(""), "BLOB");
+      stringValue.setValue( JSQLExpressionTranspiler.convertByteStringToUnicode( stringValue.getValue() ));
+
       Function encode = new Function("encode", stringValue.withPrefix(""));
-      Function coalesce = new Function("Coalesce", castExpression, encode);
-      visit(coalesce);
+      visit(encode);
     } else {
+
+      stringValue.setValue(convertUnicode(stringValue.getValue()));
+
+      if (stringValue.getValue().equalsIgnoreCase("+inf")) {
+        stringValue.setValue("+Infinity");
+      } else if (stringValue.getValue().equalsIgnoreCase("-inf")) {
+        stringValue.setValue("-Infinity");
+      }
+
       // @todo: handle "r"
       super.visit(stringValue.withPrefix(null));
     }
@@ -1633,22 +1632,21 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
 
     // call Encode when it looks like a String cast to BLOB
-    if ( (castExpression.keyword==null || !castExpression.keyword.endsWith("$$"))
-            && castExpression.isBLOB() &&
-            ( castExpression.getLeftExpression() instanceof StringValue
-              || castExpression.getLeftExpression() instanceof Concat
-              || ( castExpression.getLeftExpression() instanceof Function
-                    && !castExpression.getLeftExpression(Function.class).getName().equalsIgnoreCase("encode") )
-            )
-    ) {
+    if ((castExpression.keyword == null || !castExpression.keyword.endsWith("$$"))
+        && castExpression.isBLOB()
+        && (castExpression.getLeftExpression() instanceof StringValue
+            || castExpression.getLeftExpression() instanceof Concat
+            || castExpression.getLeftExpression() instanceof Function && !castExpression
+                .getLeftExpression(Function.class).getName().equalsIgnoreCase("encode"))) {
       Function f = new Function("Encode$$", castExpression.getLeftExpression());
       f.accept(this);
 
       return;
     }
 
-    if (castExpression.keyword!=null && castExpression.keyword.endsWith("$$")) {
-      castExpression.keyword = castExpression.keyword.substring(0, castExpression.keyword.length()-2);
+    if (castExpression.keyword != null && castExpression.keyword.endsWith("$$")) {
+      castExpression.keyword =
+          castExpression.keyword.substring(0, castExpression.keyword.length() - 2);
     }
 
     if (castExpression.isImplicitCast()) {
@@ -1710,7 +1708,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   // @todo: complete the data type mapping
   // implement an Enum on Big Query allowed data types
   public final static ColDataType rewriteType(ColDataType colDataType) {
-    if (CastExpression.isOf(colDataType, CastExpression.DataType.BYTES, CastExpression.DataType.VARBYTE)) {
+    if (CastExpression.isOf(colDataType, CastExpression.DataType.BYTES,
+        CastExpression.DataType.VARBYTE)) {
       colDataType.setDataType("BLOB");
     } else if (colDataType.getDataType().equalsIgnoreCase("FLOAT64")) {
       colDataType.setDataType("FLOAT");
@@ -1720,6 +1719,30 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   public final void warning(String s) {
     buffer.append("/* Approximation: ").append(s).append(" */ ");
+  }
+
+  public static String convertByteStringToUnicode(String byteString) {
+    StringBuilder unicodeBuilder = new StringBuilder();
+    for (int i = 0; i < byteString.length(); i++) {
+      if (byteString.charAt(i) == '\\' && i + 1 < byteString.length()) {
+        if (byteString.charAt(i + 1) == 'x' && i + 3 < byteString.length()) {
+          // Extract and convert the hexadecimal escape sequence
+          String hex = byteString.substring(i + 2, i + 4);
+          char unicodeChar = (char) Integer.parseInt(hex, 16);
+          unicodeBuilder.append(unicodeChar);
+          i += 3; // Move the index to skip the escape sequence
+        } else {
+          // Append the character following the backslash as-is
+          unicodeBuilder.append(byteString.charAt(i + 1));
+          i++; // Move the index to skip the character
+        }
+      } else {
+        // Append normal characters as-is
+        unicodeBuilder.append(byteString.charAt(i));
+      }
+    }
+
+    return unicodeBuilder.toString();
   }
 
 

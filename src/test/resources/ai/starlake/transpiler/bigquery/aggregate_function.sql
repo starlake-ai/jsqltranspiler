@@ -6,14 +6,15 @@ from (select UNNEST(['apple', 'banana', 'pear']) as fruit);
 
 -- expected
 SELECT  fruit
-        , ANY_VALUE(FRUIT)
-            OVER (  ORDER BY CASE TYPEOF(FRUIT)
-                            WHEN 'VARCHAR' THEN LENGTH(FRUIT::VARCHAR)
-                            WHEN 'BLOB' THEN OCTET_LENGTH(FRUIT::BLOB)
-                            ELSE -1 END
-                    ROWS BETWEEN 1 PRECEDING
-                        AND CURRENT ROW) AS any_value
-FROM (  SELECT Unnest( ['apple', 'banana', 'pear'] ) AS fruit  )
+        , Any_Value( fruit )
+                OVER (ORDER BY CASE TYPEOF(FRUIT)
+                                WHEN 'VARCHAR'
+                                    THEN LENGTH(TRY_CAST(FRUIT AS VARCHAR))
+                                WHEN 'BLOB'
+                                    THEN OCTET_LENGTH(TRY_CAST(FRUIT AS BLOB))
+                                END
+                      ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS any_value
+FROM (  SELECT Unnest(  [ 'apple', 'banana', 'pear'] ) AS fruit  )
 ;
 
 -- result
@@ -366,12 +367,11 @@ SELECT STRING_AGG(fruit, ' & ' ORDER BY LENGTH(fruit)) AS string_agg
 FROM UNNEST(['apple', 'pear', 'banana', 'pear']) AS fruit;
 
 -- expected
-SELECT STRING_AGG(fruit, ' & ' ORDER BY CASE TYPEOF(FRUIT)
-                                          WHEN 'VARCHAR' THEN LENGTH(FRUIT::VARCHAR)
-                                          WHEN 'BLOB' THEN OCTET_LENGTH(FRUIT::BLOB)
-                                          ELSE -1
-                                          END) AS string_agg
-FROM (SELECT UNNEST(['apple', 'pear', 'banana', 'pear']) AS fruit) as fruit;
+SELECT STRING_AGG( FRUIT,' & ' ORDER BY CASE TYPEOF(FRUIT)
+                                        WHEN 'VARCHAR' THEN LENGTH(TRY_CAST(FRUIT AS VARCHAR))
+                                        WHEN 'BLOB' THEN OCTET_LENGTH(TRY_CAST(FRUIT AS BLOB))
+                                        END ) AS STRING_AGG
+FROM ( SELECT UNNEST( ['apple','pear','banana','pear'] ) AS FRUIT) AS FRUIT;
 
 -- result
 "string_agg"
@@ -385,14 +385,12 @@ SELECT
 FROM UNNEST(['apple', NULL, 'pear', 'banana', 'pear']) AS fruit;
 
 -- expected
-SELECT
-  fruit,
-  STRING_AGG(fruit, ' & ') OVER (ORDER BY CASE TYPEOF(FRUIT)
-                                          WHEN 'VARCHAR' THEN LENGTH(FRUIT::VARCHAR)
-                                          WHEN 'BLOB' THEN OCTET_LENGTH(FRUIT::BLOB)
-                                          ELSE -1
-                                          END) AS string_agg
-FROM (SELECT UNNEST(['apple', NULL, 'pear', 'banana', 'pear']) AS fruit) AS fruit;
+SELECT FRUIT, STRING_AGG(FRUIT,' & ') OVER( ORDER BY CASE TYPEOF(FRUIT)
+                                                        WHEN 'VARCHAR' THEN LENGTH(TRY_CAST(FRUIT AS VARCHAR))
+                                                        WHEN 'BLOB' THEN OCTET_LENGTH(TRY_CAST(FRUIT AS BLOB))
+                                                        END) AS STRING_AGG
+FROM( SELECT UNNEST( ['apple',NULL,'pear','banana','pear'] )AS FRUIT ) AS FRUIT
+;
 
 -- result
 "fruit","string_agg"
