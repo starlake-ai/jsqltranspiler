@@ -19,11 +19,17 @@ package ai.starlake.transpiler.redshift;
 import ai.starlake.transpiler.JSQLExpressionTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.ArrayExpression;
+import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
+import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.WhenClause;
+import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
+import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
@@ -35,7 +41,9 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
 
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN ;
+    BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN, CHARINDEX, STRPOS, COLLATE, OCTETINDEX
+
+    , REGEXP_COUNT, REGEXP_INSTR;
     // @FORMATTER:ON
 
 
@@ -56,11 +64,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
   }
 
   enum UnsupportedFunction {
-    ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH
-
-    , APPROX_QUANTILES, APPROX_TOP_COUNT, APPROX_TOP_SUM
-
-    , SEARCH, VECTOR_SEARCH, APPENDS, EXTERNAL_OBJECT_TRANSFORM, GAP_FILL
+    CRC32, DIFFERENCE, INITCAP
 
     ;
 
@@ -130,6 +134,67 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
         case TEXTLEN:
           function.setName("LENGTH");
           break;
+        case CHARINDEX:
+        case STRPOS:
+            if ( parameters!=null && parameters.size() == 2) {
+                function.setName("InStr$$");
+                function.setParameters(
+                        new CastExpression(parameters.get(1), "VARCHAR")
+                        , parameters.get(0));
+            }
+            break;
+        case COLLATE:
+          // 'en-u-kf-upper-kn-true' specifies the English locale (en) with case-insensitive collation (kf-upper-kn-true)
+          // 'en-u-kf-upper' specifies the English locale (en) with a case-sensitive collation (kf-upper)
+
+          // 'ICU; [caseLevel=yes]'
+          function.setName("icu_sort_key");
+          if (parameters.get(1).toString().equals("case_sensitive")) {
+            function.setParameters(parameters.get(0), new StringValue("und:cs"));
+          } else {
+            function.setParameters(parameters.get(0), new StringValue("und:ci"));
+          }
+          break;
+        case OCTETINDEX:
+          //SELECT octet_length(encode(substr('Άμαζον Amazon Redshift',0 , instr('Άμαζον Amazon Redshift', 'Redshift')+1))) as index;
+
+          Expression instr = new Addition()
+                               .withLeftExpression( new Function("Instr", parameters.get(1), parameters.get(0)))
+                               .withRightExpression(new LongValue(1));
+          Function substrFunction = new Function("SubStr",  parameters.get(1), new LongValue(0), instr );
+
+          function.setName("Octet_Length$$");
+          function.setParameters( new Function("Encode", substrFunction) );
+          break;
+        case REGEXP_COUNT:
+          function.setName("Length$$");
+          function.setParameters(new Function("regexp_split_to_array", parameters.get(0), parameters.get(1)));
+          rewrittenExpression = new Subtraction().withLeftExpression(function).withRightExpression(new LongValue(1));
+          break;
+        case REGEXP_INSTR:
+          // case when len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$'))>1 then len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$')[1])+1 else 0 end
+          if (parameters!=null) {
+            while(parameters.size()>2) {
+              parameters.remove( parameters.size()-1);
+            }
+
+            Expression whenExpr = new GreaterThan(new Function("Length$$", new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1))), new LongValue(1));
+            Expression thenExpr = BinaryExpression.add(
+                    new Function(
+                            "Length$$"
+                            , new ArrayExpression(
+                                    new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1))
+                                  , new LongValue(1)
+                                  , null
+                                  , null))
+                    , new LongValue(1)
+                  );
+
+            rewrittenExpression = new CaseExpression(
+                    new LongValue(0)
+                    , new WhenClause( whenExpr, thenExpr)
+            );
+          }
       }
     }
     if (rewrittenExpression == null) {
@@ -137,5 +202,11 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     } else {
       rewrittenExpression.accept(this);
     }
+  }
+
+  public void visit(StringValue stringValue) {
+    // DuckDB does not use/allow "\" for escaping, so "\\" would count as 2
+    stringValue.setValue(stringValue.getValue().replaceAll("\\\\\\\\", "\\\\"));
+    super.visit(stringValue);
   }
 }

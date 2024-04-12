@@ -594,8 +594,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("Coalesce");
           break;
         case BYTE_LENGTH:
-          // case OCTET_LENGTH:
-          rewriteByteLengthFunction(function, parameters);
+        case OCTET_LENGTH:
+          // OCTET_LENGTH( CASE TypeOf('français') WHEN 'VARCHAR' THEN encode('français') ELSE Try_Cast('français' AS BLOB) END ) AS bytes
+          CaseExpression caseExpression = new CaseExpression(
+                  new CastExpression("Try_Cast", parameters.get(0), "BLOB")
+                  , new WhenClause( new StringValue("VARCHAR"), new Function("Encode", new CastExpression(parameters.get(0), "VARCHAR")))
+          ).withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+          function.setName("OCTET_LENGTH");
+          function.setParameters( caseExpression );
           break;
         case CHAR_LENGTH:
         case CHARACTER_LENGTH:
@@ -654,7 +660,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               && !"NFC".equalsIgnoreCase(parameters.get(1).toString())) {
             warning("NORMALIZE only supported for NFC, but not for NFKC, NFD, NFKD yet.");
           }
-          if (parameters.size() == 2) {
+          if (parameters!=null && parameters.size() == 2) {
             parameters.remove(1);
           }
           function.setName("NFC_NORMALIZE");
@@ -665,7 +671,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
             warning(
                 "NORMALIZE_AND_CASEFOLD only supported for NFC, but not for NFKC, NFD, NFKD yet.");
           }
-          if (parameters.size() == 2) {
+          if (parameters != null && parameters.size() == 2) {
             parameters.remove(1);
           }
           function.setName("NFC_NORMALIZE");
@@ -992,7 +998,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               .withThenExpression(new Function("Length$$")
                   .withParameters(new CastExpression("Try_Cast$$", parameters.get(0), "VARCHAR")));
           WhenClause whenBLOB = new WhenClause().withWhenExpression(new StringValue("BLOB"))
-              .withThenExpression(new Function("octet_length")
+              .withThenExpression(new Function("octet_length$$")
                   .withParameters(new CastExpression("Try_Cast$$", parameters.get(0), "BLOB")));
 
           CaseExpression caseExpression = new CaseExpression(whenChar, whenBLOB)
@@ -1531,17 +1537,6 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return null;
   }
 
-  private void rewriteByteLengthFunction(Function function, ExpressionList<?> parameters) {
-    // octet_length( Coalesce(try_cast(characters AS BLOB), encode(try_cast(characters AS
-    // VARCHAR))))
-
-    CastExpression cast1 = new CastExpression("Try_Cast$$", parameters.get(0), "BLOB");
-    Function encode =
-        new Function("Encode", new CastExpression("Try_Cast$$", parameters.get(0), "VARCHAR"));
-
-    function.setName("OCTET_LENGTH");
-    function.setParameters(new Function("Coalesce", cast1, encode));
-  }
 
   private void rewriteCurrentDateFunction(ExpressionList<?> parameters) {
     if (parameters != null) {

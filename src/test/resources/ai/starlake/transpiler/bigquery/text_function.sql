@@ -20,8 +20,16 @@ WITH example AS (
         SELECT  'абвгд' AS characters
                 , Encode( 'абвгд' ) AS bytes  )
 SELECT  characters
-        , Octet_Length( Coalesce(  Try_Cast( characters AS BLOB ), Encode(  Try_Cast( characters AS VARCHAR ) ) ) ) AS string_example
-        , Octet_Length( Coalesce(  Try_Cast( bytes AS BLOB ), Encode(  Try_Cast( bytes AS VARCHAR ) ) ) ) AS bytes_example
+        , Octet_Length( CASE Typeof( characters )
+                        WHEN 'VARCHAR'
+                            THEN Encode( characters::VARCHAR )
+                        ELSE  Try_Cast( characters AS BLOB )
+                        END ) AS string_example
+        , Octet_Length( CASE Typeof( bytes )
+                        WHEN 'VARCHAR'
+                            THEN Encode( bytes::VARCHAR )
+                        ELSE  Try_Cast( bytes AS BLOB )
+                        END ) AS bytes_example
 FROM example
 ;
 
