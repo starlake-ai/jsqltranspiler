@@ -65,8 +65,9 @@ class JSQLExpressionTranspilerTest {
   void testBytesStringToUnicode() {
     StringValue stringValue = new StringValue("\\x61\\x62c").withPrefix("b");
 
-    stringValue.setValue( JSQLExpressionTranspiler.convertByteStringToUnicode( stringValue.getValue() ));
-    stringValue.setPrefix( null );
+    stringValue
+        .setValue(JSQLExpressionTranspiler.convertByteStringToUnicode(stringValue.getValue()));
+    stringValue.setPrefix(null);
 
     Assertions.assertEquals("abc", stringValue.getValue());
   }
