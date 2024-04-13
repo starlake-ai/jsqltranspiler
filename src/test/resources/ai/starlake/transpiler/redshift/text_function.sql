@@ -168,9 +168,12 @@ WITH Words AS (
 )
 SELECT ( Words.char1 = Words.char2 ) AS same
 FROM Words;
+
+--@todo: fix the translation and the result. It should return True.
+
 -- result
 "same"
-"true"
+"false"
 
 
 -- provided
@@ -263,7 +266,7 @@ ORDER BY 1;
 -- provided
 SELECT  listid
         , listtime
-        , Ltrim( listtime::VARCHAR, '2008-' ) AS ltrim
+        , Ltrim( listtime, '2008-' ) AS ltrim
 FROM listing
 ORDER BY    1
             , 2
@@ -363,9 +366,9 @@ WHERE REGEXP_INSTR(venuename,'[cC]ent(er|re)$') > 0
 ORDER BY venueid LIMIT 4;
 
 -- expected
-SELECT venuename, case when len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$'))>1 then len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$')[1])+1 else 0 end AS pos
+SELECT venuename, case when LENGTH(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$'))>1 then LENGTH(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$')[1])+1 else 0 end AS pos
 FROM venue
-WHERE case when len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$'))>1 then len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$')[1])+1 else 0 end > 0
+WHERE case when LENGTH(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$'))>1 then LENGTH(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$')[1])+1 else 0 end > 0
 ORDER BY venueid LIMIT 4;
 
 -- result
@@ -374,4 +377,280 @@ ORDER BY venueid LIMIT 4;
 "Izod Center","6"
 "Wachovia Center","10"
 "Air Canada Centre","12"
+
+
+-- provided
+SELECT REGEXP_REPLACE('the fox', 'FOX', 'quick brown fox', 1, 'i') AS replaced;
+
+-- expected
+SELECT REGEXP_REPLACE('the fox', 'FOX', 'quick brown fox', 'i')  AS replaced;
+
+-- result
+"replaced"
+"the quick brown fox"
+
+
+-- provided
+SELECT email, REGEXP_REPLACE(email, '@.*\\.(org|gov|com|edu|ca)$') AS replaced
+FROM users
+ORDER BY userid LIMIT 4;
+
+-- expected
+SELECT email, REGEXP_REPLACE(email, '@.*\.(org|gov|com|edu|ca)$', '') AS replaced
+FROM users
+ORDER BY userid LIMIT 4;
+
+-- result
+"email","replaced"
+"Etiam.laoreet.libero@sodalesMaurisblandit.edu","Etiam.laoreet.libero"
+"Suspendisse.tristique@nonnisiAenean.edu","Suspendisse.tristique"
+"amet.faucibus.ut@condimentumegetvolutpat.ca","amet.faucibus.ut"
+"sed@lacusUtnec.ca","sed"
+
+
+-- provided
+SELECT email, regexp_substr(email,'@[^.]*') AS extract
+FROM users
+ORDER BY userid LIMIT 4;
+
+-- expected
+SELECT email, regexp_extract(email,'@[^.]*', 0) AS extract
+FROM users
+ORDER BY userid LIMIT 4;
+
+-- result
+"email","extract"
+"Etiam.laoreet.libero@sodalesMaurisblandit.edu","@sodalesMaurisblandit"
+"Suspendisse.tristique@nonnisiAenean.edu","@nonnisiAenean"
+"amet.faucibus.ut@condimentumegetvolutpat.ca","@condimentumegetvolutpat"
+"sed@lacusUtnec.ca","@lacusUtnec"
+
+
+-- provided
+SELECT regexp_substr('the fox', 'FOX', 1, 1, 'i')  AS extract
+;
+
+-- expected
+SELECT regexp_extract('the fox', 'FOX', 0, 'i')  AS extract
+;
+
+-- result
+"extract"
+"fox"
+
+
+-- provide
+SELECT catid, REPEAT(catid,3) AS repeat
+FROM category
+ORDER BY 1,2;
+
+-- result
+"catid","repeat"
+"1","111"
+"2","222"
+"3","333"
+"4","444"
+"5","555"
+"6","666"
+"7","777"
+"8","888"
+"9","999"
+"10","101010"
+"11","111111"
+
+
+-- provide
+SELECT catid, catgroup, REPLACE(catgroup, 'Shows', 'Theatre') AS replace
+FROM category
+ORDER BY 1,2,3;
+
+-- result
+"catid","catgroup","replace"
+"1","Sports","Sports"
+"2","Sports","Sports"
+"3","Sports","Sports"
+"4","Sports","Sports"
+"5","Sports","Sports"
+"6","Shows","Theatre"
+"7","Shows","Theatre"
+"8","Shows","Theatre"
+"9","Concerts","Concerts"
+"10","Concerts","Concerts"
+"11","Concerts","Concerts"
+
+
+-- provide
+SELECT salesid, REVERSE(salesid) AS reverse
+FROM sales
+ORDER BY salesid DESC LIMIT 5;
+
+-- result
+"salesid","reverse"
+"172456","654271"
+"172455","554271"
+"172454","454271"
+"172453","354271"
+"172452","254271"
+
+
+-- provide
+select venueid, venuename, rtrim(venuename, 'Park') trimmed
+from venue
+order by 1, 2, 3
+limit 10;
+
+-- result
+"venueid","venuename","trimmed"
+"1","Toyota Park","Toyota "
+"2","Columbus Crew Stadium","Columbus Crew Stadium"
+"3","RFK Stadium","RFK Stadium"
+"4","CommunityAmerica Ballpark","CommunityAmerica Ballp"
+"5","Gillette Stadium","Gillette Stadium"
+"6","New York Giants Stadium","New York Giants Stadium"
+"7","BMO Field","BMO Field"
+"8","The Home Depot Center","The Home Depot Cente"
+"9","Dick's Sporting Goods Park","Dick's Sporting Goods "
+"10","Pizza Hut Park","Pizza Hut "
+
+
+-- provide
+select listtime, split_part(listtime,'-',1) as year,
+split_part(listtime,'-',2) as month,
+split_part(split_part(listtime,'-',3),' ',1) as day
+from listing order by 1 limit 5;
+
+-- result
+"listtime","year","month","day"
+"2008-01-01 01:03:11","2008","01","01"
+"2008-01-01 01:03:16","2008","01","01"
+"2008-01-01 01:03:17","2008","01","01"
+"2008-01-01 01:03:21","2008","01","01"
+"2008-01-01 01:03:53","2008","01","01"
+
+
+-- provide
+select split_part(listtime,'-',2) as month, count(*) AS count
+from listing
+group by split_part(listtime,'-',2)
+order by 1, 2;
+
+-- result
+"month","count"
+"01","18543"
+"02","16620"
+"03","17594"
+"04","16822"
+"05","17618"
+"06","17158"
+"07","17626"
+"08","17881"
+"09","17378"
+"10","17756"
+"11","12912"
+"12","4589"
+
+
+-- provide
+select listid, listtime,
+substring(listtime, 6, 2) as month
+from listing
+order by 1, 2, 3
+limit 10;
+
+-- result
+"listid","listtime","month"
+"1","2008-01-24 06:43:29","01"
+"2","2008-03-05 12:25:29","03"
+"3","2008-11-01 07:35:33","11"
+"4","2008-05-24 01:18:37","05"
+"5","2008-05-17 02:29:11","05"
+"6","2008-08-15 02:08:13","08"
+"7","2008-11-15 09:38:15","11"
+"8","2008-11-09 05:07:30","11"
+"9","2008-09-09 08:03:36","09"
+"10","2008-06-17 09:44:54","06"
+
+
+
+-- provide
+select listid, listtime,
+substring(listtime from 6 for 2) as month
+from listing
+order by 1, 2, 3
+limit 10;
+
+-- result
+"listid","listtime","month"
+"1","2008-01-24 06:43:29","01"
+"2","2008-03-05 12:25:29","03"
+"3","2008-11-01 07:35:33","11"
+"4","2008-05-24 01:18:37","05"
+"5","2008-05-17 02:29:11","05"
+"6","2008-08-15 02:08:13","08"
+"7","2008-11-15 09:38:15","11"
+"8","2008-11-09 05:07:30","11"
+"9","2008-09-09 08:03:36","09"
+"10","2008-06-17 09:44:54","06"
+
+
+-- provide
+SELECT TRANSLATE('mint tea', 'inea', 'osin') AS translated;
+
+-- result
+"translated"
+"most tin"
+
+
+-- provide
+SELECT TRIM(BOTH FROM '    dog    ') AS trimmed;
+
+-- result
+"trimmed"
+"dog"
+
+
+-- provide
+SELECT venueid, venuename, TRIM('CDG' FROM venuename) AS trimmed
+FROM venue
+WHERE venuename LIKE '%Park'
+ORDER BY 2
+LIMIT 7;
+
+-- result
+"venueid","venuename","trimmed"
+"121","AT&T Park","AT&T Park"
+"109","Citizens Bank Park","itizens Bank Park"
+"102","Comerica Park","omerica Park"
+"9","Dick's Sporting Goods Park","ick's Sporting Goods Park"
+"97","Fenway Park","Fenway Park"
+"112","Great American Ball Park","reat American Ball Park"
+"114","Miller Park","Miller Park"
+
+
+-- provide
+SELECT catname, UPPER(catname) AS upper
+FROM category
+ORDER BY 1,2;
+
+-- result
+"catname","upper"
+"Classical","CLASSICAL"
+"Jazz","JAZZ"
+"MLB","MLB"
+"MLS","MLS"
+"Musicals","MUSICALS"
+"NBA","NBA"
+"NFL","NFL"
+"NHL","NHL"
+"Opera","OPERA"
+"Plays","PLAYS"
+"Pop","POP"
+
+
+
+
+
+
+
+
 

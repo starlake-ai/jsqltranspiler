@@ -40,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -207,7 +208,9 @@ public class JSQLTranspilerTest {
     // Currently, Duck DB Home resolution in Java seems broken
     File fileDuckDB =
         new File(EXTRACTION_PATH, JSQLTranspilerTest.class.getSimpleName() + ".duckdb");
-    connDuck = DriverManager.getConnection("jdbc:duckdb:" + fileDuckDB.getAbsolutePath());
+    Properties info = new Properties();
+    info.put("old_implicit_casting", "true");
+    connDuck = DriverManager.getConnection("jdbc:duckdb:" + fileDuckDB.getAbsolutePath(), info);
 
     if (!isInitialised) {
       String sqlStr = IOUtils.resourceToString(

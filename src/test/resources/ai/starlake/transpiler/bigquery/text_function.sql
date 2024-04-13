@@ -529,7 +529,7 @@ WITH markdown AS
   UNION ALL
   SELECT '# Another heading' as heading)
 SELECT
-  REGEXP_REPLACE(heading, r'^# ([a-zA-Z0-9\s]+$)', r'<h1>\1</h1>')
+  REGEXP_REPLACE(heading, r'^# ([a-zA-Z0-9\s]+$)', '<h1>\\1</h1>')
   AS html
 FROM markdown;
 

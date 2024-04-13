@@ -595,13 +595,15 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           break;
         case BYTE_LENGTH:
         case OCTET_LENGTH:
-          // OCTET_LENGTH( CASE TypeOf('français') WHEN 'VARCHAR' THEN encode('français') ELSE Try_Cast('français' AS BLOB) END ) AS bytes
-          CaseExpression caseExpression = new CaseExpression(
-                  new CastExpression("Try_Cast", parameters.get(0), "BLOB")
-                  , new WhenClause( new StringValue("VARCHAR"), new Function("Encode", new CastExpression(parameters.get(0), "VARCHAR")))
-          ).withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+          // OCTET_LENGTH( CASE TypeOf('français') WHEN 'VARCHAR' THEN encode('français') ELSE
+          // Try_Cast('français' AS BLOB) END ) AS bytes
+          CaseExpression caseExpression =
+              new CaseExpression(new CastExpression("Try_Cast", parameters.get(0), "BLOB"),
+                  new WhenClause(new StringValue("VARCHAR"),
+                      new Function("Encode", new CastExpression(parameters.get(0), "VARCHAR"))))
+                  .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
           function.setName("OCTET_LENGTH");
-          function.setParameters( caseExpression );
+          function.setParameters(caseExpression);
           break;
         case CHAR_LENGTH:
         case CHARACTER_LENGTH:
@@ -660,7 +662,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               && !"NFC".equalsIgnoreCase(parameters.get(1).toString())) {
             warning("NORMALIZE only supported for NFC, but not for NFKC, NFD, NFKD yet.");
           }
-          if (parameters!=null && parameters.size() == 2) {
+          if (parameters != null && parameters.size() == 2) {
             parameters.remove(1);
           }
           function.setName("NFC_NORMALIZE");
@@ -1575,19 +1577,23 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
       Function encode = new Function("encode", stringValue.withPrefix(""));
       visit(encode);
-    } else {
-
-      stringValue.setValue(convertUnicode(stringValue.getValue()));
-
-      if (stringValue.getValue().equalsIgnoreCase("+inf")) {
-        stringValue.setValue("+Infinity");
-      } else if (stringValue.getValue().equalsIgnoreCase("-inf")) {
-        stringValue.setValue("-Infinity");
-      }
-
-      // @todo: handle "r"
-      super.visit(stringValue.withPrefix(null));
+      return;
     }
+
+    if (!"r".equalsIgnoreCase(stringValue.getPrefix())) {
+      // DuckDB does not use/allow "\" for escaping, so "\\" would count as 2
+      stringValue.setValue(stringValue.getValue().replaceAll("\\\\\\\\", "\\\\"));
+    }
+
+    stringValue.setValue(convertUnicode(stringValue.getValue()));
+
+    if (stringValue.getValue().equalsIgnoreCase("+inf")) {
+      stringValue.setValue("+Infinity");
+    } else if (stringValue.getValue().equalsIgnoreCase("-inf")) {
+      stringValue.setValue("-Infinity");
+    }
+
+    super.visit(stringValue.withPrefix(null));
   }
 
   public void visit(HexValue hexValue) {

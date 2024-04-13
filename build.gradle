@@ -70,6 +70,16 @@ dependencies {
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
 }
 
+
+configurations.configureEach {
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if (details.requested.group == 'com.github.jsqlparser') {
+            // Check for updates every build
+            resolutionStrategy.cacheChangingModulesFor 30, 'seconds'
+        }
+    }
+}
+
 def getVersion = { boolean considerSnapshot ->
     Integer major = 0
     Integer minor = 0

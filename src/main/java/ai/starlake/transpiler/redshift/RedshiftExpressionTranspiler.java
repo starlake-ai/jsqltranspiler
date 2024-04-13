@@ -43,7 +43,9 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     // @FORMATTER:OFF
     BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN, CHARINDEX, STRPOS, COLLATE, OCTETINDEX
 
-    , REGEXP_COUNT, REGEXP_INSTR;
+    , REGEXP_COUNT, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPLICATE
+
+    ;
     // @FORMATTER:ON
 
 
@@ -64,7 +66,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
   }
 
   enum UnsupportedFunction {
-    CRC32, DIFFERENCE, INITCAP
+    CRC32, DIFFERENCE, INITCAP, SOUNDEX, STRTOL
 
     ;
 
@@ -100,7 +102,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
 
-      // careful: we must not strip the $$ PREFIX here since SUPER will call JSQLExpressionTranspiler
+      // careful: we must not strip the $$ PREFIX here since SUPER will call
+      // JSQLExpressionTranspiler
       // function.setName(functionName.substring(0, functionName.length() - 2));
       super.visit(function);
       return;
@@ -136,16 +139,17 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case CHARINDEX:
         case STRPOS:
-            if ( parameters!=null && parameters.size() == 2) {
-                function.setName("InStr$$");
-                function.setParameters(
-                        new CastExpression(parameters.get(1), "VARCHAR")
-                        , parameters.get(0));
-            }
-            break;
+          if (parameters != null && parameters.size() == 2) {
+            function.setName("InStr$$");
+            function.setParameters(new CastExpression(parameters.get(1), "VARCHAR"),
+                parameters.get(0));
+          }
+          break;
         case COLLATE:
-          // 'en-u-kf-upper-kn-true' specifies the English locale (en) with case-insensitive collation (kf-upper-kn-true)
-          // 'en-u-kf-upper' specifies the English locale (en) with a case-sensitive collation (kf-upper)
+          // 'en-u-kf-upper-kn-true' specifies the English locale (en) with case-insensitive
+          // collation (kf-upper-kn-true)
+          // 'en-u-kf-upper' specifies the English locale (en) with a case-sensitive collation
+          // (kf-upper)
 
           // 'ICU; [caseLevel=yes]'
           function.setName("icu_sort_key");
@@ -156,45 +160,125 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           }
           break;
         case OCTETINDEX:
-          //SELECT octet_length(encode(substr('Άμαζον Amazon Redshift',0 , instr('Άμαζον Amazon Redshift', 'Redshift')+1))) as index;
+          // SELECT octet_length(encode(substr('Άμαζον Amazon Redshift',0 , instr('Άμαζον Amazon
+          // Redshift', 'Redshift')+1))) as index;
 
           Expression instr = new Addition()
-                               .withLeftExpression( new Function("Instr", parameters.get(1), parameters.get(0)))
-                               .withRightExpression(new LongValue(1));
-          Function substrFunction = new Function("SubStr",  parameters.get(1), new LongValue(0), instr );
+              .withLeftExpression(new Function("Instr", parameters.get(1), parameters.get(0)))
+              .withRightExpression(new LongValue(1));
+          Function substrFunction =
+              new Function("SubStr", parameters.get(1), new LongValue(0), instr);
 
           function.setName("Octet_Length$$");
-          function.setParameters( new Function("Encode", substrFunction) );
+          function.setParameters(new Function("Encode", substrFunction));
           break;
         case REGEXP_COUNT:
           function.setName("Length$$");
-          function.setParameters(new Function("regexp_split_to_array", parameters.get(0), parameters.get(1)));
-          rewrittenExpression = new Subtraction().withLeftExpression(function).withRightExpression(new LongValue(1));
+          function.setParameters(
+              new Function("regexp_split_to_array", parameters.get(0), parameters.get(1)));
+          rewrittenExpression =
+              new Subtraction().withLeftExpression(function).withRightExpression(new LongValue(1));
           break;
         case REGEXP_INSTR:
-          // case when len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$'))>1 then len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$')[1])+1 else 0 end
-          if (parameters!=null) {
-            while(parameters.size()>2) {
-              parameters.remove( parameters.size()-1);
+          // case when len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$'))>1 then
+          // len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$')[1])+1 else 0 end
+          if (parameters != null) {
+            while (parameters.size() > 2) {
+              parameters.remove(parameters.size() - 1);
             }
 
-            Expression whenExpr = new GreaterThan(new Function("Length$$", new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1))), new LongValue(1));
-            Expression thenExpr = BinaryExpression.add(
-                    new Function(
-                            "Length$$"
-                            , new ArrayExpression(
-                                    new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1))
-                                  , new LongValue(1)
-                                  , null
-                                  , null))
-                    , new LongValue(1)
-                  );
+            Expression whenExpr = new GreaterThan(
+                new Function("Length$$",
+                    new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1))),
+                new LongValue(1));
+            Expression thenExpr = BinaryExpression.add(new Function("Length$$",
+                new ArrayExpression(
+                    new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1)),
+                    new LongValue(1), null, null)),
+                new LongValue(1));
 
-            rewrittenExpression = new CaseExpression(
-                    new LongValue(0)
-                    , new WhenClause( whenExpr, thenExpr)
-            );
+            rewrittenExpression =
+                new CaseExpression(new LongValue(0), new WhenClause(whenExpr, thenExpr));
           }
+        case REGEXP_REPLACE:
+          // REGEXP_REPLACE( source_string, pattern [, replace_string [ , position [, parameters ] ]
+          // ] )
+          if (parameters != null) {
+            switch (parameters.size()) {
+              case 2:
+                function.setParameters(parameters.get(0), parameters.get(1), new StringValue(""));
+                break;
+              case 4:
+                warning("Position Parameter unsupported");
+                parameters.remove(3);
+                break;
+              case 5:
+                if (parameters.get(4).toString().contains("p")) {
+                  warning("PCRE unsupported");
+                }
+                warning("Position Parameter unsupported");
+                parameters.remove(3);
+                break;
+            }
+          }
+          break;
+        case REGEXP_SUBSTR:
+          // REGEXP_SUBSTR( source_string, pattern [, position [, occurrence [, parameters ] ] ] )
+          // REGEXP_SUBSTR skips the first occurrence -1 matches. The default is 1.
+          if (parameters != null) {
+            function.setName("Regexp_Extract$$");
+            switch (parameters.size()) {
+              case 2:
+                function.setParameters(parameters.get(0), parameters.get(1), new LongValue(0));
+                break;
+              case 3:
+                warning("Position Parameter unsupported");
+                parameters.remove(2);
+
+                function.setParameters(parameters.get(0), parameters.get(1), new LongValue(0));
+                break;
+
+              case 4:
+                warning("Position Parameter unsupported");
+
+                if (parameters.get(3) instanceof LongValue) {
+                  LongValue longValue = (LongValue) parameters.get(3);
+                  longValue.setValue(longValue.getValue() - 1);
+                  function.setParameters(parameters.get(0), parameters.get(1), longValue);
+                } else {
+                  function.setParameters(parameters.get(0), parameters.get(1),
+                      BinaryExpression.subtract(parameters.get(3), new LongValue(1)));
+                }
+                break;
+              case 5:
+                warning("Position Parameter unsupported");
+
+                if (parameters.get(4).toString().contains("p")) {
+                  warning("PCRE unsupported");
+                }
+                if (parameters.get(4).toString().contains("e")) {
+                  warning("Sub-Expression");
+                }
+
+                if (parameters.get(3) instanceof LongValue) {
+                  LongValue longValue = (LongValue) parameters.get(3);
+                  longValue.setValue(longValue.getValue() - 1);
+                  function.setParameters(parameters.get(0), parameters.get(1), longValue,
+                      parameters.get(4));
+                } else {
+                  function.setParameters(parameters.get(0), parameters.get(1),
+                      BinaryExpression.subtract(parameters.get(3), new LongValue(1)),
+                      parameters.get(4));
+                }
+
+                break;
+            }
+          }
+          break;
+        case REPLICATE:
+          function.setName("Repeat");
+          break;
+
       }
     }
     if (rewrittenExpression == null) {
@@ -202,11 +286,5 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     } else {
       rewrittenExpression.accept(this);
     }
-  }
-
-  public void visit(StringValue stringValue) {
-    // DuckDB does not use/allow "\" for escaping, so "\\" would count as 2
-    stringValue.setValue(stringValue.getValue().replaceAll("\\\\\\\\", "\\\\"));
-    super.visit(stringValue);
   }
 }
