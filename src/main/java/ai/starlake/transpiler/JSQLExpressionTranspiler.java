@@ -390,6 +390,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
     if (p instanceof StringValue && dateTimeType != null) {
       StringValue stringValue = (StringValue) p;
+
       if (dateTimeType == DateTimeLiteralExpression.DateTime.TIMESTAMP
           && hasTimeZoneInfo(stringValue)) {
         // convert to TIMESTAMPTZ when time zone info is present
@@ -464,7 +465,16 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         case CURRENT_DATETIME:
         case CURRENT_TIME:
         case CURRENT_TIMESTAMP:
-          rewriteCurrentDateFunction(parameters);
+          if (parameters != null) {
+            switch (parameters.size()) {
+              case 1:
+                // CURRENT_DATE(timezone)
+                // CURRENT_DATETIME(timezone)
+                rewrittenExpression =
+                    new TimezoneExpression(function.withParameters(), parameters.get(0));
+                break;
+            }
+          }
           break;
         case DATE:
           rewrittenExpression = rewriteDateFunction(function, parameters);
@@ -1537,19 +1547,6 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       }
     }
     return null;
-  }
-
-
-  private void rewriteCurrentDateFunction(ExpressionList<?> parameters) {
-    if (parameters != null) {
-      switch (parameters.size()) {
-        case 1:
-          // CURRENT_DATE(timezone) is not supported in DuckDB
-          // CURRENT_DATETIME(timezone) is not supported in DuckDB
-          warning("timezone not supported");
-          parameters.clear();
-      }
-    }
   }
 
   public void visit(ExtractExpression extractExpression) {

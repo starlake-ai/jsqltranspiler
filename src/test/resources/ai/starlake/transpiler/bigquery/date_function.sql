@@ -1,4 +1,14 @@
 -- provided
+SELECT CURRENT_DATE('America/Los_Angeles') AS the_date;
+
+-- expected
+SELECT CURRENT_DATE() AT TIME ZONE 'America/Los_Angeles' AS the_date;
+
+-- count
+1
+
+
+-- provided
 SELECT
   DATE(2016, 12, 25) AS date_ymd,
   DATE(DATETIME '2016-12-25 23:59:59') AS date_dt,

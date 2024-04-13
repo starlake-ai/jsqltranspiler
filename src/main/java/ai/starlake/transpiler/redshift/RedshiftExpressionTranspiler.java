@@ -23,10 +23,13 @@ import net.sf.jsqlparser.expression.ArrayExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
+import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
@@ -44,6 +47,10 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN, CHARINDEX, STRPOS, COLLATE, OCTETINDEX
 
     , REGEXP_COUNT, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPLICATE
+
+    , ADD_MONTHS, CONVERT_TIMEZONE, DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD
+
+    , TRUNC
 
     ;
     // @FORMATTER:ON
@@ -278,7 +285,87 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
         case REPLICATE:
           function.setName("Repeat");
           break;
+        case ADD_MONTHS:
+          // date_add(TIMESTAMP '2008-01-01 05:07:30', (1 || ' MONTH')::INTERVAL )
+          warning("Different Ultimo handling");
+          function.setName("date_add");
+          function.setParameters(
+              rewriteDateLiteral(parameters.get(0), DateTimeLiteralExpression.DateTime.TIMESTAMP),
+              new CastExpression(
+                  new Parenthesis(
+                      BinaryExpression.concat(parameters.get(1), new StringValue(" MONTH"))),
+                  "INTERVAL"));
+          break;
+        case CONVERT_TIMEZONE:
+          if (parameters != null) {
+            switch (parameters.size()) {
+              case 2:
+                rewrittenExpression = new TimezoneExpression(
+                    rewriteDateLiteral(parameters.get(1),
+                        DateTimeLiteralExpression.DateTime.TIMESTAMP),
+                    new StringValue("UTC"), parameters.get(0));
+                break;
+              case 3:
+                rewrittenExpression = new TimezoneExpression(
+                    rewriteDateLiteral(parameters.get(2),
+                        DateTimeLiteralExpression.DateTime.TIMESTAMP),
+                    parameters.get(0), parameters.get(1));
+                break;
+            }
+          }
+          break;
+        case TRUNC:
+          // case typeof(expr)
+          // WHEN 'TIMESTAMP' THEN date_trunc('day', expr))
+          // ELSE ROUND( Try_cast(expr AS DECIMAL), 3) <-- this does not work!
+          // END
 
+          warning("Strictly interpreted as DATE_TRUNC");
+
+          Expression precision = parameters.size() == 2 ? parameters.get(1) : new LongValue(0);
+          WhenClause whenClause = new WhenClause(new StringValue("TIMESTAMP"),
+              new Function("Date_Trunc", new StringValue("Day"), parameters.get(0)));
+          rewrittenExpression = new CaseExpression(whenClause)
+              .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+          break;
+        case DATE_CMP:
+          // case when caldate < '2008-01-04' then -1 when caldate > '2008-01-04' then 1 else 0 end
+          // AS date_cmp
+          rewrittenExpression = new CaseExpression(new LongValue(0),
+              new WhenClause(
+                  new MinorThan(parameters.get(0), new CastExpression(parameters.get(1), "DATE")),
+                  new LongValue(-1)),
+              new WhenClause(
+                  new GreaterThan(parameters.get(0), new CastExpression(parameters.get(1), "DATE")),
+                  new LongValue(1)));
+          break;
+        case DATE_CMP_TIMESTAMP:
+          // case when caldate < '2008-01-04' then -1 when caldate > '2008-01-04' then 1 else 0 end
+          // AS date_cmp
+          rewrittenExpression = new CaseExpression(new LongValue(0),
+              new WhenClause(new MinorThan(parameters.get(0),
+                  new CastExpression(parameters.get(1), "TIMESTAMP")), new LongValue(-1)),
+              new WhenClause(new GreaterThan(parameters.get(0),
+                  new CastExpression(parameters.get(1), "TIMESTAMP")), new LongValue(1)));
+          break;
+        case DATE_CMP_TIMESTAMPTZ:
+          // case when caldate < '2008-01-04' then -1 when caldate > '2008-01-04' then 1 else 0 end
+          // AS date_cmp
+          rewrittenExpression = new CaseExpression(new LongValue(0),
+              new WhenClause(new MinorThan(parameters.get(0),
+                  new CastExpression(parameters.get(1), "TIMESTAMPTZ")), new LongValue(-1)),
+              new WhenClause(new GreaterThan(parameters.get(0),
+                  new CastExpression(parameters.get(1), "TIMESTAMPTZ")), new LongValue(1)));
+          break;
+        case DATEADD:
+          if (parameters != null && parameters.size() == 3) {
+            // date_add(caldate, (30 ||' day')::INTERVAL)
+            function.setName("date_add");
+            function.setParameters(parameters.get(2),
+                new CastExpression(new Parenthesis(BinaryExpression.concat(parameters.get(1),
+                    new StringValue(" " + parameters.get(0).toString()))), "INTERVAL"));
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
