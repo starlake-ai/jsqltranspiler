@@ -94,7 +94,7 @@ ORDER BY datetime
 SELECT EXTRACT(HOUR FROM TIME '15:30:00') as hour;
 
 -- expected
-SELECT EXTRACT(HOUR FROM TIME '15:30:00') as hour;
+SELECT EXTRACT(HOUR FROM TIME '15:30:00.000') as hour;
 
 -- result
 "hour"

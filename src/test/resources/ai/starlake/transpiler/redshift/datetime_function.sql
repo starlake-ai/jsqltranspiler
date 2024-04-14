@@ -50,11 +50,19 @@ order by dateid
 limit 10;
 
 -- expected
-select caldate, '2008-01-04',
-case when caldate < '2008-01-04'::DATE then -1 when caldate > '2008-01-04'::DATE then 1 else 0 end AS date_cmp
-from date
-order by dateid
-limit 10;
+SELECT  caldate
+        , '2008-01-04'
+        , CASE
+            WHEN caldate::DATE < DATE '2008-01-04'
+                THEN - 1
+            WHEN caldate::DATE > DATE '2008-01-04'
+                THEN 1
+            ELSE 0
+            END AS date_cmp
+FROM date
+ORDER BY dateid
+LIMIT 10
+;
 
 -- result
 "caldate","'2008-01-04'","date_cmp"
@@ -82,9 +90,9 @@ SELECT  listid
         , '2008-06-18'
         ,  Cast( listtime AS TIMESTAMPTZ ) AS tstz
         , CASE
-            WHEN '2008-06-18' <  Cast( listtime AS TIMESTAMPTZ )::TIMESTAMPTZ
+            WHEN DATE '2008-06-18' <  Cast( listtime AS TIMESTAMPTZ )
                 THEN - 1
-            WHEN '2008-06-18' >  Cast( listtime AS TIMESTAMPTZ )::TIMESTAMPTZ
+            WHEN DATE '2008-06-18' >  Cast( listtime AS TIMESTAMPTZ )
                 THEN 1
             ELSE 0
             END AS compared
@@ -167,4 +175,400 @@ select date_diff('week',DATE '2009-01-01', DATE '2009-12-31') as numweeks;
 "numweeks"
 "52"
 
+
+-- provided
+select datediff(hour, '2023-01-01', '2023-01-03 05:04:03') AS diff;
+
+-- expected
+select date_diff('hour', DATE '2023-01-01',  TIMESTAMP WITHOUT TIME ZONE '2023-01-03T05:04:03.000') AS diff;
+
+-- result
+"diff"
+"53"
+
+
+-- provided
+SELECT DATE_PART(minute, timestamp '20230104 04:05:06.789') AS part;
+
+-- expected
+SELECT DATE_PART('minute', timestamp '2023-01-04T04:05:06.789') AS part;
+
+-- result
+"part"
+"5"
+
+
+-- provided
+SELECT DATE_PART(minute, timestamp '20230104 04:05:06.789+0700') AS part;
+
+-- expected
+SELECT DATE_PART('minute', timestamp with time zone '2023-01-03T21:05:06.789+0000') AS part;
+
+-- result
+"part"
+"5"
+
+-- provided
+SELECT DATE_PART(minute, DATE '20230104 04:05:06.789+0700') AS part;
+
+-- expected
+SELECT DATE_PART('minute', timestamp with time zone '2023-01-03T21:05:06.789+0000'::DATE) AS part;
+
+-- result
+"part"
+"0"
+
+
+-- provided
+SELECT DATE_PART_YEAR(date '20220502 04:05:06.789') AS year;
+
+-- expected
+SELECT DATE_PART('YEAR', TIMESTAMP WITHOUT TIME ZONE '2022-05-02T04:05:06.789'::DATE) AS year;
+
+-- result
+"year"
+"2022"
+
+-- provided
+select date_trunc('week', TIMESTAMP '20220430 04:05:06.789') AS truncated;
+
+-- expected
+select date_trunc('week', TIMESTAMP '2022-04-30T04:05:06.789') AS truncated;
+
+-- result
+"truncated"
+"2022-04-25"
+
+
+-- provided
+select extract(ms from timestamp '2009-09-09 12:08:43.101') AS millis;
+
+-- expected
+select extract(ms from timestamp '2009-09-09T12:08:43.101') % 1000 AS millis;
+
+-- result
+"millis"
+"101"
+
+
+-- provided
+select GETDATE();
+
+-- expected
+select get_current_timestamp();
+
+-- count
+1
+
+
+-- provided
+select interval_cmp(INTERVAL '3 days', INTERVAL '1 year') as compare;
+
+-- expected
+select case
+        when INTERVAL '3 days' > INTERVAL '1 year' then 1
+        when INTERVAL '3 days' < INTERVAL '1 year' then -1
+        else 0 end as compare
+;
+
+-- result
+"compare"
+"-1"
+
+
+-- provided
+select datediff(day, saletime, last_day(saletime)) as "Days Remaining", sum(qtysold) AS tally
+from sales
+where datediff(day, saletime, last_day(saletime)) < 7
+group by 1
+order by 1;
+
+-- expected
+select date_diff('day', saletime, last_day(saletime)) as "Days Remaining", sum(qtysold) AS tally
+from sales
+where date_diff('day', saletime, last_day(saletime)) < 7
+group by 1
+order by 1;
+
+-- result
+"Days Remaining","tally"
+"0","10140"
+"1","11187"
+"2","11515"
+"3","11217"
+"4","11446"
+"5","11708"
+"6","10988"
+
+-- provided
+select months_between('1969-01-18', '1969-03-18')
+as months;
+
+-- expected
+select date_diff('MONTH', DATE '1969-03-18', DATE '1969-01-18')
+as months;
+
+-- result
+"months"
+"-2"
+
+
+-- provided
+select sysdate;
+
+-- expected
+select current_date;
+
+-- count
+1
+
+
+-- provided
+select timeofday();
+
+-- expected
+select strftime(Current_TIMESTAMP, '%a %b %-d %H:%M:%S.%n %Y %Z');
+
+-- count
+1
+
+
+-- provided
+select listid, listtime,
+timestamp_cmp_date(listtime, '2008-06-18')  AS cmp
+from listing
+order by 1, 2, 3
+limit 10;
+
+-- expected
+SELECT  listid
+        , listtime
+        , CASE
+            WHEN listtime::TIMESTAMP < DATE '2008-06-18'
+                THEN - 1
+            WHEN listtime::TIMESTAMP > DATE '2008-06-18'
+                THEN 1
+            ELSE 0
+            END AS cmp
+FROM listing
+ORDER BY    1
+            , 2
+            , 3
+LIMIT 10
+;
+
+-- result
+"listid","listtime","cmp"
+"1","2008-01-24 06:43:29","-1"
+"2","2008-03-05 12:25:29","-1"
+"3","2008-11-01 07:35:33","1"
+"4","2008-05-24 01:18:37","-1"
+"5","2008-05-17 02:29:11","-1"
+"6","2008-08-15 02:08:13","1"
+"7","2008-11-15 09:38:15","1"
+"8","2008-11-09 05:07:30","1"
+"9","2008-09-09 08:03:36","1"
+"10","2008-06-17 09:44:54","-1"
+
+
+-- provided
+select listid, listtime,
+timestamp_cmp_date(listtime, '2008-06-18') AS cmp
+from listing
+order by 1, 2, 3
+limit 10;
+
+-- expected
+SELECT  listid
+        , listtime
+        , CASE
+            WHEN listtime::TIMESTAMP < DATE '2008-06-18'
+                THEN - 1
+            WHEN listtime::TIMESTAMP > DATE '2008-06-18'
+                THEN 1
+            ELSE 0
+            END AS cmp
+FROM listing
+ORDER BY    1
+            , 2
+            , 3
+LIMIT 10
+;
+
+-- result
+"listid","listtime","cmp"
+"1","2008-01-24 06:43:29","-1"
+"2","2008-03-05 12:25:29","-1"
+"3","2008-11-01 07:35:33","1"
+"4","2008-05-24 01:18:37","-1"
+"5","2008-05-17 02:29:11","-1"
+"6","2008-08-15 02:08:13","1"
+"7","2008-11-15 09:38:15","1"
+"8","2008-11-09 05:07:30","1"
+"9","2008-09-09 08:03:36","1"
+"10","2008-06-17 09:44:54","-1"
+
+
+
+-- provided
+SELECT TIMESTAMP_CMP_TIMESTAMPTZ('2008-01-24 06:43:29', '2008-01-24 06:43:29+00') AS cmp1
+    , TIMESTAMP_CMP_TIMESTAMPTZ('2008-01-24 06:43:29', '2008-02-18 02:36:48+00')  AS cmp2
+    , TIMESTAMP_CMP_TIMESTAMPTZ('2008-02-18 02:36:48', '2008-01-24 06:43:29+00')  AS cmp3;
+
+-- expected
+SELECT  CASE
+        WHEN TIMESTAMP WITHOUT TIME ZONE '2008-01-24T06:43:29.000' < TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000'
+            THEN - 1
+        WHEN TIMESTAMP WITHOUT TIME ZONE '2008-01-24T06:43:29.000' > TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000'
+            THEN 1
+        ELSE 0
+        END AS cmp1
+        , CASE
+            WHEN TIMESTAMP WITHOUT TIME ZONE '2008-01-24T06:43:29.000' < TIMESTAMP WITH TIME ZONE '2008-02-18T02:36:48.000+0000'
+                THEN - 1
+            WHEN TIMESTAMP WITHOUT TIME ZONE '2008-01-24T06:43:29.000' > TIMESTAMP WITH TIME ZONE '2008-02-18T02:36:48.000+0000'
+                THEN 1
+            ELSE 0
+            END AS cmp2
+        , CASE
+            WHEN TIMESTAMP WITHOUT TIME ZONE '2008-02-18T02:36:48.000' < TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000'
+                THEN - 1
+            WHEN TIMESTAMP WITHOUT TIME ZONE '2008-02-18T02:36:48.000' > TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000'
+                THEN 1
+            ELSE 0
+            END AS cmp3
+;
+
+-- result
+"cmp1","cmp2","cmp3"
+"-1","-1","1"
+
+
+-- provided
+SELECT TIMESTAMPTZ_CMP('2008-01-24 06:43:29+00', '2008-01-24 06:43:29+00')  AS cmp1
+    , TIMESTAMPTZ_CMP('2008-01-24 06:43:29+00', '2008-02-18 02:36:48+00')  AS cmp2
+    , TIMESTAMPTZ_CMP('2008-02-18 02:36:48+00', '2008-01-24 06:43:29+00')  AS cmp3;
+
+-- expected
+SELECT  CASE
+        WHEN TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000' < TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000'
+            THEN - 1
+        WHEN TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000' > TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000'
+            THEN 1
+        ELSE 0
+        END AS cmp1
+        , CASE
+            WHEN TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000' < TIMESTAMP WITH TIME ZONE '2008-02-18T02:36:48.000+0000'
+                THEN - 1
+            WHEN TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000' > TIMESTAMP WITH TIME ZONE '2008-02-18T02:36:48.000+0000'
+                THEN 1
+            ELSE 0
+            END AS cmp2
+        , CASE
+            WHEN TIMESTAMP WITH TIME ZONE '2008-02-18T02:36:48.000+0000' < TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000'
+                THEN - 1
+            WHEN TIMESTAMP WITH TIME ZONE '2008-02-18T02:36:48.000+0000' > TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000'
+                THEN 1
+            ELSE 0
+            END AS cmp3
+;
+
+-- result
+"cmp1","cmp2","cmp3"
+"0","-1","1"
+
+
+-- provided
+select listid, CAST(listtime as timestamptz) as tstz,
+timestamp_cmp_date(tstz, '2008-06-18') AS cmp
+from listing
+order by 1, 2, 3
+limit 10;
+
+-- expected
+SELECT  listid
+        ,  Cast( listtime AS TIMESTAMPTZ ) AS tstz
+        , CASE
+            WHEN tstz::TIMESTAMP < DATE '2008-06-18'
+                THEN - 1
+            WHEN tstz::TIMESTAMP > DATE '2008-06-18'
+                THEN 1
+            ELSE 0
+            END AS cmp
+FROM listing
+ORDER BY    1
+            , 2
+            , 3
+LIMIT 10
+;
+
+-- result
+"listid","tstz","cmp"
+"1","2008-01-23T23:43:29Z","-1"
+"2","2008-03-05T05:25:29Z","-1"
+"3","2008-11-01T00:35:33Z","1"
+"4","2008-05-23T18:18:37Z","-1"
+"5","2008-05-16T19:29:11Z","-1"
+"6","2008-08-14T19:08:13Z","1"
+"7","2008-11-15T02:38:15Z","1"
+"8","2008-11-08T22:07:30Z","1"
+"9","2008-09-09T01:03:36Z","1"
+"10","2008-06-17T02:44:54Z","-1"
+
+
+
+-- provided
+SELECT TIMESTAMPTZ_CMP_TIMESTAMP('2008-01-24 06:43:29+00', '2008-01-24 06:43:29')  AS cmp1
+, TIMESTAMPTZ_CMP_TIMESTAMP('2008-01-24 06:43:29+00', '2008-02-18 02:36:48')  AS cmp2
+, TIMESTAMPTZ_CMP_TIMESTAMP('2008-02-18 02:36:48+00', '2008-01-24 06:43:29')  AS cmp3;
+
+-- expected
+SELECT  CASE
+        WHEN TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000' < TIMESTAMP WITHOUT TIME ZONE '2008-01-24T06:43:29.000'
+            THEN - 1
+        WHEN TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000' > TIMESTAMP WITHOUT TIME ZONE '2008-01-24T06:43:29.000'
+            THEN 1
+        ELSE 0
+        END AS cmp1
+        , CASE
+            WHEN TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000' < TIMESTAMP WITHOUT TIME ZONE '2008-02-18T02:36:48.000'
+                THEN - 1
+            WHEN TIMESTAMP WITH TIME ZONE '2008-01-24T06:43:29.000+0000' > TIMESTAMP WITHOUT TIME ZONE '2008-02-18T02:36:48.000'
+                THEN 1
+            ELSE 0
+            END AS cmp2
+        , CASE
+            WHEN TIMESTAMP WITH TIME ZONE '2008-02-18T02:36:48.000+0000' < TIMESTAMP WITHOUT TIME ZONE '2008-01-24T06:43:29.000'
+                THEN - 1
+            WHEN TIMESTAMP WITH TIME ZONE '2008-02-18T02:36:48.000+0000' > TIMESTAMP WITHOUT TIME ZONE '2008-01-24T06:43:29.000'
+                THEN 1
+            ELSE 0
+            END AS cmp3
+;
+
+-- result
+"cmp1","cmp2","cmp3"
+"1","-1","1"
+
+
+-- provided
+SELECT TIMEZONE('PST', '2008-06-17 09:44:54') as tstz;
+
+-- expected
+SELECT TIMESTAMP WITHOUT TIME ZONE '2008-06-17T09:44:54.000' AT TIME ZONE 'PST' as tstz;
+
+-- result
+"tstz"
+"2008-06-17T16:44:54Z"
+
+
+-- provided
+SELECT TIMEZONE('PST', timestamptz '2008-06-17 09:44:54+00' )  as tstz;
+
+-- expected
+SELECT TIMESTAMP WITH TIME ZONE '2008-06-17T09:44:54.000+0000' AT TIME ZONE 'PST' as tstz;
+
+-- result
+"tstz"
+"2008-06-17 02:44:54"
 

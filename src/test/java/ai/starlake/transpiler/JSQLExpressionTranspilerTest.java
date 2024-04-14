@@ -4,6 +4,7 @@ import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.schema.Column;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class JSQLExpressionTranspilerTest {
@@ -84,6 +85,8 @@ class JSQLExpressionTranspilerTest {
         JSQLExpressionTranspiler.castDateTime("2024-03-20 12:34:56.789+07:00").toString());
     Assertions.assertEquals("TIMESTAMP WITHOUT TIME ZONE '2024-03-20T12:34:56.789'",
         JSQLExpressionTranspiler.castDateTime("2024-03-20 12:34:56.789").toString());
+    Assertions.assertEquals("TIMESTAMP WITHOUT TIME ZONE '2024-03-20T12:34:56.000'",
+                            JSQLExpressionTranspiler.castDateTime("2024-03-20 12:34:56").toString());
 
     Assertions.assertEquals("TIMESTAMP WITH TIME ZONE '2024-03-20T12:34:56.789+0000'",
         JSQLExpressionTranspiler.castDateTime("20240320 12:34:56.789+00:00").toString());
@@ -131,4 +134,13 @@ class JSQLExpressionTranspilerTest {
         JSQLExpressionTranspiler.castDateTime("2009-W53-7").toString());
   }
 
+  @Test
+  @Disabled
+  void castDateTime3() {
+    // no support for micro-seconds
+    Assertions.assertEquals(
+            "TIME WITHOUT TIME ZONE '12:34:56.789234'",
+            JSQLExpressionTranspiler.castDateTime("12:34:56.789235").toString()
+    );
+  }
 }

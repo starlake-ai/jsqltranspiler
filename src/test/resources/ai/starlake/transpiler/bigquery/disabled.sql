@@ -70,3 +70,15 @@ SELECT
 "new_array"
 "[[4, 5, 6], [1, 2, 3]]"
 
+
+
+-- provided
+select extract(us from time '18:25:33.123456') AS micros;
+
+-- expected
+select extract(us from time '18:25:33.123456') % 1000000 AS micros;
+
+-- result
+"micros"
+"123456"
+

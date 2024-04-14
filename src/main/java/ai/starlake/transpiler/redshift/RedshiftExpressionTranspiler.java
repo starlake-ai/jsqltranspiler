@@ -36,6 +36,7 @@ import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
+import net.sf.jsqlparser.schema.Column;
 
 public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
   public RedshiftExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
@@ -48,7 +49,10 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
 
     , REGEXP_COUNT, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPLICATE
 
-    , ADD_MONTHS, CONVERT_TIMEZONE, DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD, DATEDIFF
+    , ADD_MONTHS, CONVERT_TIMEZONE, DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD, DATEDIFF, DATE_PART, DATE_PART_YEAR
+    , DATE_TRUNC, GETDATE, INTERVAL_CMP, MONTHS_BETWEEN, SYSDATE, TIMEOFDAY, TIMESTAMP_CMP, TIMESTAMP_CMP_DATE,
+    TIMESTAMP_CMP_TIMESTAMPTZ, TIMESTAMPTZ_CMP, TIMESTAMPTZ_CMP_DATE, TIMESTAMPTZ_CMP_TIMESTAMP, TIMEZONE
+
 
     , TRUNC
 
@@ -328,33 +332,19 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
               .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
           break;
         case DATE_CMP:
-          // case when caldate < '2008-01-04' then -1 when caldate > '2008-01-04' then 1 else 0 end
-          // AS date_cmp
-          rewrittenExpression = new CaseExpression(new LongValue(0),
-              new WhenClause(
-                  new MinorThan(parameters.get(0), new CastExpression(parameters.get(1), "DATE")),
-                  new LongValue(-1)),
-              new WhenClause(
-                  new GreaterThan(parameters.get(0), new CastExpression(parameters.get(1), "DATE")),
-                  new LongValue(1)));
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = cmp(parameters.get(0), "DATE", parameters.get(1), "DATE");
+          }
           break;
         case DATE_CMP_TIMESTAMP:
-          // case when caldate < '2008-01-04' then -1 when caldate > '2008-01-04' then 1 else 0 end
-          // AS date_cmp
-          rewrittenExpression = new CaseExpression(new LongValue(0),
-              new WhenClause(new MinorThan(parameters.get(0),
-                  new CastExpression(parameters.get(1), "TIMESTAMP")), new LongValue(-1)),
-              new WhenClause(new GreaterThan(parameters.get(0),
-                  new CastExpression(parameters.get(1), "TIMESTAMP")), new LongValue(1)));
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = cmp(parameters.get(0), "DATE", parameters.get(1), "TIMESTAMP");
+          }
           break;
         case DATE_CMP_TIMESTAMPTZ:
-          // case when caldate < '2008-01-04' then -1 when caldate > '2008-01-04' then 1 else 0 end
-          // AS date_cmp
-          rewrittenExpression = new CaseExpression(new LongValue(0),
-              new WhenClause(new MinorThan(parameters.get(0),
-                  new CastExpression(parameters.get(1), "TIMESTAMPTZ")), new LongValue(-1)),
-              new WhenClause(new GreaterThan(parameters.get(0),
-                  new CastExpression(parameters.get(1), "TIMESTAMPTZ")), new LongValue(1)));
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = cmp(parameters.get(0), "DATE", parameters.get(1), "TIMESTAMPTZ");
+          }
           break;
         case DATEADD:
           if (parameters != null && parameters.size() == 3) {
@@ -372,6 +362,90 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
                 castDateTime(parameters.get(1)), castDateTime(parameters.get(2)));
           }
           break;
+        case DATE_PART:
+          if (parameters != null && parameters.size() == 2) {
+            function.setName("date_part$$");
+            function.setParameters(new StringValue(parameters.get(0).toString()),
+                                   castDateTime(parameters.get(1)));
+          }
+          break;
+        case DATE_PART_YEAR:
+          if (parameters != null && parameters.size() == 1) {
+            function.setName("date_part$$");
+            function.setParameters(new StringValue("YEAR"),
+                                   castDateTime(parameters.get(0)));
+          }
+          break;
+        case DATE_TRUNC:
+          function.setName("DATE_TRUNC$$");
+          function.setParameters(parameters.get(0), castDateTime(parameters.get(1)));
+          break;
+        case GETDATE:
+          function.setName("Get_Current_Timestamp");
+          break;
+        case INTERVAL_CMP:
+          // case
+          //        when INTERVAL '3 days' > INTERVAL '1 year' then 1
+          //        when INTERVAL '3 days' < INTERVAL '1 year' then -1
+          //        else 0 end as compare
+
+          rewrittenExpression = new CaseExpression(
+                  new LongValue(0)
+                  , new WhenClause(new GreaterThan( castInterval( parameters.get(0)), castInterval( parameters.get(1)) ), new LongValue(1))
+                  , new WhenClause(new MinorThan( castInterval( parameters.get(0)), castInterval( parameters.get(1)) ) , new LongValue(-1))
+          );
+          break;
+        case MONTHS_BETWEEN:
+          warning("Fraction based on days unsupported.");
+          if (parameters!=null && parameters.size()==2) {
+            function.setName("Date_Diff$$");
+            function.setParameters(
+                    new StringValue("MONTH"),
+                    castDateTime(parameters.get(1)),
+                    castDateTime(parameters.get(0))
+            );
+          }
+          break;
+        case TIMEOFDAY:
+          // Thu Sep 19 22:53:50.333525 2013 UTC
+          function.setName("strftime");
+          function.setParameters(new Column("CURRENT_TIMESTAMP"), new StringValue("%a %b %-d %H:%M:%S.%n %Y %Z"));
+          break;
+        case TIMESTAMP_CMP:
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = cmp(parameters.get(0), "TIMESTAMP", parameters.get(1), "TIMESTAMP");
+          }
+          break;
+        case TIMESTAMP_CMP_DATE:
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = cmp(parameters.get(0), "TIMESTAMP", parameters.get(1), "DATE");
+          }
+          break;
+        case TIMESTAMP_CMP_TIMESTAMPTZ:
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = cmp(parameters.get(0), "TIMESTAMP", parameters.get(1), "TIMESTAMPTZ");
+          }
+          break;
+        case TIMESTAMPTZ_CMP:
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = cmp(parameters.get(0), "TIMESTAMPTZ", parameters.get(1), "TIMESTAMPTZ");
+          }
+          break;
+        case TIMESTAMPTZ_CMP_DATE:
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = cmp(parameters.get(0), "TIMESTAMPTZ", parameters.get(1), "DATE");
+          }
+          break;
+        case TIMESTAMPTZ_CMP_TIMESTAMP:
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = cmp(parameters.get(0), "TIMESTAMPTZ", parameters.get(1), "TIMESTAMP");
+          }
+          break;
+        case TIMEZONE:
+          if (parameters!=null && parameters.size()==2) {
+            rewrittenExpression = new TimezoneExpression( castDateTime( parameters.get(1)), parameters.get(0));
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -379,5 +453,23 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     } else {
       rewrittenExpression.accept(this);
     }
+  }
+
+  private static CaseExpression cmp(Expression expr1, String type1, Expression expr2, String type2) {
+    return new CaseExpression(
+            new LongValue(0),
+            new WhenClause(
+                    new MinorThan(new CastExpression( castDateTime(expr1), type1), new CastExpression( castDateTime(expr2), type2)),
+                    new LongValue(-1)),
+            new WhenClause(
+                    new GreaterThan(new CastExpression( castDateTime(expr1), type1), new CastExpression( castDateTime(expr2), type2)),
+                    new LongValue(1)));
+  }
+
+  public void visit(Column column) {
+    if (column.getColumnName().equalsIgnoreCase("SYSDATE")) {
+      column.setColumnName("CURRENT_DATE");
+    }
+    super.visit(column);
   }
 }

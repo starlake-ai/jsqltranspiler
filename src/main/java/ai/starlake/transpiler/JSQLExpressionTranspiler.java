@@ -18,6 +18,7 @@ package ai.starlake.transpiler;
 
 import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.ArrayConstructor;
+import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
@@ -1562,12 +1563,19 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       extractExpression.setName("WEEK");
     }
 
-    if (extractExpression.getExpression() instanceof StringValue) {
-      extractExpression.setExpression(
-          new DateTimeLiteralExpression().withType(DateTimeLiteralExpression.DateTime.DATE)
-              .withValue(extractExpression.toString()));
+    extractExpression.setExpression( castDateTime(extractExpression.getExpression()) );
+
+    // DuckkDB returns "Sub Minute" units for millis and micros
+    if (Set.of("microseconds", "microsecond", "us", "usec", "usecs", "usecond", "useconds").contains( extractExpression.getName().toLowerCase() )) {
+      BinaryExpression.modulo( extractExpression.withName("us$$"), new LongValue(1000000)).accept(this);
+    } else if (Set.of("milliseconds", "millisecond", "ms", "msec", "msecs", "msecond", "mseconds").contains( extractExpression.getName().toLowerCase() )) {
+      BinaryExpression.modulo( extractExpression.withName("ms$$"), new LongValue(1000)).accept(this);;
+    } else if (extractExpression.getName().endsWith("$$")) {
+      String name = extractExpression.getName();
+      super.visit(extractExpression.withName( name.substring(0, name.length()-2) ));
+    } else {
+      super.visit(extractExpression);
     }
-    super.visit(extractExpression);
   }
 
   public void visit(StringValue stringValue) {
@@ -1628,6 +1636,20 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   public void visit(CastExpression castExpression) {
+    // same cast
+    if (castExpression.getLeftExpression() instanceof CastExpression ) {
+      CastExpression leftExpression = (CastExpression) castExpression.getLeftExpression();
+      if ( castExpression.isOf( leftExpression )
+          || castExpression.isOf(CastExpression.DataType.TIMESTAMP,CastExpression.DataType.TIMESTAMP_WITHOUT_TIME_ZONE) && leftExpression.isOf(CastExpression.DataType.TIMESTAMP, CastExpression.DataType.TIMESTAMP_WITHOUT_TIME_ZONE)
+           || castExpression.isOf(CastExpression.DataType.TIMESTAMPTZ,CastExpression.DataType.TIMESTAMP_WITH_TIME_ZONE) && leftExpression.isOf(CastExpression.DataType.TIMESTAMPTZ,CastExpression.DataType.TIMESTAMP_WITH_TIME_ZONE)
+           || castExpression.isOf(CastExpression.DataType.TIME,CastExpression.DataType.TIME_WITHOUT_TIME_ZONE) && leftExpression.isOf(CastExpression.DataType.TIME, CastExpression.DataType.TIME_WITHOUT_TIME_ZONE)
+      ) {
+
+        castExpression.getLeftExpression().accept(this);
+        return;
+      }
+    }
+
     if (castExpression.isOf(CastExpression.DataType.TIMESTAMP)
         && hasTimeZoneInfo(castExpression.getLeftExpression())) {
       castExpression.getColDataType().setDataType("TIMESTAMPTZ");
@@ -1757,23 +1779,120 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return castDateTime(new StringValue(expression));
   }
 
-  @SuppressWarnings({"PMD.EmptyCatchBlock"})
   public static Expression castDateTime(Expression expression) {
+    if (expression instanceof StringValue) {
+      return castDateTime((StringValue) expression);
+    } else if (expression instanceof CastExpression) {
+      return castDateTime((CastExpression) expression);
+    } else if (expression instanceof DateTimeLiteralExpression) {
+      return castDateTime((DateTimeLiteralExpression) expression);
+    } else {
+      return expression;
+    }
+  }
 
-    // fail immediately when not a StringLiteral
-    if (!(expression instanceof StringValue)) {
+  // Unfortunately "yyyyDDD" will collide with "yyyyMMdd"
+  // because number of the Digits is not enforced when parsing
+  // Also, General Time Zones like `Asia/Bangkok` are not accepted when parsing
+  private final static String[] dateFormats =
+          {"", "yyyy-MM-dd", "yyyyMMdd", "YYYY-'W'ww-u", "YYYY'W'wwu", "yyyy-DDD", "yyyyDDD"};
+  private final static  String[] timeFormats = {"HH:mm:ss.SSS", "HHmmss.SSS", "HH:mm:ss", "HHmmss"};
+  private final static  String[] timeSeparators = {"", "'T'", " "};
+  private final static String[] zones = {"z", "zz", "zzzz", "Z", "X", "XXX"};
+
+  @SuppressWarnings({"PMD.EmptyCatchBlock"})
+  public static Expression castDateTime(DateTimeLiteralExpression expression) {
+    SimpleDateFormat f = new SimpleDateFormat();
+    f.setTimeZone(TimeZone.getTimeZone("UTC"));
+    f.setLenient(false);
+
+    String s = expression.getValue();
+    Date date = null;
+
+    // test for Timestamp with time zone
+    for (String df : dateFormats) {
+      for (String tf : timeFormats) {
+        for (String separator : timeSeparators) {
+
+          for (String z : zones) {
+            f.applyPattern(df + separator + tf + z);
+            try {
+              date = f.parse(s);
+              return df.isEmpty()
+                     ? expression.withValue( formatDate(date, "HH:mm:ss.SSS" + "Z", "UTC"))
+                     : expression.withValue( formatDate(date, "yyyy-MM-dd'T'" + "HH:mm:ss.SSS" + "Z", "UTC"));
+            } catch (Exception ignore) {
+              // nothing to do here
+            }
+          }
+
+          f.applyPattern(df + separator + tf);
+          try {
+            date = f.parse(s);
+            return df.isEmpty()
+                   ? expression.withValue(formatDate(date, "HH:mm:ss.SSS", "UTC"))
+                   : expression.withValue(formatDate(date, "yyyy-MM-dd'T'" + "HH:mm:ss.SSS", "UTC"));
+          } catch (Exception ignore) {
+            // nothing to do here
+          }
+
+        }
+      }
+
+      if (!df.isEmpty()) {
+        f.applyPattern(df);
+        try {
+          date = f.parse(s);
+          return expression.withValue(formatDate(date, "yyyy-MM-dd", "UTC"));
+        } catch (Exception ignore) {
+          // nothing to do here
+        }
+      }
+    }
+    return expression;
+  }
+
+  @SuppressWarnings({"PMD.EmptyCatchBlock"})
+  public static Expression castDateTime(CastExpression expression) {
+    if (! (expression.isDate() || expression.isTime() || expression.isTimeStamp())) {
       return expression;
     }
 
-    // Unfortunately "yyyyDDD" will collide with "yyyyMMdd"
-    // because number of the Digits is not enforced when parsing
-    // Also, General Time Zones like `Asia/Bangkok` are not accepted when parsing
-    String[] dateFormats =
-        {"", "yyyy-MM-dd", "yyyyMMdd", "YYYY-'W'ww-u", "YYYY'W'wwu", "yyyy-DDD", "yyyyDDD"};
-    String[] timeFormats = {"HH:mm:ss.SSS", "HHmmss.SSS"};
-    String[] timeSeparators = {"", "'T'", " "};
-    String[] zones = {"XXX", "z", "zzzz", "Z"};
+    if (! (expression.getLeftExpression() instanceof StringValue)) {
+      return expression;
+    }
 
+    SimpleDateFormat f = new SimpleDateFormat();
+    f.setTimeZone(TimeZone.getTimeZone("UTC"));
+    f.setLenient(false);
+
+    Expression expression1 = castDateTime( (StringValue) expression.getLeftExpression() );
+    if (expression1 instanceof CastExpression) {
+      CastExpression autoCast = (CastExpression) expression1;
+      if (autoCast.isOf(expression)) {
+        return expression.withLeftExpression( autoCast.getLeftExpression() );
+      } else if (autoCast.isOf(CastExpression.DataType.TIME_WITH_TIME_ZONE )
+                               && expression.isOf(CastExpression.DataType.TIME, CastExpression.DataType.TIME_WITHOUT_TIME_ZONE)) {
+        return autoCast;
+      } else if (autoCast.isOf(CastExpression.DataType.TIMESTAMP_WITH_TIME_ZONE )
+                 && expression.isOf(CastExpression.DataType.TIMESTAMP, CastExpression.DataType.TIMESTAMP_WITHOUT_TIME_ZONE, CastExpression.DataType.TIMESTAMPTZ)) {
+        return autoCast;
+      } else if (autoCast.isOf(CastExpression.DataType.TIME_WITHOUT_TIME_ZONE )
+                 && expression.isOf(CastExpression.DataType.TIME, CastExpression.DataType.TIME_WITHOUT_TIME_ZONE)) {
+        return expression.withLeftExpression( autoCast.getLeftExpression() );
+      } else if (autoCast.isOf(CastExpression.DataType.TIMESTAMP_WITHOUT_TIME_ZONE )
+                 && expression.isOf(CastExpression.DataType.TIMESTAMP, CastExpression.DataType.TIMESTAMP_WITHOUT_TIME_ZONE)) {
+        return expression.withLeftExpression( autoCast.getLeftExpression() );
+      } else {
+        return expression.setImplicitCast(false).withLeftExpression(autoCast);
+      }
+    }
+
+    return expression;
+  }
+
+  @SuppressWarnings({"PMD.EmptyCatchBlock"})
+  public static Expression castDateTime(StringValue expression) {
     SimpleDateFormat f = new SimpleDateFormat();
     f.setTimeZone(TimeZone.getTimeZone("UTC"));
     f.setLenient(false);
@@ -1825,6 +1944,34 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         }
       }
     }
+    return expression;
+  }
+
+  public static Expression castInterval(String expression) {
+    return castInterval(new StringValue(expression));
+  }
+
+  public static Expression castInterval(Expression expression) {
+    if (expression instanceof StringValue) {
+      return castInterval((StringValue) expression);
+    } else if (expression instanceof CastExpression) {
+      return castInterval((CastExpression) expression);
+    } else if (expression instanceof IntervalExpression) {
+      return castInterval((IntervalExpression) expression);
+    } else {
+      return expression;
+    }
+  }
+
+  public static Expression castInterval(StringValue expression) {
+    return new CastExpression("INTERVAL", expression.getValue());
+  }
+
+  public static Expression castInterval(CastExpression expression) {
+    return expression;
+  }
+
+  public static Expression castInterval(IntervalExpression expression) {
     return expression;
   }
 
