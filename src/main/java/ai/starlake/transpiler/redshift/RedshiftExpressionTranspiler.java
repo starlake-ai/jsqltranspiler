@@ -322,7 +322,6 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
 
           warning("Strictly interpreted as DATE_TRUNC");
 
-          Expression precision = parameters.size() == 2 ? parameters.get(1) : new LongValue(0);
           WhenClause whenClause = new WhenClause(new StringValue("TIMESTAMP"),
               new Function("Date_Trunc", new StringValue("Day"), parameters.get(0)));
           rewrittenExpression = new CaseExpression(whenClause)

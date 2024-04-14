@@ -1749,7 +1749,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   private static String formatDate(Date date, String pattern, String tzID) {
     SimpleDateFormat f = new SimpleDateFormat(pattern);
-    f.setTimeZone(TimeZone.getTimeZone("UTC"));
+    f.setTimeZone(TimeZone.getTimeZone(tzID));
     return f.format(date);
   }
 
@@ -1757,6 +1757,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return castDateTime(new StringValue(expression));
   }
 
+  @SuppressWarnings({"PMD.EmptyCatchBlock"})
   public static Expression castDateTime(Expression expression) {
 
     // fail immediately when not a StringLiteral
@@ -1764,6 +1765,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       return expression;
     }
 
+    // Unfortunately "yyyyDDD" will collide with "yyyyMMdd"
+    // because number of the Digits is not enforced when parsing
+    // Also, General Time Zones like `Asia/Bangkok` are not accepted when parsing
     String[] dateFormats =
         {"", "yyyy-MM-dd", "yyyyMMdd", "YYYY-'W'ww-u", "YYYY'W'wwu", "yyyy-DDD", "yyyyDDD"};
     String[] timeFormats = {"HH:mm:ss.SSS", "HHmmss.SSS"};
