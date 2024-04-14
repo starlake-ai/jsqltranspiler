@@ -52,10 +52,13 @@ import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -367,7 +370,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     // Regular expression to match timezone offset with optional minutes part
     final Pattern pattern = Pattern.compile("\\+\\d{2}(:\\d{2})?$");
     // If the string matches the regular expression, it contains timezone information
-    return pattern.matcher(timestampStr.replaceAll("\\'", "")).find();
+    return pattern.matcher(timestampStr.replaceAll("'", "")).find();
   }
 
   public static boolean hasTimeZoneInfo(Expression timestamp) {
@@ -1744,5 +1747,81 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return unicodeBuilder.toString();
   }
 
+  private static String formatDate(Date date, String pattern, String tzID) {
+    SimpleDateFormat f = new SimpleDateFormat(pattern);
+    f.setTimeZone(TimeZone.getTimeZone("UTC"));
+    return f.format(date);
+  }
+
+  public static Expression castDateTime(String expression) {
+    return castDateTime(new StringValue(expression));
+  }
+
+  public static Expression castDateTime(Expression expression) {
+
+    // fail immediately when not a StringLiteral
+    if (!(expression instanceof StringValue)) {
+      return expression;
+    }
+
+    String[] dateFormats =
+        {"", "yyyy-MM-dd", "yyyyMMdd", "YYYY-'W'ww-u", "YYYY'W'wwu", "yyyy-DDD", "yyyyDDD"};
+    String[] timeFormats = {"HH:mm:ss.SSS", "HHmmss.SSS"};
+    String[] timeSeparators = {"", "'T'", " "};
+    String[] zones = {"XXX", "z", "zzzz", "Z"};
+
+    SimpleDateFormat f = new SimpleDateFormat();
+    f.setTimeZone(TimeZone.getTimeZone("UTC"));
+    f.setLenient(false);
+
+    String s = ((StringValue) expression).getValue();
+    Date date = null;
+
+    // test for Timestamp with time zone
+    for (String df : dateFormats) {
+      for (String tf : timeFormats) {
+        for (String separator : timeSeparators) {
+
+          for (String z : zones) {
+            f.applyPattern(df + separator + tf + z);
+            try {
+              date = f.parse(s);
+              return df.isEmpty()
+                  ? new CastExpression("TIME WITH TIME ZONE",
+                      formatDate(date, "HH:mm:ss.SSS" + "Z", "UTC"))
+                  : new CastExpression("TIMESTAMP WITH TIME ZONE",
+                      formatDate(date, "yyyy-MM-dd'T'" + "HH:mm:ss.SSS" + "Z", "UTC"));
+            } catch (Exception ignore) {
+              // nothing to do here
+            }
+          }
+
+          f.applyPattern(df + separator + tf);
+          try {
+            date = f.parse(s);
+            return df.isEmpty()
+                ? new CastExpression("TIME WITHOUT TIME ZONE",
+                    formatDate(date, "HH:mm:ss.SSS", "UTC"))
+                : new CastExpression("TIMESTAMP WITHOUT TIME ZONE",
+                    formatDate(date, "yyyy-MM-dd'T'" + "HH:mm:ss.SSS", "UTC"));
+          } catch (Exception ignore) {
+            // nothing to do here
+          }
+
+        }
+      }
+
+      if (!df.isEmpty()) {
+        f.applyPattern(df);
+        try {
+          date = f.parse(s);
+          return new CastExpression("DATE", formatDate(date, "yyyy-MM-dd", "UTC"));
+        } catch (Exception ignore) {
+          // nothing to do here
+        }
+      }
+    }
+    return expression;
+  }
 
 }

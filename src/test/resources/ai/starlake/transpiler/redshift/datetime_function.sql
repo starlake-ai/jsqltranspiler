@@ -157,3 +157,14 @@ order by dateid;
 "2008-12-30 00:00:00"
 
 
+-- provided
+select datediff(week,'2009-01-01','2009-12-31') as numweeks;
+
+-- expected
+select date_diff('week',DATE '2009-01-01', DATE '2009-12-31') as numweeks;
+
+-- result
+"numweeks"
+"52"
+
+

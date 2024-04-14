@@ -48,7 +48,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
 
     , REGEXP_COUNT, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPLICATE
 
-    , ADD_MONTHS, CONVERT_TIMEZONE, DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD
+    , ADD_MONTHS, CONVERT_TIMEZONE, DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD, DATEDIFF
 
     , TRUNC
 
@@ -360,10 +360,17 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
         case DATEADD:
           if (parameters != null && parameters.size() == 3) {
             // date_add(caldate, (30 ||' day')::INTERVAL)
-            function.setName("date_add");
+            function.setName("date_add$$");
             function.setParameters(parameters.get(2),
                 new CastExpression(new Parenthesis(BinaryExpression.concat(parameters.get(1),
                     new StringValue(" " + parameters.get(0).toString()))), "INTERVAL"));
+          }
+          break;
+        case DATEDIFF:
+          if (parameters != null && parameters.size() == 3) {
+            function.setName("date_diff$$");
+            function.setParameters(new StringValue(parameters.get(0).toString()),
+                castDateTime(parameters.get(1)), castDateTime(parameters.get(2)));
           }
           break;
       }

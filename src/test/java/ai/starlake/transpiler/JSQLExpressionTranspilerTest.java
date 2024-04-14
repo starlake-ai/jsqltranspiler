@@ -71,4 +71,64 @@ class JSQLExpressionTranspilerTest {
 
     Assertions.assertEquals("abc", stringValue.getValue());
   }
+
+  @Test
+  void castDateTime2() {
+    // general timezones are not accepted
+    // Assertions.assertEquals("TIMESTAMP WITH TIME ZONE '2024-03-20T12:34:56.789+0000'",
+    // JSQLExpressionTranspiler.castDateTime("2024-03-20 12:34:56.789 'Asia/Bangkok'").toString());
+
+    Assertions.assertEquals("TIMESTAMP WITH TIME ZONE '2024-03-20T12:34:56.789+0000'",
+        JSQLExpressionTranspiler.castDateTime("2024-03-20 12:34:56.789+00:00").toString());
+    Assertions.assertEquals("TIMESTAMP WITH TIME ZONE '2024-03-20T05:34:56.789+0000'",
+        JSQLExpressionTranspiler.castDateTime("2024-03-20 12:34:56.789+07:00").toString());
+    Assertions.assertEquals("TIMESTAMP WITHOUT TIME ZONE '2024-03-20T12:34:56.789'",
+        JSQLExpressionTranspiler.castDateTime("2024-03-20 12:34:56.789").toString());
+
+    Assertions.assertEquals("TIMESTAMP WITH TIME ZONE '2024-03-20T12:34:56.789+0000'",
+        JSQLExpressionTranspiler.castDateTime("20240320 12:34:56.789+00:00").toString());
+    Assertions.assertEquals("TIMESTAMP WITH TIME ZONE '2024-03-20T05:34:56.789+0000'",
+        JSQLExpressionTranspiler.castDateTime("20240320 12:34:56.789+07:00").toString());
+    Assertions.assertEquals("TIMESTAMP WITHOUT TIME ZONE '2024-03-20T12:34:56.789'",
+        JSQLExpressionTranspiler.castDateTime("20240320 12:34:56.789").toString());
+
+    Assertions.assertEquals("TIMESTAMP WITH TIME ZONE '2024-03-20T12:34:56.789+0000'",
+        JSQLExpressionTranspiler.castDateTime("20240320T123456.789+00:00").toString());
+    Assertions.assertEquals("TIMESTAMP WITH TIME ZONE '2024-03-20T05:34:56.789+0000'",
+        JSQLExpressionTranspiler.castDateTime("20240320T123456.789+07:00").toString());
+    Assertions.assertEquals("TIMESTAMP WITHOUT TIME ZONE '2024-03-20T12:34:56.789'",
+        JSQLExpressionTranspiler.castDateTime("20240320T123456.789").toString());
+
+    Assertions.assertEquals("TIME WITHOUT TIME ZONE '12:34:56.789'",
+        JSQLExpressionTranspiler.castDateTime("12:34:56.789").toString());
+    Assertions.assertEquals("TIME WITH TIME ZONE '05:34:56.789+0000'",
+        JSQLExpressionTranspiler.castDateTime("12:34:56.789+07:00").toString());
+    Assertions.assertEquals("TIME WITHOUT TIME ZONE '12:34:56.789'",
+        JSQLExpressionTranspiler.castDateTime("123456.789").toString());
+    Assertions.assertEquals("TIME WITH TIME ZONE '05:34:56.789+0000'",
+        JSQLExpressionTranspiler.castDateTime("123456.789+07:00").toString());
+
+    Assertions.assertEquals("DATE '2024-03-20'",
+        JSQLExpressionTranspiler.castDateTime("2024-03-20").toString());
+    Assertions.assertEquals("DATE '2024-03-20'",
+        JSQLExpressionTranspiler.castDateTime("20240320").toString());
+
+    // Ordinal Dates
+    Assertions.assertEquals("DATE '1981-04-05'",
+        JSQLExpressionTranspiler.castDateTime("1981-095").toString());
+
+    // collides
+    // Assertions.assertEquals("DATE '1981-04-05'",
+    // JSQLExpressionTranspiler.castDateTime("1981095").toString());
+
+    // Week Dates
+    Assertions.assertEquals("DATE '2008-12-29'",
+        JSQLExpressionTranspiler.castDateTime("2009-W01-1").toString());
+    Assertions.assertEquals("DATE '2008-12-29'",
+        JSQLExpressionTranspiler.castDateTime("2009W011").toString());
+
+    Assertions.assertEquals("DATE '2010-01-03'",
+        JSQLExpressionTranspiler.castDateTime("2009-W53-7").toString());
+  }
+
 }
