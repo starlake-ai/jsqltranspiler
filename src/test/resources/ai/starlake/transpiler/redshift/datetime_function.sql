@@ -572,3 +572,25 @@ SELECT TIMESTAMP WITH TIME ZONE '2008-06-17T09:44:54.000+0000' AT TIME ZONE 'PST
 "tstz"
 "2008-06-17 02:44:54"
 
+
+-- provided
+SELECT TO_TIMESTAMP('2017','YYYY') AS tstz;
+
+-- expected
+SELECT strptime('2017', '%Y')::TIMESTAMP AT TIME ZONE 'UTC' AS tstz;
+
+-- result
+"tstz"
+"2017-01-01T00:00Z"
+
+
+-- provided
+SELECT TO_TIMESTAMP('2011-12-18 23:38:15', 'YYYY-MM-DD HH24:MI:SS')  AS tstz;
+
+-- expected
+SELECT STRPTIME('2011-12-18 23:38:15','%Y-%m-%d %H:%M:%S')::TIMESTAMP AT TIME ZONE 'UTC' AS TSTZ;
+
+-- result
+"tstz"
+"2011-12-18T23:38:15Z"
+
