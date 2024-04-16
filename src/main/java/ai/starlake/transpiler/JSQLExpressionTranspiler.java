@@ -35,6 +35,7 @@ import net.sf.jsqlparser.expression.OracleNamedFunctionParameter;
 import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.StructType;
+import net.sf.jsqlparser.expression.TimeKeyExpression;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
@@ -471,11 +472,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         case CURRENT_TIMESTAMP:
           if (parameters != null) {
             switch (parameters.size()) {
+              case 0:
+                rewrittenExpression = new Column(functionName);
+                break;
               case 1:
                 // CURRENT_DATE(timezone)
                 // CURRENT_DATETIME(timezone)
                 rewrittenExpression =
-                    new TimezoneExpression(function.withParameters(), parameters.get(0));
+                    new TimezoneExpression(new Column(functionName), parameters.get(0));
                 break;
             }
           }
@@ -1988,4 +1992,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return expression;
   }
 
+  public void visit(TimeKeyExpression timeKeyExpression) {
+    if (timeKeyExpression.getStringValue().toLowerCase().startsWith("current")) {
+      buffer.append(timeKeyExpression.getStringValue().replaceAll("[()]", ""));
+    } else {
+      super.visit(timeKeyExpression);
+    }
+  }
 }

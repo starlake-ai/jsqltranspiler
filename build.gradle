@@ -14,6 +14,7 @@ plugins {
     id "com.github.spotbugs" version "latest.release"
     id "com.diffplug.spotless" version "latest.release"
 
+    id "de.undercouch.download" version "latest.release"
     id 'org.hidetake.ssh' version "latest.release"
     id "com.github.hierynomus.license" version "latest.release"
     id "se.bjurr.gitchangelog.git-changelog-gradle-plugin" version "latest.release"

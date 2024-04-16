@@ -127,6 +127,75 @@ JSQLExpressionTranspiler
 |          :ref:`String<java.lang.String>` s
 
 
+| **convertByteStringToUnicode** (byteString) → :ref:`String<java.lang.String>`
+|          :ref:`String<java.lang.String>` byteString
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **castDateTime** (expression) → Expression
+|          :ref:`String<java.lang.String>` expression
+|          returns Expression
+
+
+
+| **castDateTime** (expression) → Expression
+|          Expression expression
+|          returns Expression
+
+
+
+| *@SuppressWarnings*
+| **castDateTime** (expression) → Expression
+|          DateTimeLiteralExpression expression
+|          returns Expression
+
+
+
+| *@SuppressWarnings*
+| **castDateTime** (expression) → Expression
+|          CastExpression expression
+|          returns Expression
+
+
+
+| *@SuppressWarnings*
+| **castDateTime** (expression) → Expression
+|          StringValue expression
+|          returns Expression
+
+
+
+| **castInterval** (expression) → Expression
+|          :ref:`String<java.lang.String>` expression
+|          returns Expression
+
+
+
+| **castInterval** (expression) → Expression
+|          Expression expression
+|          returns Expression
+
+
+
+| **castInterval** (expression) → Expression
+|          StringValue expression
+|          returns Expression
+
+
+
+| **castInterval** (expression) → Expression
+|          CastExpression expression
+|          returns Expression
+
+
+
+| **castInterval** (expression) → Expression
+|          IntervalExpression expression
+|          returns Expression
+
+
+
 
 ..  _ai.starlake.transpiler.JSQLTranspiler:
 
@@ -313,6 +382,16 @@ RedshiftExpressionTranspiler
 | *@SuppressWarnings*
 | **visit** (function)
 |          Function function
+
+
+| **visit** (column)
+|          Column column
+
+
+| **toFormat** (s) → :ref:`String<java.lang.String>`
+|          :ref:`String<java.lang.String>` s
+|          returns :ref:`String<java.lang.String>`
+
 
 
 

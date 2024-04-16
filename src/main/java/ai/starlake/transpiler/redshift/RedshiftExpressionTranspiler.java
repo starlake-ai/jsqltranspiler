@@ -38,8 +38,14 @@ import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
 import net.sf.jsqlparser.schema.Column;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
+  public static final Pattern NUMBER_FORMAT_PATTERN =
+      Pattern.compile("((?<!(%))(?<!(%-))[09D.G,]+)");
+
   public RedshiftExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
     super(transpiler, buffer);
   }
@@ -57,6 +63,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     , TIMESTAMP_CMP_TIMESTAMPTZ, TIMESTAMPTZ_CMP, TIMESTAMPTZ_CMP_DATE, TIMESTAMPTZ_CMP_TIMESTAMP, TIMEZONE, TO_TIMESTAMP
 
     , TRUNC
+
+    , TO_CHAR
 
     ;
     // @FORMATTER:ON
@@ -475,6 +483,19 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
             }
           }
           break;
+        case TO_CHAR:
+          if (parameters != null && parameters.size() == 2) {
+            StringValue stringValue = (StringValue) parameters.get(1);
+            String formatStr = toFormat(stringValue.getValue());
+
+            stringValue = new StringValue(formatStr);
+
+            // this is totally whack, but I did not see any other way to decide
+            // when to used which function
+            // @todo: submit PR to DuckDB
+            function.setName(formatStr.contains("%g") ? "printf" : "strftime");
+            function.setParameters(parameters.get(0), stringValue);
+          }
       }
     }
     if (rewrittenExpression == null) {
@@ -500,18 +521,33 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     super.visit(column);
   }
 
-  final static String[][] REPLACEMENT = {{"YYYY", "%Y"}, {"YYY", "%Y"}, {"YY", "%y"}, {"Y", "%-y"},
-      {"IYYY", "%G"}, {"Month", "%B"}, {"Mon", "%b"}, {"MM", "%m"}, {"WW", "%U"}, {"IW", "%V"},
-      {"Day", "%A"}, {"Dy", "%a"}, {"DDD", "%j"}, {"DD", "%d"}, {"ID", "%u"}, {"HH24", "%H"},
-      {"HH12", "%I"}, {"HH", "%I"}, {"MI", "%M"}, {"SS", "%S"}, {"MS", "%g"}, {"US", "%f"},
-      {"AM", "%p"}, {"PM", "%p"}, {"TZ", "%Z"}, {"OF", "%z"}};
+  final static String[][] REPLACEMENT =
+      {{"YYYY", "%Y"}, {"YYY", "%Y"}, {"YY", "%y"}, {"IYYY", "%G"}, {"MONTH", "%B "},
+          {"Month", "%B "}, {"month", "%B "}, {"MON", "%b"}, {"Mon", "%b"}, {"mon", "%b"},
+          {"MM", "%m"}, {"WW", "%U"}, {"IW", "%V"}, {"DAY", "%A "}, {"Day", "%A "}, {"day", "%A "},
+          {"DY", "%a"}, {"Dy", "%a"}, {"dy", "%a"}, {"DDD", "%j"}, {"DD", "%d"}, {"ID", "%u"},
+          {"HH24", "%H"}, {"HH12", "%I"}, {"HH", "%I"}, {"MI", "%M"}, {"SS", "%S"}, {"MS", "%g"},
+          {"US", "%f"}, {"AM", "%p"}, {"PM", "%p"}, {"TZ", "%Z"}, {"OF", "%z"}, {"Y", "%-y"}};
 
-  public String toFormat(final String s) {
+  public static String toFormat(final String s) {
     String replacedFormatStr = s;
     for (String[] r : REPLACEMENT) {
       // replace any occurrence except when preceded by "%" or "%-"
       replacedFormatStr = replacedFormatStr.replaceAll("(?<!(%))(?<!(%-))" + r[0], r[1]);
     }
+
+    // "SELECT PRINTF('%010.2f', 125.8) AS chars;";
+    // 0000125.80
+
+    Matcher matcher = NUMBER_FORMAT_PATTERN.matcher(replacedFormatStr);
+    while (matcher.find()) {
+      String found = matcher.group(1);
+      boolean zeroPadded = (found.startsWith("0"));
+
+      String replacement = "%g";
+      replacedFormatStr = replacedFormatStr.replace(found, replacement);
+    }
+
     return replacedFormatStr;
   }
 

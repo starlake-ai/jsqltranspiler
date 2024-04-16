@@ -1,6 +1,7 @@
 package ai.starlake.transpiler;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -13,8 +14,9 @@ import java.util.Properties;
 public class DuckDBFreeze {
 
   @Test
+  @Disabled
   void testFreeze() throws SQLException {
-    String sqlString = "SELECT LENGTH(42) AS L";
+    String sqlString = "SELECT PRINTF('%010.2f', 125.8) AS chars;";
 
     Properties info = new Properties();
 
@@ -22,14 +24,14 @@ public class DuckDBFreeze {
     // info.put("old_implicit_casting", true);
 
     // works
-    info.put("old_implicit_casting", "true");
+    // info.put("old_implicit_casting", "true");
 
     try (Connection connDuck = DriverManager.getConnection("jdbc:duckdb:", info);
         Statement st = connDuck.createStatement();
         ResultSet rs = st.executeQuery(sqlString);) {
       Assertions.assertTrue(rs.next());
 
-      Assertions.assertEquals(2, rs.getInt(1));
+      Assertions.assertEquals("21", rs.getString(1));
     }
   }
 }

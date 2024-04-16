@@ -2,7 +2,7 @@
 SELECT CURRENT_DATE('America/Los_Angeles') AS the_date;
 
 -- expected
-SELECT CURRENT_DATE() AT TIME ZONE 'America/Los_Angeles' AS the_date;
+SELECT CURRENT_DATE AT TIME ZONE 'America/Los_Angeles' AS the_date;
 
 -- count
 1

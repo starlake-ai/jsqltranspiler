@@ -20,3 +20,13 @@ SELECT
 "t1","t2","t3","t4","t5","t6"
 "2008-12-25 15:30:00","2008-12-25 07:30:00","2008-12-25 00:00:00","2008-12-25T08:00Z","2008-12-25 15:30:00","2008-12-25 00:30:00"
 
+
+-- provided
+select current_timestamp();
+
+-- expected
+select current_timestamp;
+
+-- count
+1
+

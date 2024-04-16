@@ -8,6 +8,45 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **feat: Redshift DateTime functions completed**
+    
+    Andreas Reichel, 2024-04-15
+  * **feat: Redshift DateTime functions**
+    
+    Andreas Reichel, 2024-04-14
+  * **style: Q/A**
+    
+    Andreas Reichel, 2024-04-14
+  * **feat: auto-cast ISO_8601 DateTime Literals**
+    
+    Andreas Reichel, 2024-04-14
+  * **feat: Redshift DateTime functions, wip**
+    
+    Andreas Reichel, 2024-04-13
+  * **feat: complete Redshift TEXT functions**
+    
+    Andreas Reichel, 2024-04-13
+  * **feat: Redshift String functions**
+    
+    Andreas Reichel, 2024-04-12
+  * **style: formatting**
+    
+    Andreas Reichel, 2024-04-12
+  * **fix: ByteString handling**
+    
+    Andreas Reichel, 2024-04-12
+  * **fix: Stack-overflow when RedShift Expression Transpiler calling SUPER**
+    
+    Andreas Reichel, 2024-04-10
+  * **feat: redshift string functions**
+    
+    Andreas Reichel, 2024-04-09
+  * **feat: Adopt Implicit Cast and better Type information**
+    
+    Andreas Reichel, 2024-04-08
+  * **style: Separate the Dialects into distinguished packages**
+    
+    Andreas Reichel, 2024-04-05
   * **This commit to fix the final package names and keep Andreas Reichel as the only developer of this initial version.**
     
     Hayssam Saleh, 2024-04-04
