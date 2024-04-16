@@ -14,12 +14,9 @@ plugins {
     id "com.github.spotbugs" version "latest.release"
     id "com.diffplug.spotless" version "latest.release"
 
-    // download the RR tools which have no Maven Repository
-    id "de.undercouch.download" version "latest.release"
     id 'org.hidetake.ssh' version "latest.release"
     id "com.github.hierynomus.license" version "latest.release"
     id "se.bjurr.gitchangelog.git-changelog-gradle-plugin" version "latest.release"
-    id "com.nwalsh.gradle.saxon.saxon-gradle" version "0.9.6"
 }
 
 repositories {
@@ -49,7 +46,7 @@ configurations {
 }
 
 dependencies {
-    implementation('com.github.jsqlparser:jsqlparser:4.10-SNAPSHOT'){ changing = true }
+    implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
     implementation 'commons-cli:commons-cli:+'
     implementation 'commons-io:commons-io:+'
 
@@ -368,7 +365,6 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.withType(Test).configureEach {
     maxParallelForks = 100
-    forkEvery = 1
 }
 
 tasks.register('gitChangelogTask', GitChangelogTask) {
@@ -419,7 +415,7 @@ ssh.settings {
 }
 
 tasks.register('upload') {
-    dependsOn(jar, gitChangelogTask, xmldoc, xslt)
+    dependsOn(jar, gitChangelogTask, xmldoc)
     doFirst {
         if (findProperty("${project.name}.host") == null) {
             println(
