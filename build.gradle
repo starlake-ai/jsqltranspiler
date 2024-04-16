@@ -119,7 +119,7 @@ def getVersion = { boolean considerSnapshot ->
             :  "${major}.${minor}${snapshot}"
 }
 version = getVersion(true)
-group = 'com.starlake-ai.jsqltranspiler'
+group = 'ai.starlake.jsqltranspiler'
 description = 'JSQLTranspiler'
 
 java {
