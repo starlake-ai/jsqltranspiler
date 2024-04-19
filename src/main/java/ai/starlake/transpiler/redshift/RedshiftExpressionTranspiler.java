@@ -19,6 +19,7 @@ package ai.starlake.transpiler.redshift;
 import ai.starlake.transpiler.JSQLExpressionTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.ArrayExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
@@ -61,6 +62,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     , DATE_TRUNC, GETDATE, INTERVAL_CMP, MONTHS_BETWEEN, SYSDATE, TIMEOFDAY, TIMESTAMP_CMP, TIMESTAMP_CMP_DATE
 
     , TIMESTAMP_CMP_TIMESTAMPTZ, TIMESTAMPTZ_CMP, TIMESTAMPTZ_CMP_DATE, TIMESTAMPTZ_CMP_TIMESTAMP, TIMEZONE, TO_TIMESTAMP
+
+    , ARRAY, ARRAY_FLATTEN, GET_ARRAY_LENGTH, SPLIT_TO_ARRAY, SUBARRAY
 
     , TRUNC
 
@@ -496,6 +499,26 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
             function.setName(formatStr.contains("%g") ? "printf" : "strftime");
             function.setParameters(parameters.get(0), stringValue);
           }
+          break;
+        case ARRAY:
+          rewrittenExpression = new ArrayConstructor(parameters, false);
+          break;
+        case ARRAY_FLATTEN:
+          function.setName("Flatten");
+          break;
+        case GET_ARRAY_LENGTH:
+          function.setName("Len$$");
+          break;
+        case SPLIT_TO_ARRAY:
+          if (parameters != null && parameters.size() == 2) {
+            function.setName("regexp_split_to_array");
+            function.setParameters(parameters.get(0),
+                new Function("regexp_escape", parameters.get(1)));
+          }
+          break;
+        case SUBARRAY:
+          function.setName("list_slice");
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -542,7 +565,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     Matcher matcher = NUMBER_FORMAT_PATTERN.matcher(replacedFormatStr);
     while (matcher.find()) {
       String found = matcher.group(1);
-      boolean zeroPadded = (found.startsWith("0"));
+      // boolean zeroPadded = found.startsWith("0");
 
       String replacement = "%g";
       replacedFormatStr = replacedFormatStr.replace(found, replacement);
