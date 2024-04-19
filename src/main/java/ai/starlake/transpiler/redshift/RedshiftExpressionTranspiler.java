@@ -65,6 +65,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
 
     , ARRAY, ARRAY_FLATTEN, GET_ARRAY_LENGTH, SPLIT_TO_ARRAY, SUBARRAY
 
+    , DEXP, DLOG1, DLOG10, LOG
+
     , TRUNC
 
     , TO_CHAR
@@ -518,6 +520,16 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case SUBARRAY:
           function.setName("list_slice");
+          break;
+        case DEXP:
+          function.setName("Exp$$");
+          break;
+        case DLOG1:
+          function.setName("Ln$$");
+          break;
+        case DLOG10:
+        case LOG:
+          function.setName("Log$$");
           break;
       }
     }
