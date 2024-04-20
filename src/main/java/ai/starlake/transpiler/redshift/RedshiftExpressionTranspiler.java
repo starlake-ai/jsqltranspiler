@@ -38,6 +38,7 @@ import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.statement.create.table.ColDataType;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -71,6 +72,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
 
     , TO_CHAR
 
+    , APPROXIMATE_PERCENTILE_DISC, APPROXIMATE_COUNT
+
     ;
     // @FORMATTER:ON
 
@@ -79,7 +82,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     public static TranspiledFunction from(String name) {
       TranspiledFunction function = null;
       try {
-        function = Enum.valueOf(TranspiledFunction.class, name.toUpperCase());
+        function = Enum.valueOf(TranspiledFunction.class, name.replaceAll(" ", "_").toUpperCase());
       } catch (Exception ignore) {
         // nothing to do here
       }
@@ -531,6 +534,47 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
         case LOG:
           function.setName("Log$$");
           break;
+
+        case APPROXIMATE_PERCENTILE_DISC:
+          warning("without APPROXIMATE");
+          function.setName("PERCENTILE_DISC");
+          break;
+        case APPROXIMATE_COUNT:
+          function.setName("approx_count_distinct");
+          break;
+      }
+    }
+    if (rewrittenExpression == null) {
+      super.visit(function);
+    } else {
+      rewrittenExpression.accept(this);
+    }
+  }
+
+  public void visit(AnalyticExpression function) {
+    String functionName = function.getName();
+
+    if (UnsupportedFunction.from(function) != null) {
+      throw new RuntimeException(
+          "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
+    } else if (functionName.endsWith("$$")) {
+      // work around for transpiling already transpiled functions twice
+      // @todo: figure out a better way to achieve that
+      function.setName(functionName.substring(0, functionName.length() - 2));
+      super.visit(function);
+      return;
+    }
+    Expression rewrittenExpression = null;
+    TranspiledFunction f = TranspiledFunction.from(functionName);
+    if (f != null) {
+      switch (f) {
+        case APPROXIMATE_PERCENTILE_DISC:
+          warning("without APPROXIMATE");
+          function.setName("PERCENTILE_DISC");
+          break;
+        case APPROXIMATE_COUNT:
+          function.setName("approx_count_distinct");
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -586,5 +630,13 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     return replacedFormatStr;
   }
 
+  public ColDataType rewriteType(ColDataType colDataType) {
+    if (colDataType.getDataType().equalsIgnoreCase("FLOAT")) {
+      colDataType.setDataType("FLOAT8");
+    } else if (colDataType.getDataType().equalsIgnoreCase("DEC")) {
+      colDataType.setDataType("DECIMAL");
+    }
 
+    return super.rewriteType(colDataType);
+  }
 }

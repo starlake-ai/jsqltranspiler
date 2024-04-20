@@ -485,7 +485,7 @@ FROM (  SELECT Unnest(  [
                             , ( 2.0, 6.0 )
                             , ( 9.0, 3.0 )
                             , ( 2.0, 6.0 )
-                            , (  Cast( 'Infinity' AS FLOAT ), 3.0 )
+                            , (  Cast( 'Infinity' AS FLOAT8 ), 3.0 )
                         ], recursive => TRUE ) )
 ;
 

@@ -90,11 +90,11 @@ AND year=2008) * DEXP((7::FLOAT/100)*10) qty2010;
 SELECT (SELECT SUM(qtysold)
 FROM sales, date
 WHERE sales.dateid=date.dateid
-AND year=2008) * EXP((7::FLOAT/100)*10) qty2010;
+AND year=2008) * EXP((7::FLOAT8/100)*10) qty2010;
 
 -- result
 "qty2010"
-"695447.4754818415"
+"695447.4837722216"
 
 
 -- provided
@@ -125,10 +125,16 @@ FROM sales, date
 WHERE sales.dateid=date.dateid
 AND year=2008) * EXP((7::FLOAT/100)*10) qty2018;
 
+-- provided
+SELECT (SELECT SUM(qtysold)
+FROM sales, date
+WHERE sales.dateid=date.dateid
+AND year=2008) * EXP((7::FLOAT8/100)*10) qty2018;
+
 
 -- result
 "qty2018"
-"695447.4754818415"
+"695447.4837722216"
 
 
 -- provided
@@ -176,7 +182,11 @@ SELECT PI() AS pi;
 -- provided
 SELECT (SELECT SUM(qtysold) FROM sales, date
 WHERE sales.dateid=date.dateid
-AND year=2008) * POW((1+7::DOUBLE PRECISION/100/12),120) qty2010;
+AND year=2008) * POW((1+7::FLOAT/100/12),120) qty2010;
+
+SELECT (SELECT SUM(qtysold) FROM sales, date
+WHERE sales.dateid=date.dateid
+AND year=2008) * POW((1+7::FLOAT8/100/12),120) qty2010;
 
 -- result
 "qty2010"

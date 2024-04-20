@@ -34,4 +34,17 @@ public class DuckDBFreeze {
       Assertions.assertEquals("21", rs.getString(1));
     }
   }
+
+  @Test
+  void testUpcast() {
+    // SELECT 345349 * POWER((1+Cast(7 AS FLOAT)/100/12),120) qty2010;
+
+    Object c = 1 + (float) 0.07 / 12;
+
+    System.out.println(c.getClass());
+
+
+    System.out.println(345349 * Math.pow(1 + (float) 0.07 / 12, 120));
+
+  }
 }

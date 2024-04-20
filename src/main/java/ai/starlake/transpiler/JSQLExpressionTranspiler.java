@@ -17,6 +17,7 @@
 package ai.starlake.transpiler;
 
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.AnalyticType;
 import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
@@ -38,6 +39,7 @@ import net.sf.jsqlparser.expression.StructType;
 import net.sf.jsqlparser.expression.TimeKeyExpression;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
+import net.sf.jsqlparser.expression.WindowDefinition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Concat;
 import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
@@ -939,6 +941,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
   }
 
+  @SuppressWarnings({"PMD.ExcessiveMethodLength"})
   public void visit(AnalyticExpression function) {
     String functionName = function.getName();
 
@@ -952,6 +955,51 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       super.visit(function);
       return;
     }
+
+    /* Rewrite DISTINCT WindowDefinition OrderBy into Function OrderBy
+    
+    SQL Text
+     └─Statements: statement.select.PlainSelect
+        ├─selectItems: statement.select.SelectItem
+        │  └─expression: expression.AnalyticExpression
+        │     ├─Column: sellerid
+        │     ├─StringValue: ', '
+        │     └─windowDef: expression.WindowDefinition
+        │        ├─orderBy: expression.OrderByClause
+        │        │  └─orderByElements: statement.select.OrderByElement
+        │        │     └─Column: sellerid
+        │        └─PartitionByClause: net.sf.jsqlparser.expression.PartitionByClause@78d78faa
+        ├─Table: sales
+        └─where: expression.operators.relational.EqualsTo
+           ├─Column: eventid
+           └─LongValue: 4337
+    
+    
+     SQL Text
+       └─Statements: statement.select.PlainSelect
+          ├─selectItems: statement.select.SelectItem
+          │  ├─expression: expression.Function
+          │  │  ├─ExpressionList: sellerid, ', '
+          │  │  └─orderByElements: statement.select.OrderByElement
+          │  │     └─Column: sellerid
+          │  └─Alias:  AS list
+          ├─Table: sales
+          └─where: expression.operators.relational.EqualsTo
+             ├─Column: eventid
+             └─LongValue: 4337
+    
+     */
+
+    final WindowDefinition windowDefinition = function.getWindowDefinition();
+    if (windowDefinition != null && function.getType() == AnalyticType.WITHIN_GROUP
+        && windowDefinition.getWindowName() == null && windowDefinition.getWindowElement() == null
+        && (windowDefinition.getPartitionBy() == null
+            || windowDefinition.getPartitionBy().getPartitionExpressionList() == null)) {
+      function.setFuncOrderBy(windowDefinition.getOrderByElements());
+      function.setWindowDefinition(new WindowDefinition());
+      function.setType(AnalyticType.FILTER_ONLY);
+    }
+
     Expression rewrittenExpression = null;
     TranspiledFunction f = TranspiledFunction.from(functionName);
     if (f != null) {
@@ -1746,12 +1794,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   // @todo: complete the data type mapping
   // implement an Enum on Big Query allowed data types
-  public final static ColDataType rewriteType(ColDataType colDataType) {
+  public ColDataType rewriteType(ColDataType colDataType) {
     if (CastExpression.isOf(colDataType, CastExpression.DataType.BYTES,
         CastExpression.DataType.VARBYTE)) {
       colDataType.setDataType("BLOB");
     } else if (colDataType.getDataType().equalsIgnoreCase("FLOAT64")) {
-      colDataType.setDataType("FLOAT");
+      colDataType.setDataType("FLOAT8");
     }
     return colDataType;
   }
