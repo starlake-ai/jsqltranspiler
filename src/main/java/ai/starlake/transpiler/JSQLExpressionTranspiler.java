@@ -1034,7 +1034,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("First");
           break;
         case LAST_VALUE:
-          function.setName("First");
+          function.setName("Last");
           break;
         case PERCENTILE_CONT:
           function.setName("Quantile_Cont");

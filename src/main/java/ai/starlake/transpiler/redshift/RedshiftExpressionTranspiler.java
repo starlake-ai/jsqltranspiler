@@ -564,6 +564,11 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
       super.visit(function);
       return;
     }
+
+    if (function.getNullHandling()!=null && function.isIgnoreNullsOutside()) {
+      function.setIgnoreNullsOutside(false);
+    }
+
     Expression rewrittenExpression = null;
     TranspiledFunction f = TranspiledFunction.from(functionName);
     if (f != null) {

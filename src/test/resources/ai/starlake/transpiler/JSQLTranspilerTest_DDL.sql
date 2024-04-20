@@ -84,3 +84,27 @@ CREATE TABLE sales (
     , saletime       TIMESTAMP
 )
 ;
+
+-- Additional window function tests from https://docs.aws.amazon.com/redshift/latest/dg/c_Window_functions.html#r_Window_function_example
+CREATE TABLE winsales(
+  salesid int,
+  dateid date,
+  sellerid int,
+  buyerid char(10),
+  qty int,
+  qty_shipped int)
+;
+
+INSERT INTO winsales VALUES
+  (30001, '2003-8-2', 3, 'b', 10, 10),
+  (10001, '2003-12-24', 1, 'c', 10, 10),
+  (10005, '2003-12-24', 1, 'a', 30, null),
+  (40001, '2004-1-9', 4, 'a', 40, null),
+  (10006, '2004-1-18', 1, 'c', 10, null),
+  (20001, '2004-2-12', 2, 'b', 20, 20),
+  (40005, '2004-2-12', 4, 'a', 10, 10),
+  (20002, '2004-2-16', 2, 'c', 20, 20),
+  (30003, '2004-4-18', 3, 'b', 15, null),
+  (30004, '2004-4-18', 3, 'b', 20, null),
+  (30007, '2004-9-7', 3, 'c', 30, null)
+;
