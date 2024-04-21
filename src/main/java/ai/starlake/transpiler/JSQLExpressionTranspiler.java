@@ -50,6 +50,7 @@ import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
+import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
@@ -60,6 +61,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -820,9 +822,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         case ROUND:
           if (parameters != null) {
             switch (parameters.size()) {
-              case 1:
-                function.setParameters(parameters.get(0), new LongValue(0));
-                break;
+              // case 1:
+              // function.setParameters(parameters.get(0), new LongValue(0));
+              // break;
               case 3:
                 if (parameters.get(2).toString().toUpperCase().contains("ROUND_HALF_EVEN")) {
                   function.setName("Round_Even");
@@ -998,6 +1000,56 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       function.setFuncOrderBy(windowDefinition.getOrderByElements());
       function.setWindowDefinition(new WindowDefinition());
       function.setType(AnalyticType.FILTER_ONLY);
+    } else if (windowDefinition != null && function.getType() == AnalyticType.WITHIN_GROUP_OVER
+        && windowDefinition.getOrderBy() != null) {
+
+      warning("ORDER BY is not implemented for window functions");
+
+      final List<OrderByElement> orderByElements =
+          function.getWindowDefinition().getOrderBy().getOrderByElements();
+
+      PlainSelect select = function.getParent(PlainSelect.class);
+      select.setFromItem(
+          new ParenthesedSelect(select.getFromItem()).withOrderByElements(orderByElements));
+
+      function.setType(AnalyticType.OVER);
+      function.getWindowDefinition().setOrderByElements(null);
+
+      // see https://duckdb.org/docs/sql/aggregates#ordered-set-aggregate-functions
+      if (functionName.equalsIgnoreCase("percentile_cont")) {
+        function.setName("quantile_cont");
+        function.setOffset(function.getExpression());
+        function.setExpression(orderByElements.get(0).getExpression());
+      } else if (functionName.equalsIgnoreCase("percentile_disc")) {
+        function.setName("quantile_disc");
+        function.setOffset(function.getExpression());
+        function.setExpression(orderByElements.get(0).getExpression());
+      }
+
+    } else if (windowDefinition != null && function.getType() == AnalyticType.OVER
+        && function.getFuncOrderBy() != null) {
+
+      warning("ORDER BY is not implemented for window functions");
+
+      final List<OrderByElement> orderByElements = function.getFuncOrderBy();
+
+      PlainSelect select = function.getParent(PlainSelect.class);
+      select.setFromItem(
+          new ParenthesedSelect(select.getFromItem()).withOrderByElements(orderByElements));
+
+      function.setType(AnalyticType.OVER);
+      function.setFuncOrderBy(null);
+
+      // see https://duckdb.org/docs/sql/aggregates#ordered-set-aggregate-functions
+      if (functionName.equalsIgnoreCase("percentile_cont")) {
+        function.setName("quantile_cont");
+        function.setOffset(function.getExpression());
+        function.setExpression(orderByElements.get(0).getExpression());
+      } else if (functionName.equalsIgnoreCase("percentile_disc")) {
+        function.setName("quantile_disc");
+        function.setOffset(function.getExpression());
+        function.setExpression(orderByElements.get(0).getExpression());
+      }
     }
 
     Expression rewrittenExpression = null;

@@ -630,4 +630,397 @@ LIMIT 10;
 "3678","51.60","2008-01-09 01:42:54","43.80"
 
 
+-- provided
+select listagg(sellerid)
+within group (order by sellerid)
+over() AS list from winsales;
+
+-- expected
+select listagg(sellerid)
+over() AS list
+from (select * from winsales order by sellerid) AS winsales;
+
+-- result
+"list"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+
+-- provided
+select listagg(sellerid order by sellerid)
+over() AS list from winsales;
+
+-- expected
+select listagg(sellerid)
+over() AS list
+from (select * from winsales order by sellerid) AS winsales;
+
+-- result
+"list"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+"1,1,1,2,2,3,3,3,3,4,4"
+
+
+-- provided
+select buyerid,
+listagg(salesid,',')
+within group (order by salesid)
+over (partition by buyerid) as sales_id
+from winsales
+order by buyerid;
+
+
+-- expected
+select buyerid,
+listagg(salesid,',')
+over (partition by buyerid) as sales_id
+from (select * from winsales order by salesid) AS winsales
+order by buyerid;
+
+
+-- result
+"buyerid","sales_id"
+"a","10005,40001,40005"
+"a","10005,40001,40005"
+"a","10005,40001,40005"
+"b","20001,30001,30003,30004"
+"b","20001,30001,30003,30004"
+"b","20001,30001,30003,30004"
+"b","20001,30001,30003,30004"
+"c","10001,10006,20002,30007"
+"c","10001,10006,20002,30007"
+"c","10001,10006,20002,30007"
+"c","10001,10006,20002,30007"
+
+
+-- provided
+select salesid, qty,
+max(qty) over (order by salesid rows unbounded preceding) as max
+from winsales
+order by salesid;
+
+-- result
+"salesid","qty","max"
+"10001","10","10"
+"10005","30","30"
+"10006","10","30"
+"20001","20","30"
+"20002","20","30"
+"30001","10","30"
+"30003","15","30"
+"30004","20","30"
+"30007","30","30"
+"40001","40","40"
+"40005","10","40"
+
+
+
+-- provided
+select salesid, qty,
+max(qty) over (order by salesid rows between 2 preceding and 1 preceding) as max
+from winsales
+order by salesid;
+
+-- result
+"salesid","qty","max"
+"10001","10",""
+"10005","30","10"
+"10006","10","30"
+"20001","20","30"
+"20002","20","20"
+"30001","10","20"
+"30003","15","20"
+"30004","20","15"
+"30007","30","20"
+"40001","40","30"
+"40005","10","40"
+
+
+-- provided
+select sellerid, qty, median(qty)
+over (partition by sellerid) AS median
+from winsales
+order by sellerid;
+
+-- result
+"sellerid","qty","median"
+"1","10","10.0"
+"1","30","10.0"
+"1","10","10.0"
+"2","20","20.0"
+"2","20","20.0"
+"3","10","17.5"
+"3","15","17.5"
+"3","20","17.5"
+"3","30","17.5"
+"4","40","25.0"
+"4","10","25.0"
+
+
+-- provided
+select venuestate, venuename, venueseats,
+nth_value(venueseats, 3)
+ignore nulls
+over(partition by venuestate order by venueseats desc
+rows between unbounded preceding and unbounded following)
+as third_most_seats
+from (select * from venue where venueseats > 0 and
+venuestate in('CA', 'FL', 'NY'))
+order by venuestate;
+
+-- expected
+select venuestate, venuename, venueseats,
+nth_value(venueseats, 3 ignore nulls)
+over(partition by venuestate order by venueseats desc
+rows between unbounded preceding and unbounded following)
+as third_most_seats
+from (select * from venue where venueseats > 0 and
+venuestate in('CA', 'FL', 'NY'))
+order by venuestate;
+
+-- result
+"venuestate","venuename","venueseats","third_most_seats"
+"CA","Qualcomm Stadium","70561","63026"
+"CA","Monster Park","69843","63026"
+"CA","McAfee Coliseum","63026","63026"
+"CA","Dodger Stadium","56000","63026"
+"CA","Angel Stadium of Anaheim","45050","63026"
+"CA","PETCO Park","42445","63026"
+"CA","AT&T Park","41503","63026"
+"CA","Shoreline Amphitheatre","22000","63026"
+"FL","Dolphin Stadium","74916","65647"
+"FL","Jacksonville Municipal Stadium","73800","65647"
+"FL","Raymond James Stadium","65647","65647"
+"FL","Tropicana Field","36048","65647"
+"NY","Ralph Wilson Stadium","73967","20000"
+"NY","Yankee Stadium","52325","20000"
+"NY","Madison Square Garden","20000","20000"
+
+
+-- provided
+select eventname, caldate, pricepaid, ntile(4)
+over(order by pricepaid desc) ntile from sales, event, date
+where sales.eventid=event.eventid and event.dateid=date.dateid and eventname='Hamlet'
+and caldate='2008-08-26'
+order by 4,1,2,3;
+
+-- result
+"eventname","caldate","pricepaid","ntile"
+"Hamlet","2008-08-26","472.00","1"
+"Hamlet","2008-08-26","530.00","1"
+"Hamlet","2008-08-26","589.00","1"
+"Hamlet","2008-08-26","1065.00","1"
+"Hamlet","2008-08-26","1883.00","1"
+"Hamlet","2008-08-26","296.00","2"
+"Hamlet","2008-08-26","334.00","2"
+"Hamlet","2008-08-26","355.00","2"
+"Hamlet","2008-08-26","460.00","2"
+"Hamlet","2008-08-26","106.00","3"
+"Hamlet","2008-08-26","212.00","3"
+"Hamlet","2008-08-26","216.00","3"
+"Hamlet","2008-08-26","230.00","3"
+"Hamlet","2008-08-26","25.00","4"
+"Hamlet","2008-08-26","53.00","4"
+"Hamlet","2008-08-26","94.00","4"
+"Hamlet","2008-08-26","100.00","4"
+
+
+-- provided
+select sellerid, qty, percent_rank()
+over (partition by sellerid order by qty) prcnt_rank
+from winsales
+order by 1;
+
+-- result
+"sellerid","qty","prcnt_rank"
+"1","10","0.0"
+"1","10","0.0"
+"1","30","1.0"
+"2","20","0.0"
+"2","20","0.0"
+"3","10","0.0"
+"3","15","0.3333333333333333"
+"3","20","0.6666666666666666"
+"3","30","1.0"
+"4","10","0.0"
+"4","40","1.0"
+
+
+-- provided
+select sellerid, qty, percentile_cont(0.5)
+within group (order by qty)
+over() as median from winsales
+order by 2,1;
+
+-- expected
+select sellerid, qty, quantile_cont(qty, 0.5)
+OVER() as median from (select * from winsales order by qty) AS winsales
+order by 2,1;
+
+-- result
+"sellerid","qty","median"
+"1","10","20.0"
+"1","10","20.0"
+"3","10","20.0"
+"4","10","20.0"
+"3","15","20.0"
+"2","20","20.0"
+"2","20","20.0"
+"3","20","20.0"
+"1","30","20.0"
+"3","30","20.0"
+"4","40","20.0"
+
+-- provided
+SELECT salesid, sellerid, qty,
+ROW_NUMBER() OVER(
+   ORDER BY qty ASC) AS row
+FROM winsales
+ORDER BY 4,1;
+
+-- result
+"salesid","sellerid","qty","row"
+"30001","3","10","1"
+"10001","1","10","2"
+"10006","1","10","3"
+"40005","4","10","4"
+"30003","3","15","5"
+"20001","2","20","6"
+"20002","2","20","7"
+"30004","3","20","8"
+"10005","1","30","9"
+"30007","3","30","10"
+"40001","4","40","11"
+
+-- provided
+SELECT salesid, sellerid, qty,
+ROW_NUMBER() OVER(
+  PARTITION BY sellerid
+  ORDER BY qty ASC) AS row_by_seller
+FROM winsales
+ORDER BY 2,4;
+
+-- result
+"salesid","sellerid","qty","row_by_seller"
+"10001","1","10","1"
+"10006","1","10","2"
+"10005","1","30","3"
+"20001","2","20","1"
+"20002","2","20","2"
+"30001","3","10","1"
+"30003","3","15","2"
+"30004","3","20","3"
+"30007","3","30","4"
+"40005","4","10","1"
+"40001","4","40","2"
+
+
+-- provided
+select salesid, dateid, pricepaid,
+round(stddev_pop(pricepaid) over
+(order by dateid, salesid rows unbounded preceding)) as stddevpop,
+round(var_pop(pricepaid) over
+(order by dateid, salesid rows unbounded preceding)) as varpop
+from sales
+order by 2,1
+limit 10;
+
+-- result
+"salesid","dateid","pricepaid","stddevpop","varpop"
+"33095","1827","234.00","0.0","0.0"
+"65082","1827","472.00","119.0","14161.0"
+"88268","1827","836.00","248.0","61283.0"
+"97197","1827","708.00","230.0","53019.0"
+"110328","1827","347.00","223.0","49845.0"
+"110917","1827","337.00","215.0","46159.0"
+"150314","1827","688.00","211.0","44414.0"
+"157751","1827","1730.00","447.0","199679.0"
+"165890","1827","4192.00","1185.0","1403323.0"
+"1134","1828","218.00","1152.0","1326865.0"
+
+
+-- provided
+select salesid, dateid, sellerid, qty,
+sum(qty) over (partition by sellerid
+order by dateid, salesid rows unbounded preceding) as sum
+from winsales
+order by 2,1;
+
+-- result
+"salesid","dateid","sellerid","qty","sum"
+"30001","2003-08-02","3","10","10"
+"10001","2003-12-24","1","10","10"
+"10005","2003-12-24","1","30","40"
+"40001","2004-01-09","4","40","40"
+"10006","2004-01-18","1","10","50"
+"20001","2004-02-12","2","20","20"
+"40005","2004-02-12","4","10","50"
+"20002","2004-02-16","2","20","40"
+"30003","2004-04-18","3","15","25"
+"30004","2004-04-18","3","20","45"
+"30007","2004-09-07","3","30","75"
+
+
+-- provided
+select salesid, dateid, pricepaid,
+round(stddev_samp(pricepaid) over
+(order by dateid, salesid rows unbounded preceding)) as stddevsamp,
+round(var_samp(pricepaid) over
+(order by dateid, salesid rows unbounded preceding)) as varsamp
+from sales
+order by 2,1
+limit 10;
+
+-- result
+"salesid","dateid","pricepaid","stddevsamp","varsamp"
+"33095","1827","234.00","",""
+"65082","1827","472.00","168.0","28322.0"
+"88268","1827","836.00","303.0","91924.0"
+"97197","1827","708.00","266.0","70692.0"
+"110328","1827","347.00","250.0","62307.0"
+"110917","1827","337.00","235.0","55390.0"
+"150314","1827","688.00","228.0","51816.0"
+"157751","1827","1730.00","478.0","228205.0"
+"165890","1827","4192.00","1256.0","1578738.0"
+"1134","1828","218.00","1214.0","1474294.0"
+
+
+-- provided
+select salesid, sellerid, qty,
+sum(1) over (partition by sellerid
+order by sellerid, salesid rows unbounded preceding) as rownum
+from winsales
+order by 2,1;
+
+-- result
+"salesid","sellerid","qty","rownum"
+"10001","1","10","1"
+"10005","1","30","2"
+"10006","1","10","3"
+"20001","2","20","1"
+"20002","2","20","2"
+"30001","3","10","1"
+"30003","3","15","2"
+"30004","3","20","3"
+"30007","3","30","4"
+"40001","4","40","1"
+"40005","4","10","2"
+
 

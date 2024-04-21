@@ -1,14 +1,24 @@
 -- provided
-SELECT LISTAGG(sellerid, ', ')
-WITHIN GROUP (ORDER BY dateid) AS list
-FROM sales
-WHERE eventid = 4337;
+select sellerid, qty, percentile_cont(0.5)
+within group (order by qty)
+over() as median from winsales
+order by 2,1;
 
 -- expected
-SELECT LISTAGG(sellerid, ', ' ORDER BY dateid) AS list
-FROM sales
-WHERE eventid = 4337;
+select sellerid, qty, quantile_cont(qty, 0.5)
+OVER() as median from (select * from winsales order by qty) AS winsales
+order by 2,1;
 
-"list"
-"41498, 47188, 1178, 47188, 1178, 1178, 380, 45676, 46324, 32043, 32043, 48294, 32432, 12905, 8117, 38750, 32432, 32043, 2731, 380, 38669"
+"sellerid","qty","median"
+"1","10","20.00"
+"1","10","20.00"
+"3","10","20.00"
+"4","10","20.00"
+"3","15","20.00"
+"2","20","20.00"
+"2","20","20.00"
+"3","20","20.00"
+"1","30","20.00"
+"3","30","20.00"
+"4","40","20.00"
 
