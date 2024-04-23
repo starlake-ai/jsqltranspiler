@@ -322,7 +322,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return isDatePart;
   }
 
-  private static boolean isDateTimePartSnowflake(Expression expression) {
+  protected static boolean isDateTimePartSnowflake(Expression expression) {
     Pattern[] patterns = {Pattern.compile(
         "\\b(MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY|WEEK|ISOWEEK|MONTH|QUARTER|YEAR|ISOYEAR|DAYOFWEEK|DAYOFYEAR|DATE|TIME\n)",
         Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
@@ -373,9 +373,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
   }
 
+  public static Expression toDateTimePart(Expression expression, JSQLTranspiler.Dialect dialect) {
+    return isDateTimePart(expression, dialect) ? new StringValue(expression.toString())
+        : expression;
+  }
+
   public static boolean hasTimeZoneInfo(String timestampStr) {
     // Regular expression to match timezone offset with optional minutes part
-    final Pattern pattern = Pattern.compile("\\+\\d{2}(:\\d{2})?$");
+    final Pattern pattern = Pattern.compile("[+|-]\\d{2}(:?\\d{2})?$|Z");
     // If the string matches the regular expression, it contains timezone information
     return pattern.matcher(timestampStr.replaceAll("'", "")).find();
   }
@@ -2102,7 +2107,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   public static boolean isEmpty(Collection<?> collection) {
-    return collection==null || collection.isEmpty();
+    return collection == null || collection.isEmpty();
   }
 
   public static boolean hasParameters(Function function) {

@@ -22,4 +22,5 @@ public class RedshiftTranspiler extends JSQLTranspiler {
   public RedshiftTranspiler() {
     super(RedshiftExpressionTranspiler.class);
   }
+
 }

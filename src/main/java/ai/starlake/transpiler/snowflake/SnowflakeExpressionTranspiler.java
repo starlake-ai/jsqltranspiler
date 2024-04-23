@@ -21,6 +21,7 @@ import ai.starlake.transpiler.JSQLTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CastExpression;
+import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.Parenthesis;
@@ -35,12 +36,19 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
     super(transpiler, buffer);
   }
 
+  enum DatePart {
+    year, y, yy, yyy, yyyy, yr, years, yrs, month, mm, mon, mons, months, day, d, dd, days, dayofmonth, dayofweek, weekday, dow, dw, dayofweekiso, weekday_iso, dow_iso, dw_iso, dayofyear, yearday, doy, dy, week, w, wk, weekofyear, woy, wy, weekiso, week_iso, weekofyeariso, weekofyear_iso, quarter, q, qtr, qtrs, quarters, yearofweek, yearofweekiso
+  }
+
+  enum TimePart {
+    hour, h, hh, hr, hours, hrs, minute, m, mi, min, minutes, mins, second, s, sec, seconds, secs, millisecond, ms, msec, milliseconds, microsecond, us, usec, microseconds, nanosecond, ns, nsec, nanosec, nsecond, nanoseconds, nanosecs, nseconds, epoch_second, epoch, epoch_seconds, epoch_millisecond, epoch_milliseconds, epoch_microsecond, epoch_microseconds, epoch_nanosecond, epoch_nanoseconds, timezone_hour, tzh, timezone_minute, tzm
+  }
+
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS
+    DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, DATEDIFF
 
-    , TO_DATE, TO_TIME
-    ;
+    , TO_DATE, TO_TIME, TO_TIMESTAMP;
     // @FORMATTER:ON
 
 
@@ -85,6 +93,9 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
     }
   }
 
+  public Expression toDateTimePart(Expression expression) {
+    return toDateTimePart(expression, JSQLTranspiler.Dialect.SNOWFLAKE);
+  }
 
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public void visit(Function function) {
@@ -93,7 +104,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
-              "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
+          "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
     } else if (functionName.endsWith("$$")) {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
@@ -127,13 +138,8 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             switch (parameters.size()) {
               case 4:
                 // select make_time(12, 34, (56 || '.' || 987654321)::DOUBLE ) AS time;
-                CastExpression castExpression = new CastExpression(
-                        new Parenthesis(
-                        BinaryExpression.concat(
-                                parameters.get(2)
-                                , new StringValue(".")
-                                , parameters.get(3)
-                        )), "DOUBLE" );
+                CastExpression castExpression = new CastExpression(new Parenthesis(BinaryExpression
+                    .concat(parameters.get(2), new StringValue("."), parameters.get(3))), "DOUBLE");
                 function.setParameters(parameters.get(0), parameters.get(1), castExpression);
               case 3:
                 function.setName("MAKE_TIME");
@@ -154,28 +160,39 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             switch (parameters.size()) {
               // TIMESTAMP_FROM_PARTS( <date_expr>, <time_expr> )
               case 2:
-                rewrittenExpression = new CastExpression( new Parenthesis( BinaryExpression.add( castDateTime(parameters.get(0)), castDateTime( parameters.get(1))) ), "TIMESTAMP" );
+                rewrittenExpression = new CastExpression(new Parenthesis(BinaryExpression
+                    .add(castDateTime(parameters.get(0)), castDateTime(parameters.get(1)))),
+                    "TIMESTAMP");
                 break;
 
-              // TIMESTAMP_FROM_PARTS( <year>, <month>, <day>, <hour>, <minute>, <second> [, <nanosecond> ] [, <time_zone> ] )
+              // TIMESTAMP_FROM_PARTS( <year>, <month>, <day>, <hour>, <minute>, <second> [,
+              // <nanosecond> ] [, <time_zone> ] )
               // make_timestamp(bigint, bigint, bigint, bigint, bigint, double)
               case 8:
-                rewrittenExpression = new TimezoneExpression( function, parameters.get(7));
+                rewrittenExpression = new TimezoneExpression(function, parameters.get(7));
               case 7:
-                CastExpression castExpression = new CastExpression(
-                        new Parenthesis(
-                                BinaryExpression.concat(
-                                        parameters.get(5)
-                                        , new StringValue(".")
-                                        , parameters.get(6)
-                                )), "DOUBLE" );
-                function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2), parameters.get(3),
-                  parameters.get(4), castExpression);
+                CastExpression castExpression = new CastExpression(new Parenthesis(BinaryExpression
+                    .concat(parameters.get(5), new StringValue("."), parameters.get(6))), "DOUBLE");
+                function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2),
+                    parameters.get(3), parameters.get(4), castExpression);
 
               case 6:
                 function.setName("Make_Timestamp");
                 break;
             }
+          }
+          break;
+        case DAYNAME:
+          // dayname return only the 3 char abbreviation
+          if (hasParameters && parameters.size() == 1) {
+            function.setName("strftime");
+            function.setParameters(parameters.get(0), new StringValue("%a"));
+          }
+          break;
+        case MONTHNAME:
+          if (hasParameters && parameters.size() == 1) {
+            function.setName("strftime");
+            function.setParameters(parameters.get(0), new StringValue("%b"));
           }
           break;
         case TO_DATE:
@@ -196,6 +213,61 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             }
           }
           break;
+        case TO_TIMESTAMP:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 1:
+                rewrittenExpression = new CastExpression(parameters.get(0),
+                    hasTimeZoneInfo(parameters.get(0)) ? "TIMESTAMP WITH TIME ZONE" : "TIMESTAMP");
+                break;
+            }
+          }
+          break;
+        case DATE_PART:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 2:
+                function.setParameters(toDateTimePart(parameters.get(0)), parameters.get(1));
+                break;
+            }
+          }
+          break;
+        case LAST_DAY:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 2:
+                throw new RuntimeException("LAST_DATE with DatePart is not supported.");
+            }
+          }
+          break;
+        case ADD_MONTHS:
+          // date_add(TIMESTAMP '2008-01-01 05:07:30', (1 || ' MONTH')::INTERVAL )
+          warning("Different Ultimo handling");
+          function.setName("date_add");
+          function.setParameters(
+              rewriteDateLiteral(parameters.get(0), DateTimeLiteralExpression.DateTime.TIMESTAMP),
+              new CastExpression(
+                  new Parenthesis(
+                      BinaryExpression.concat(parameters.get(1), new StringValue(" MONTH"))),
+                  "INTERVAL"));
+          break;
+        case DATEADD:
+          // DATEADD(year, 2, TO_DATE('2013-05-08')
+          if (hasParameters && parameters.size() == 3) {
+            function.setName("date_add");
+            function.setParameters(
+                rewriteDateLiteral(parameters.get(2), DateTimeLiteralExpression.DateTime.TIMESTAMP),
+                new CastExpression(new Parenthesis(
+                    BinaryExpression.concat(parameters.get(1), toDateTimePart(parameters.get(0)))),
+                    "INTERVAL"));
+          }
+          break;
+        case DATEDIFF:
+          if (hasParameters && parameters.size() == 3) {
+            function.setParameters(toDateTimePart(parameters.get(0)),
+                castDateTime(parameters.get(1)), castDateTime(parameters.get(2)));
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -210,7 +282,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
-              "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
+          "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
     } else if (functionName.endsWith("$$")) {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
@@ -219,7 +291,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
       return;
     }
 
-    if (function.getNullHandling()!=null && function.isIgnoreNullsOutside()) {
+    if (function.getNullHandling() != null && function.isIgnoreNullsOutside()) {
       function.setIgnoreNullsOutside(false);
     }
 
@@ -248,6 +320,12 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
       colDataType.setDataType("FLOAT8");
     } else if (colDataType.getDataType().equalsIgnoreCase("DEC")) {
       colDataType.setDataType("DECIMAL");
+    } else if (colDataType.getDataType().equalsIgnoreCase("TIMESTAMP_NTZ")) {
+      colDataType.setDataType("TIMESTAMP");
+    } else if (colDataType.getDataType().equalsIgnoreCase("TIMESTAMP_LTZ")) {
+      colDataType.setDataType("TIMESTAMPTZ");
+    } else if (colDataType.getDataType().equalsIgnoreCase("TIMESTAMP_TZ")) {
+      colDataType.setDataType("TIMESTAMPTZ");
     }
     return super.rewriteType(colDataType);
   }
