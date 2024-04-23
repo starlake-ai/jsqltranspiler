@@ -18,9 +18,237 @@ package ai.starlake.transpiler.snowflake;
 
 import ai.starlake.transpiler.JSQLExpressionTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
+import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.BinaryExpression;
+import net.sf.jsqlparser.expression.CastExpression;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.Parenthesis;
+import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.TimezoneExpression;
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.statement.create.table.ColDataType;
 
 public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
   public SnowflakeExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
     super(transpiler, buffer);
+  }
+
+  enum TranspiledFunction {
+    // @FORMATTER:OFF
+    DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS
+
+    , TO_DATE, TO_TIME
+    ;
+    // @FORMATTER:ON
+
+
+    @SuppressWarnings({"PMD.EmptyCatchBlock"})
+    public static TranspiledFunction from(String name) {
+      TranspiledFunction function = null;
+      try {
+        function = Enum.valueOf(TranspiledFunction.class, name.replaceAll(" ", "_").toUpperCase());
+      } catch (Exception ignore) {
+        // nothing to do here
+      }
+      return function;
+    }
+
+    public static TranspiledFunction from(Function f) {
+      return from(f.getName());
+    }
+  }
+
+  enum UnsupportedFunction {
+    CRC32, DIFFERENCE, INITCAP, SOUNDEX, STRTOL, NEXT_DAY
+
+    ;
+
+    @SuppressWarnings({"PMD.EmptyCatchBlock"})
+    public static UnsupportedFunction from(String name) {
+      UnsupportedFunction function = null;
+      try {
+        function = Enum.valueOf(UnsupportedFunction.class, name.toUpperCase());
+      } catch (Exception ignore) {
+        // nothing to do here
+      }
+      return function;
+    }
+
+    public static UnsupportedFunction from(Function f) {
+      return from(f.getName());
+    }
+
+    public static UnsupportedFunction from(AnalyticExpression f) {
+      return from(f.getName());
+    }
+  }
+
+
+  @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
+  public void visit(Function function) {
+    String functionName = function.getName();
+    boolean hasParameters = hasParameters(function);
+
+    if (UnsupportedFunction.from(function) != null) {
+      throw new RuntimeException(
+              "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
+    } else if (functionName.endsWith("$$")) {
+      // work around for transpiling already transpiled functions twice
+      // @todo: figure out a better way to achieve that
+
+      // careful: we must not strip the $$ PREFIX here since SUPER will call
+      // JSQLExpressionTranspiler
+      // function.setName(functionName.substring(0, functionName.length() - 2));
+      super.visit(function);
+      return;
+    }
+
+    if (function.getMultipartName().size() > 1
+        && function.getMultipartName().get(0).equalsIgnoreCase("SAFE")) {
+      warning("SAFE prefix is not supported.");
+      function.getMultipartName().remove(0);
+    }
+
+    Expression rewrittenExpression = null;
+    ExpressionList<? extends Expression> parameters = function.getParameters();
+    TranspiledFunction f = TranspiledFunction.from(functionName);
+    if (f != null) {
+      switch (f) {
+        case DATE_FROM_PARTS:
+        case DATEFROMPARTS:
+          warning("Negative arguments not supported.");
+          function.setName("MAKE_DATE");
+          break;
+        case TIME_FROM_PARTS:
+        case TIMEFROMPARTS:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 4:
+                // select make_time(12, 34, (56 || '.' || 987654321)::DOUBLE ) AS time;
+                CastExpression castExpression = new CastExpression(
+                        new Parenthesis(
+                        BinaryExpression.concat(
+                                parameters.get(2)
+                                , new StringValue(".")
+                                , parameters.get(3)
+                        )), "DOUBLE" );
+                function.setParameters(parameters.get(0), parameters.get(1), castExpression);
+              case 3:
+                function.setName("MAKE_TIME");
+                break;
+            }
+          }
+          break;
+        case TIMESTAMP_TZ_FROM_PARTS:
+        case TIMESTAMPTZFROMPARTS:
+
+        case TIMESTAMP_FROM_PARTS:
+        case TIMESTAMPFROMPARTS:
+        case TIMESTAMP_LTZ_FROM_PARTS:
+        case TIMESTAMPLTZFROMPARTS:
+        case TIMESTAMP_NTZ_FROM_PARTS:
+        case TIMESTAMPNTZFROMPARTS:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              // TIMESTAMP_FROM_PARTS( <date_expr>, <time_expr> )
+              case 2:
+                rewrittenExpression = new CastExpression( new Parenthesis( BinaryExpression.add( castDateTime(parameters.get(0)), castDateTime( parameters.get(1))) ), "TIMESTAMP" );
+                break;
+
+              // TIMESTAMP_FROM_PARTS( <year>, <month>, <day>, <hour>, <minute>, <second> [, <nanosecond> ] [, <time_zone> ] )
+              // make_timestamp(bigint, bigint, bigint, bigint, bigint, double)
+              case 8:
+                rewrittenExpression = new TimezoneExpression( function, parameters.get(7));
+              case 7:
+                CastExpression castExpression = new CastExpression(
+                        new Parenthesis(
+                                BinaryExpression.concat(
+                                        parameters.get(5)
+                                        , new StringValue(".")
+                                        , parameters.get(6)
+                                )), "DOUBLE" );
+                function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2), parameters.get(3),
+                  parameters.get(4), castExpression);
+
+              case 6:
+                function.setName("Make_Timestamp");
+                break;
+            }
+          }
+          break;
+        case TO_DATE:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 1:
+                rewrittenExpression = new CastExpression(parameters.get(0), "DATE");
+                break;
+            }
+          }
+          break;
+        case TO_TIME:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 1:
+                rewrittenExpression = new CastExpression(parameters.get(0), "TIME");
+                break;
+            }
+          }
+          break;
+      }
+    }
+    if (rewrittenExpression == null) {
+      super.visit(function);
+    } else {
+      rewrittenExpression.accept(this);
+    }
+  }
+
+  public void visit(AnalyticExpression function) {
+    String functionName = function.getName();
+
+    if (UnsupportedFunction.from(function) != null) {
+      throw new RuntimeException(
+              "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
+    } else if (functionName.endsWith("$$")) {
+      // work around for transpiling already transpiled functions twice
+      // @todo: figure out a better way to achieve that
+      function.setName(functionName.substring(0, functionName.length() - 2));
+      super.visit(function);
+      return;
+    }
+
+    if (function.getNullHandling()!=null && function.isIgnoreNullsOutside()) {
+      function.setIgnoreNullsOutside(false);
+    }
+
+    Expression rewrittenExpression = null;
+    TranspiledFunction f = TranspiledFunction.from(functionName);
+    if (f != null) {
+      switch (f) {
+      }
+    }
+    if (rewrittenExpression == null) {
+      super.visit(function);
+    } else {
+      rewrittenExpression.accept(this);
+    }
+  }
+
+  public void visit(Column column) {
+    if (column.getColumnName().equalsIgnoreCase("SYSDATE")) {
+      column.setColumnName("CURRENT_DATE");
+    }
+    super.visit(column);
+  }
+
+  public ColDataType rewriteType(ColDataType colDataType) {
+    if (colDataType.getDataType().equalsIgnoreCase("FLOAT")) {
+      colDataType.setDataType("FLOAT8");
+    } else if (colDataType.getDataType().equalsIgnoreCase("DEC")) {
+      colDataType.setDataType("DECIMAL");
+    }
+    return super.rewriteType(colDataType);
   }
 }

@@ -59,6 +59,7 @@ import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -2098,5 +2099,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       super.visit(timeKeyExpression);
     }
+  }
+
+  public static boolean isEmpty(Collection<?> collection) {
+    return collection==null || collection.isEmpty();
+  }
+
+  public static boolean hasParameters(Function function) {
+    return !isEmpty(function.getParameters());
   }
 }

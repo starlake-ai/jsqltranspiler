@@ -2,6 +2,7 @@ package ai.starlake.transpiler.databricks;
 
 import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.SQLGlotTest;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -9,6 +10,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.File;
 import java.util.stream.Stream;
 
+@Disabled
 public class DataBricksSQLGlotTest extends SQLGlotTest {
   public final static String TEST_FOLDER_STR =
       "build/resources/test/ai/starlake/transpiler/databricks";

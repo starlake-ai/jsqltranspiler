@@ -123,6 +123,9 @@ public class JSQLTranspilerTest {
       JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
     LinkedHashMap<File, List<SQLTest>> sqlMap = new LinkedHashMap<>();
 
+    if (testFiles==null) {
+      return sqlMap;
+    }
 
     for (File file : Objects.requireNonNull(testFiles)) {
       List<SQLTest> tests = new ArrayList<>();
@@ -132,7 +135,6 @@ public class JSQLTranspilerTest {
       StringBuilder stringBuilder = new StringBuilder();
       String line;
       String k = "";
-      int j = 0;
 
       try (FileReader fileReader = new FileReader(file);
           BufferedReader bufferedReader = new BufferedReader(fileReader)) {
@@ -417,7 +419,7 @@ public class JSQLTranspilerTest {
         // enforce SQL compliant format
         ResultSetHelperService resultSetHelperService = new ResultSetHelperService();
         resultSetHelperService.setDateFormat("yyyy-MM-dd");
-        resultSetHelperService.setDateTimeFormat("yyyy-MM-dd HH:mm:ss");
+        resultSetHelperService.setDateTimeFormat("yyyy-MM-dd HH:mm:ss.S");
         csvWriter.setResultService(resultSetHelperService);
 
         csvWriter.writeAll(rs, true, false, true);

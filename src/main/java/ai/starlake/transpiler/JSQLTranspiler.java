@@ -17,7 +17,9 @@
 package ai.starlake.transpiler;
 
 import ai.starlake.transpiler.bigquery.BigQueryTranspiler;
+import ai.starlake.transpiler.databricks.DatabricksTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftTranspiler;
+import ai.starlake.transpiler.snowflake.SnowflakeTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.parser.SimpleNode;
@@ -381,7 +383,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileDatabricksQuery(Select select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler();
+    DatabricksTranspiler transpiler = new DatabricksTranspiler();
     select.accept(transpiler);
 
     return transpiler.getResultBuilder().toString();
@@ -395,7 +397,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws Exception the exception
    */
   public static String transpileSnowflakeQuery(Select select) throws Exception {
-    JSQLTranspiler transpiler = new JSQLTranspiler();
+    SnowflakeTranspiler transpiler = new SnowflakeTranspiler();
     select.accept(transpiler);
 
     return transpiler.getResultBuilder().toString();
