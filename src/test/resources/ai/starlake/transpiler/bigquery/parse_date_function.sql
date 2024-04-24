@@ -21,7 +21,7 @@ SELECT Cast(strptime('1998-10-18 13:45:55', '%Y-%m-%d %H:%M:%S') AS DATETIME) AS
 
 -- result
 "datetime"
-"1998-10-18 13:45:55"
+"1998-10-18 13:45:55.0"
 
 
 -- provided
@@ -33,7 +33,7 @@ SELECT Cast(strptime('8/30/2018 2:23:38 pm', '%m/%d/%Y %I:%M:%S %p') AS DATETIME
 
 -- result
 "datetime"
-"2018-08-30 14:23:38"
+"2018-08-30 14:23:38.0"
 
 
 -- provided
@@ -46,7 +46,7 @@ SELECT Cast(strptime('Wednesday, December 19, 2018', '%A, %B %-d, %Y') AS DATETI
 
 -- result
 "datetime"
-"2018-12-19 00:00:00"
+"2018-12-19 00:00:00.0"
 
 
 -- provided
@@ -82,5 +82,5 @@ SELECT Cast(strptime('Thu Dec 25 07:30:00 2008', '%a %b %-d %-H:%M:%S %Y') AS TI
 
 -- result
 "parsed"
-"2008-12-25 07:30:00"
+"2008-12-25 07:30:00.0"
 

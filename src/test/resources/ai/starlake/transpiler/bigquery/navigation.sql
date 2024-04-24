@@ -169,16 +169,16 @@ order by 3, 2, 1;
 
 -- result
 "name","finish_time","division","preceding_runner"
-"Carly Forte","2016-10-18 03:08:58","F25-29",""
-"Sophia Liu","2016-10-18 02:51:45","F30-34",""
-"Nikki Leith","2016-10-18 02:59:01","F30-34","Sophia Liu"
-"Jen Edwards","2016-10-18 03:06:36","F30-34","Nikki Leith"
-"Meghan Lederer","2016-10-18 03:07:41","F30-34","Jen Edwards"
-"Lauren Reasoner","2016-10-18 03:10:14","F30-34","Meghan Lederer"
-"Lisa Stelzner","2016-10-18 02:54:11","F35-39",""
-"Lauren Matthews","2016-10-18 03:01:17","F35-39","Lisa Stelzner"
-"Desiree Berry","2016-10-18 03:05:42","F35-39","Lauren Matthews"
-"Suzy Slane","2016-10-18 03:06:24","F35-39","Desiree Berry"
+"Carly Forte","2016-10-18 03:08:58.0","F25-29",""
+"Sophia Liu","2016-10-18 02:51:45.0","F30-34",""
+"Nikki Leith","2016-10-18 02:59:01.0","F30-34","Sophia Liu"
+"Jen Edwards","2016-10-18 03:06:36.0","F30-34","Nikki Leith"
+"Meghan Lederer","2016-10-18 03:07:41.0","F30-34","Jen Edwards"
+"Lauren Reasoner","2016-10-18 03:10:14.0","F30-34","Meghan Lederer"
+"Lisa Stelzner","2016-10-18 02:54:11.0","F35-39",""
+"Lauren Matthews","2016-10-18 03:01:17.0","F35-39","Lisa Stelzner"
+"Desiree Berry","2016-10-18 03:05:42.0","F35-39","Lauren Matthews"
+"Suzy Slane","2016-10-18 03:06:24.0","F35-39","Desiree Berry"
 
 
 -- provided
@@ -205,16 +205,16 @@ order by 3,2,1;
 
 -- result
 "name","finish_time","division","two_runners_ahead"
-"Carly Forte","2016-10-18 03:08:58","F25-29","Nobody"
-"Sophia Liu","2016-10-18 02:51:45","F30-34","Nobody"
-"Nikki Leith","2016-10-18 02:59:01","F30-34","Nobody"
-"Jen Edwards","2016-10-18 03:06:36","F30-34","Sophia Liu"
-"Meghan Lederer","2016-10-18 03:07:41","F30-34","Nikki Leith"
-"Lauren Reasoner","2016-10-18 03:10:14","F30-34","Jen Edwards"
-"Lisa Stelzner","2016-10-18 02:54:11","F35-39","Nobody"
-"Lauren Matthews","2016-10-18 03:01:17","F35-39","Nobody"
-"Desiree Berry","2016-10-18 03:05:42","F35-39","Lisa Stelzner"
-"Suzy Slane","2016-10-18 03:06:24","F35-39","Lauren Matthews"
+"Carly Forte","2016-10-18 03:08:58.0","F25-29","Nobody"
+"Sophia Liu","2016-10-18 02:51:45.0","F30-34","Nobody"
+"Nikki Leith","2016-10-18 02:59:01.0","F30-34","Nobody"
+"Jen Edwards","2016-10-18 03:06:36.0","F30-34","Sophia Liu"
+"Meghan Lederer","2016-10-18 03:07:41.0","F30-34","Nikki Leith"
+"Lauren Reasoner","2016-10-18 03:10:14.0","F30-34","Jen Edwards"
+"Lisa Stelzner","2016-10-18 02:54:11.0","F35-39","Nobody"
+"Lauren Matthews","2016-10-18 03:01:17.0","F35-39","Nobody"
+"Desiree Berry","2016-10-18 03:05:42.0","F35-39","Lisa Stelzner"
+"Suzy Slane","2016-10-18 03:06:24.0","F35-39","Lauren Matthews"
 
 -- provided
 WITH finishers AS
@@ -240,16 +240,16 @@ order by 3, 2, 1;
 
 -- result
 "name","finish_time","division","two_runners_back"
-"Carly Forte","2016-10-18 03:08:58","F25-29","Nobody"
-"Sophia Liu","2016-10-18 02:51:45","F30-34","Jen Edwards"
-"Nikki Leith","2016-10-18 02:59:01","F30-34","Meghan Lederer"
-"Jen Edwards","2016-10-18 03:06:36","F30-34","Lauren Reasoner"
-"Meghan Lederer","2016-10-18 03:07:41","F30-34","Nobody"
-"Lauren Reasoner","2016-10-18 03:10:14","F30-34","Nobody"
-"Lisa Stelzner","2016-10-18 02:54:11","F35-39","Desiree Berry"
-"Lauren Matthews","2016-10-18 03:01:17","F35-39","Suzy Slane"
-"Desiree Berry","2016-10-18 03:05:42","F35-39","Nobody"
-"Suzy Slane","2016-10-18 03:06:24","F35-39","Nobody"
+"Carly Forte","2016-10-18 03:08:58.0","F25-29","Nobody"
+"Sophia Liu","2016-10-18 02:51:45.0","F30-34","Jen Edwards"
+"Nikki Leith","2016-10-18 02:59:01.0","F30-34","Meghan Lederer"
+"Jen Edwards","2016-10-18 03:06:36.0","F30-34","Lauren Reasoner"
+"Meghan Lederer","2016-10-18 03:07:41.0","F30-34","Nobody"
+"Lauren Reasoner","2016-10-18 03:10:14.0","F30-34","Nobody"
+"Lisa Stelzner","2016-10-18 02:54:11.0","F35-39","Desiree Berry"
+"Lauren Matthews","2016-10-18 03:01:17.0","F35-39","Suzy Slane"
+"Desiree Berry","2016-10-18 03:05:42.0","F35-39","Nobody"
+"Suzy Slane","2016-10-18 03:06:24.0","F35-39","Nobody"
 
 
 -- provided

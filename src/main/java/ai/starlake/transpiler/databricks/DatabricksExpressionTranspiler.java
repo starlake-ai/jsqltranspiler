@@ -140,10 +140,6 @@ public class DatabricksExpressionTranspiler extends JSQLExpressionTranspiler {
 
     Expression rewrittenExpression = null;
     TranspiledFunction f = TranspiledFunction.from(functionName);
-    if (f != null) {
-      switch (f) {
-      }
-    }
     if (rewrittenExpression == null) {
       super.visit(function);
     } else {

@@ -1,12 +1,38 @@
 -- provided
-select * from values (1,2), (3,4);
+SELECT TOP 10
+        qtysold
+        , sellerid
+FROM (  SELECT TOP 4
+                qtysold
+                , sellerid
+        FROM sales
+        ORDER BY    qtysold DESC
+                    , sellerid ) a
+ORDER BY    qtysold DESC
+            , sellerid
+;
 
 -- expected
-select *
-from (select unnest( [{column1:1, column2:2}, {column1:3, column2:4}], recursive=>true));
+SELECT  qtysold
+        , sellerid
+FROM (  SELECT qtysold
+                , sellerid
+        FROM sales
+        ORDER BY    qtysold DESC
+                    , sellerid
+        LIMIT 4 ) a
+ORDER BY    qtysold DESC
+            , sellerid
+LIMIT 10
+;
 
--- result
-"column1","column2"
-"1","2"
-"3","4"
+-- count
+4
+
+-- results
+"qtysold","sellerid"
+"8","518"
+"8","520"
+"8","574"
+"8","718"
 

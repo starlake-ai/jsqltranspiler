@@ -233,6 +233,81 @@ FROM (  SELECT Unnest(  [
 "2016-08-23","2016-09-07","0","1","15","15"
 
 
+-- provided
+SELECT '2019-02-28'::DATE AS "DATE",
+       TIME_SLICE("DATE", 4, 'MONTH', 'START') AS "START OF SLICE",
+       TIME_SLICE("DATE", 4, 'MONTH', 'END') AS "END OF SLICE";
+
+-- expected
+SELECT  '2019-02-28'::DATE AS "DATE"
+        , Time_Bucket( ( 4 || 'MONTH' )::INTERVAL, "DATE" ) AS "START OF SLICE"
+        , Time_Bucket( ( 4 || 'MONTH' )::INTERVAL, "DATE" )
+                 + ( 4 || 'MONTH' )::INTERVAL AS "END OF SLICE"
+;
+
+-- result
+"DATE","START OF SLICE","END OF SLICE"
+"2019-02-28","2019-01-01","2019-05-01 00:00:00.0"
+
+
+-- provided
+SELECT '2019-02-28T01:23:45.678'::TIMESTAMP_NTZ AS "TIMESTAMP 1",
+       '2019-02-28T12:34:56.789'::TIMESTAMP_NTZ AS "TIMESTAMP 2",
+       TIME_SLICE("TIMESTAMP 1", 8, 'HOUR') AS "SLICE FOR TIMESTAMP 1",
+       TIME_SLICE("TIMESTAMP 2", 8, 'HOUR') AS "SLICE FOR TIMESTAMP 2";
+
+-- expected
+SELECT  '2019-02-28T01:23:45.678'::TIMESTAMP AS "TIMESTAMP 1"
+        , '2019-02-28T12:34:56.789'::TIMESTAMP AS "TIMESTAMP 2"
+        , Time_Bucket( ( 8 || 'HOUR' )::INTERVAL, "TIMESTAMP 1" ) AS "SLICE FOR TIMESTAMP 1"
+        , Time_Bucket( ( 8 || 'HOUR' )::INTERVAL, "TIMESTAMP 2" ) AS "SLICE FOR TIMESTAMP 2"
+;
+
+-- result
+"TIMESTAMP 1","TIMESTAMP 2","SLICE FOR TIMESTAMP 1","SLICE FOR TIMESTAMP 2"
+"2019-02-28 01:23:45.678","2019-02-28 12:34:56.789","2019-02-28 00:00:00.0","2019-02-28 08:00:00.0"
+
+
+-- prolog
+DROP TABLE IF EXISTS accounts ;
+CREATE TABLE accounts (ID INT, billing_date DATE, balance_due NUMERIC(11, 2));
+INSERT INTO accounts (ID, billing_date, balance_due) VALUES
+    (1, '2018-07-31', 100.00),
+    (2, '2018-08-01', 200.00),
+    (3, '2018-08-25', 400.00);
+
+-- provided
+SELECT
+       TIME_SLICE(billing_date, 2, 'WEEK', 'START') AS "START OF SLICE",
+       TIME_SLICE(billing_date, 2, 'WEEK', 'END')   AS "END OF SLICE",
+       COUNT(*) AS "NUMBER OF LATE BILLS",
+       SUM(balance_due) AS "SUM OF MONEY OWED"
+    FROM accounts
+    WHERE balance_due > 0    -- bill hasn't yet been paid
+    GROUP BY "START OF SLICE", "END OF SLICE"
+    order by 1;
+
+-- expected
+SELECT
+    TIME_BUCKET((2||'WEEK')::INTERVAL,BILLING_DATE) AS "START OF SLICE"
+    , TIME_BUCKET((2||'WEEK')::INTERVAL,BILLING_DATE)+(2||'WEEK')::INTERVAL AS "END OF SLICE"
+    , COUNT(*) AS "NUMBER OF LATE BILLS"
+    , SUM(BALANCE_DUE) AS "SUM OF MONEY OWED"
+FROM ACCOUNTS WHERE BALANCE_DUE>0
+GROUP BY "START OF SLICE","END OF SLICE"
+ORDER BY 1;
+
+-- result
+"START OF SLICE","END OF SLICE","NUMBER OF LATE BILLS","SUM OF MONEY OWED"
+"2018-07-23","2018-08-06 00:00:00.0","2","300.00"
+"2018-08-20","2018-09-03 00:00:00.0","1","400.00"
+
+-- epilog
+DROP TABLE IF EXISTS accounts ;
+
+
+
+
 
 
 

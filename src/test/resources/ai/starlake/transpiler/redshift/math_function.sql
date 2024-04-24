@@ -184,6 +184,7 @@ SELECT (SELECT SUM(qtysold) FROM sales, date
 WHERE sales.dateid=date.dateid
 AND year=2008) * POW((1+7::FLOAT/100/12),120) qty2010;
 
+-- expected
 SELECT (SELECT SUM(qtysold) FROM sales, date
 WHERE sales.dateid=date.dateid
 AND year=2008) * POW((1+7::FLOAT8/100/12),120) qty2010;

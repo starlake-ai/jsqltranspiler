@@ -27,7 +27,7 @@ SELECT DATE_ADD(DATE '1970-01-01', INTERVAL '14238 DAY') AS date_from_epoch
 
 -- result
 "date_from_epoch"
-"2008-12-25 00:00:00"
+"2008-12-25 00:00:00.0"
 
 -- provided
 SELECT TIMESTAMP_MICROS(1230219000000000) AS timestamp_value;
@@ -37,7 +37,7 @@ SELECT MAKE_TIMESTAMP(1230219000000000) AS timestamp_value;
 
 -- result
 "timestamp_value"
-"2008-12-25 15:30:00"
+"2008-12-25 15:30:00.0"
 
 
 -- provided
@@ -48,7 +48,7 @@ SELECT EPOCH_MS(1230219000000) AS timestamp_value;
 
 -- result
 "timestamp_value"
-"2008-12-25 15:30:00"
+"2008-12-25 15:30:00.0"
 
 
 -- provided
@@ -59,7 +59,7 @@ SELECT EPOCH_MS(Cast(1230219000 AS INT64) * 1000) AS timestamp_value;
 
 -- result
 "timestamp_value"
-"2008-12-25 15:30:00"
+"2008-12-25 15:30:00.0"
 
 
 -- provided

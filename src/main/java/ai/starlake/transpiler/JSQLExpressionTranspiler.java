@@ -2074,6 +2074,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return castInterval(new StringValue(expression));
   }
 
+  public static Expression castInterval(Expression e1, Expression e2,
+      JSQLTranspiler.Dialect dialect) {
+    return new CastExpression(
+        new Parenthesis(BinaryExpression.concat(e1, toDateTimePart(e2, dialect))), "INTERVAL");
+  }
+
   public static Expression castInterval(Expression expression) {
     if (expression instanceof StringValue) {
       return castInterval((StringValue) expression);

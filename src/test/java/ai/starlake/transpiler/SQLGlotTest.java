@@ -1,7 +1,5 @@
 package ai.starlake.transpiler;
 
-import com.opencsv.CSVWriter;
-import com.opencsv.ResultSetHelperService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.provider.Arguments;
 
@@ -9,14 +7,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
-import java.io.StringWriter;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.stream.Stream;
 
 public abstract class SQLGlotTest extends JSQLTranspilerTest {
-  public final static String TEST_FOLDER_STR =
-      "build/resources/test/ai/starlake/transpiler/any";
+  public final static String TEST_FOLDER_STR = "build/resources/test/ai/starlake/transpiler/any";
 
   static Stream<Arguments> getSqlTestMap() {
     return unrollParameterMap(getSqlTestMap(new File(TEST_FOLDER_STR).listFiles(FILENAME_FILTER),
@@ -67,32 +63,10 @@ public abstract class SQLGlotTest extends JSQLTranspilerTest {
           i++;
         }
       }
-      // Expect 10 records
-      // Assertions.assertEquals(t.expectedTally, i);
       Assertions.assertThat(i).isEqualTo(t.expectedTally).as("Returned records do not tally.");
     }
 
-
-    if (t.expectedResult != null && !t.expectedResult.isEmpty()) {
-      // Compare output
-      try (Statement st = connDuck.createStatement();
-          ResultSet rs = st.executeQuery(output.toString());
-          StringWriter stringWriter = new StringWriter();
-          CSVWriter csvWriter = new CSVWriter(stringWriter)) {
-
-        // enforce SQL compliant format
-        ResultSetHelperService resultSetHelperService = new ResultSetHelperService();
-        resultSetHelperService.setDateFormat("yyyy-MM-dd");
-        resultSetHelperService.setDateTimeFormat("yyyy-MM-dd HH:mm:ss");
-        csvWriter.setResultService(resultSetHelperService);
-
-        csvWriter.writeAll(rs, true, true, true);
-        csvWriter.flush();
-        stringWriter.flush();
-        Assertions.assertThat(stringWriter.toString().trim())
-            .isEqualToIgnoringCase(t.expectedResult);
-      }
-    }
+    executeTest(connDuck, t, output.toString());
   }
 
 }

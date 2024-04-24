@@ -31,6 +31,7 @@ import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 
+@SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
   public SnowflakeExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
     super(transpiler, buffer);
@@ -46,7 +47,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
 
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, DATEDIFF
+    DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE
 
     , TO_DATE, TO_TIME, TO_TIMESTAMP;
     // @FORMATTER:ON
@@ -95,6 +96,10 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
 
   public Expression toDateTimePart(Expression expression) {
     return toDateTimePart(expression, JSQLTranspiler.Dialect.SNOWFLAKE);
+  }
+
+  public Expression castInterval(Expression e1, Expression e2) {
+    return castInterval(e1, e2, JSQLTranspiler.Dialect.SNOWFLAKE);
   }
 
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
@@ -251,6 +256,9 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
                       BinaryExpression.concat(parameters.get(1), new StringValue(" MONTH"))),
                   "INTERVAL"));
           break;
+        case TIMEADD:
+        case TIMESTAMPADD:
+          function.setName("DateAdd");
         case DATEADD:
           // DATEADD(year, 2, TO_DATE('2013-05-08')
           if (hasParameters && parameters.size() == 3) {
@@ -262,10 +270,31 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
                     "INTERVAL"));
           }
           break;
+        case TIMEDIFF:
+        case TIMESTAMPDIFF:
+          function.setName("DateDiff");
         case DATEDIFF:
           if (hasParameters && parameters.size() == 3) {
             function.setParameters(toDateTimePart(parameters.get(0)),
                 castDateTime(parameters.get(1)), castDateTime(parameters.get(2)));
+          }
+          break;
+        case TIME_SLICE:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              // TIME_SLICE(billing_date, 2, 'WEEK', 'START')
+              // time_bucket(INTERVAL '2 WEEK', billing_date) + INTERVAL '2 WEEK'
+              case 4:
+                if (parameters.get(3) instanceof StringValue
+                    && ((StringValue) parameters.get(3)).getValue().equalsIgnoreCase("END")) {
+                  rewrittenExpression = BinaryExpression.add(function,
+                      castInterval(parameters.get(1), parameters.get(2)));
+                }
+              case 3:
+                function.setName("Time_Bucket");
+                function.setParameters(castInterval(parameters.get(1), parameters.get(2)),
+                    castDateTime(parameters.get(0)));
+            }
           }
           break;
       }
@@ -297,10 +326,6 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
 
     Expression rewrittenExpression = null;
     TranspiledFunction f = TranspiledFunction.from(functionName);
-    if (f != null) {
-      switch (f) {
-      }
-    }
     if (rewrittenExpression == null) {
       super.visit(function);
     } else {
@@ -326,6 +351,8 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
       colDataType.setDataType("TIMESTAMPTZ");
     } else if (colDataType.getDataType().equalsIgnoreCase("TIMESTAMP_TZ")) {
       colDataType.setDataType("TIMESTAMPTZ");
+    } else if (colDataType.getDataType().equalsIgnoreCase("NUMBER")) {
+      colDataType.setDataType("NUMERIC");
     }
     return super.rewriteType(colDataType);
   }

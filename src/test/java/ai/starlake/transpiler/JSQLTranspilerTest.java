@@ -49,6 +49,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 
+
 public class JSQLTranspilerTest {
   final static Logger LOGGER = Logger.getLogger(JSQLTranspilerTest.class.getName());
   private final static String EXTRACTION_PATH =
@@ -80,6 +81,9 @@ public class JSQLTranspilerTest {
     final JSQLTranspiler.Dialect inputDialect;
     final JSQLTranspiler.Dialect outputDialect;
 
+    public int line = 0;
+    public String prologue = null;
+    public String epilogue = null;
     public String providedSqlStr;
     public String expectedSqlStr;
 
@@ -108,9 +112,8 @@ public class JSQLTranspilerTest {
 
     ArrayList<Object[]> data = new ArrayList<>();
     for (Map.Entry<File, List<SQLTest>> e : entries) {
-      int i = 0;
       for (SQLTest t : e.getValue()) {
-        data.add(new Object[] {e.getKey(), ++i, t});
+        data.add(new Object[] {e.getKey(), t.line, t});
       }
     }
 
@@ -123,69 +126,89 @@ public class JSQLTranspilerTest {
       JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
     LinkedHashMap<File, List<SQLTest>> sqlMap = new LinkedHashMap<>();
 
-    if (testFiles==null) {
+    if (testFiles == null) {
       return sqlMap;
     }
 
     for (File file : Objects.requireNonNull(testFiles)) {
       List<SQLTest> tests = new ArrayList<>();
-      boolean startContent = false;
-      boolean endContent;
 
       StringBuilder stringBuilder = new StringBuilder();
       String line;
-      String k = "";
+      String token = "";
+      String previousToken = null;
 
       try (FileReader fileReader = new FileReader(file);
           BufferedReader bufferedReader = new BufferedReader(fileReader)) {
         SQLTest test = new SQLTest(inputDialect, outputDialect);
+        int r = 0;
         while ((line = bufferedReader.readLine()) != null) {
-          if (!startContent && line.startsWith("--") && !line.startsWith("-- @")) {
-            k = line.substring(2).trim().toLowerCase();
-          }
+          r++;
+          String trimmedLine = line.toLowerCase().replaceAll("\\s", "");
 
-          if (line.toLowerCase().replaceAll("\\s", "").startsWith("--provid")) {
-            if (test.providedSqlStr != null
-                && (test.expectedTally >= 0 || test.expectedResult != null)) {
-              LOGGER.fine("Found multiple test descriptions in " + file.getName());
-              // pass through tests not depending on transpiling
-              if (test.expectedSqlStr == null || test.expectedSqlStr.isEmpty()) {
-                test.expectedSqlStr = test.providedSqlStr;
+          if (line.startsWith("--") && !line.startsWith("--@")) {
+            previousToken = token;
+            token = trimmedLine.substring(2).trim().toLowerCase();
+
+            if (token.startsWith("prolog") || token.startsWith("provid")
+                || token.startsWith("expect") || token.startsWith("count")
+                || token.startsWith("tally") || token.startsWith("result")
+                || token.startsWith("return") || token.startsWith("epilog")) {
+
+              if (previousToken.startsWith("prolog")) {
+                test.prologue = stringBuilder.toString();
+              } else if (previousToken.startsWith("provid")) {
+                test.providedSqlStr = stringBuilder.toString();
+              } else if (previousToken.startsWith("expect")) {
+                test.expectedSqlStr = stringBuilder.toString();
+              } else if (previousToken.startsWith("count") || token.startsWith("tally")) {
+                test.expectedTally = Integer.parseInt(stringBuilder.toString().trim());
+              } else if (previousToken.startsWith("result") || token.startsWith("return")) {
+                test.expectedResult = stringBuilder.toString().trim();
+              } else if (previousToken.startsWith("epilog")) {
+                test.epilogue = stringBuilder.toString();
               }
-              tests.add(test);
 
-              test = new SQLTest(inputDialect, outputDialect);
+              if ((token.startsWith("prolog") || token.startsWith("provid"))
+                  && test.providedSqlStr != null
+                  && (test.expectedTally >= 0 || test.expectedResult != null)) {
+
+                LOGGER.fine("Found multiple test descriptions in " + file.getName());
+                // pass through tests not depending on transpiling
+                if (test.expectedSqlStr == null || test.expectedSqlStr.isEmpty()) {
+                  test.expectedSqlStr = test.providedSqlStr;
+                }
+                tests.add(test);
+
+                test = new SQLTest(inputDialect, outputDialect);
+                test.line = r;
+              }
+
+              stringBuilder.setLength(0);
+              continue;
             }
           }
 
-          startContent = startContent
-              || (!line.startsWith("--") || line.startsWith("-- @")) && !line.trim().isEmpty();
-          endContent = startContent && !line.startsWith("--")
-              && (line.trim().endsWith(";")
-                  || (k.equalsIgnoreCase("count") || k.equalsIgnoreCase("tally")) && line.isEmpty()
-                  || (k.startsWith("result") || k.startsWith("return")) && line.isEmpty());
-
-          if (startContent && !line.isEmpty()) {
+          if (!line.isEmpty()) {
             stringBuilder.append(line).append("\n");
           }
-
-          if (endContent) {
-            if (k.startsWith("provid")) {
-              test.providedSqlStr = stringBuilder.toString();
-            } else if (k.startsWith("expect")) {
-              test.expectedSqlStr = stringBuilder.toString();
-            } else if (k.startsWith("count") || k.startsWith("tally")) {
-              test.expectedTally = Integer.parseInt(stringBuilder.toString().trim());
-            } else if (k.startsWith("result") || k.startsWith("return")) {
-              test.expectedResult = stringBuilder.toString().trim();
-            }
-            stringBuilder.setLength(0);
-            startContent = false;
-          }
-
         }
 
         // pass through tests not depending on transpiling
+        if (token.startsWith("prolog")) {
+          test.prologue = stringBuilder.toString();
+        } else if (token.startsWith("provid")) {
+          test.providedSqlStr = stringBuilder.toString();
+        } else if (token.startsWith("expect")) {
+          test.expectedSqlStr = stringBuilder.toString();
+        } else if (token.startsWith("count") || token.startsWith("tally")) {
+          test.expectedTally = Integer.parseInt(stringBuilder.toString().trim());
+        } else if (token.startsWith("result") || token.startsWith("return")) {
+          test.expectedResult = stringBuilder.toString().trim();
+        } else if (token.startsWith("epilog")) {
+          test.epilogue = stringBuilder.toString();
+        }
+
         if (test.expectedSqlStr == null || test.expectedSqlStr.isEmpty()) {
           test.expectedSqlStr = test.providedSqlStr;
         }
@@ -371,6 +394,18 @@ public class JSQLTranspilerTest {
     }
   }
 
+  private static List<Object[]> resultSetToList(ResultSet resultSet) throws SQLException {
+    List<Object[]> records = new ArrayList<>();
+    while (resultSet.next()) {
+      Object[] record = new Object[resultSet.getMetaData().getColumnCount()];
+      for (int i = 0; i < record.length; i++) {
+        record[i] = resultSet.getObject(i + 1);
+      }
+      records.add(record);
+    }
+    return records;
+  }
+
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
   @MethodSource("getSqlTestMap")
   protected void transpile(File f, int idx, SQLTest t) throws Exception {
@@ -389,12 +424,26 @@ public class JSQLTranspilerTest {
     // });
     // }
 
+    if (t.prologue != null && !t.prologue.isEmpty()) {
+      try (Statement st = connDuck.createStatement();) {
+        for (net.sf.jsqlparser.statement.Statement statement : CCJSqlParserUtil
+            .parseStatements(t.prologue)) {
+          st.executeUpdate(statement.toString());
+        }
+      }
+    }
+
     // Assertions.assertNotNull(t.expectedSqlStr);
     String transpiledSqlStr = JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect);
     Assertions.assertThat(transpiledSqlStr).isNotNull();
     Assertions.assertThat(sanitize(transpiledSqlStr, true))
         .isEqualTo(sanitize(t.expectedSqlStr, true));
 
+    executeTest(connDuck, t, transpiledSqlStr);
+  }
+
+  public static void executeTest(Connection connDuck, SQLTest t, String transpiledSqlStr)
+      throws SQLException, IOException, JSQLParserException {
     // Expect this transpiled query to succeed since DuckDB does not support `TOP <integer>`
     if (t.expectedTally >= 0) {
       int i = 0;
@@ -414,7 +463,7 @@ public class JSQLTranspilerTest {
       try (Statement st = connDuck.createStatement();
           ResultSet rs = st.executeQuery(transpiledSqlStr);
           StringWriter stringWriter = new StringWriter();
-          CSVWriter csvWriter = new CSVWriter(stringWriter)) {
+          CSVWriter csvWriter = new CSVWriter(stringWriter);) {
 
         // enforce SQL compliant format
         ResultSetHelperService resultSetHelperService = new ResultSetHelperService();
@@ -423,10 +472,17 @@ public class JSQLTranspilerTest {
         csvWriter.setResultService(resultSetHelperService);
 
         csvWriter.writeAll(rs, true, false, true);
-        csvWriter.flush();
-        stringWriter.flush();
         Assertions.assertThat(stringWriter.toString().trim())
             .isEqualToIgnoringCase(t.expectedResult);
+      }
+    }
+
+    if (t.epilogue != null && !t.epilogue.isEmpty()) {
+      try (Statement st = connDuck.createStatement();) {
+        for (net.sf.jsqlparser.statement.Statement statement : CCJSqlParserUtil
+            .parseStatements(t.epilogue)) {
+          st.executeUpdate(statement.toString());
+        }
       }
     }
   }
