@@ -48,7 +48,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
   enum TranspiledFunction {
     // @FORMATTER:OFF
     DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE
-
+    , TRUNC, DATE, TIME, TO_TIMESTAMP_LTZ, TO_TIMESTAMP_NTZ, TO_TIMESTAMP_TZ,CONVERT_TIMEZONE
     , TO_DATE, TO_TIME, TO_TIMESTAMP;
     // @FORMATTER:ON
 
@@ -200,6 +200,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             function.setParameters(parameters.get(0), new StringValue("%b"));
           }
           break;
+        case DATE:
         case TO_DATE:
           if (hasParameters) {
             switch (parameters.size()) {
@@ -209,6 +210,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             }
           }
           break;
+        case TIME:
         case TO_TIME:
           if (hasParameters) {
             switch (parameters.size()) {
@@ -219,11 +221,21 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
           }
           break;
         case TO_TIMESTAMP:
+        case TO_TIMESTAMP_NTZ:
           if (hasParameters) {
             switch (parameters.size()) {
               case 1:
-                rewrittenExpression = new CastExpression(parameters.get(0),
-                    hasTimeZoneInfo(parameters.get(0)) ? "TIMESTAMP WITH TIME ZONE" : "TIMESTAMP");
+                rewrittenExpression = new CastExpression(parameters.get(0),"TIMESTAMP");
+                break;
+            }
+          }
+          break;
+        case TO_TIMESTAMP_LTZ:
+        case TO_TIMESTAMP_TZ:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 1:
+                rewrittenExpression = new CastExpression(parameters.get(0), "TIMESTAMP WITH TIME ZONE");
                 break;
             }
           }
@@ -294,6 +306,27 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
                 function.setName("Time_Bucket");
                 function.setParameters(castInterval(parameters.get(1), parameters.get(2)),
                     castDateTime(parameters.get(0)));
+            }
+          }
+          break;
+        case TRUNC:
+          if (hasParameters && parameters.size()==2) {
+            function.setName("Date_Trunc$$");
+            function.setParameters( toDateTimePart(parameters.get(1)), castDateTime(parameters.get(0)) );
+          }
+          break;
+        case CONVERT_TIMEZONE:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 2:
+                rewrittenExpression = new TimezoneExpression( castDateTime(parameters.get(1)), parameters.get(0));
+                break;
+              case 3:
+                rewrittenExpression = new TimezoneExpression (
+                        new TimezoneExpression( castDateTime(parameters.get(2)), parameters.get(1))
+                        , parameters.get(0)
+                );
+                break;
             }
           }
           break;

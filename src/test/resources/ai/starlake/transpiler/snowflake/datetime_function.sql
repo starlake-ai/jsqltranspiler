@@ -89,8 +89,7 @@ SELECT EXTRACT(YEAR FROM TO_TIMESTAMP('2013-05-08T23:39:20.123-07:00')) AS v
     FROM (values(1)) v1;
 
 -- expected
-SELECT EXTRACT(YEAR FROM '2013-05-08T23:39:20.123-07:00'::TIMESTAMP WITH TIME ZONE) AS v
-    FROM (values(1)) v1;
+SELECT EXTRACT(YEAR FROM '2013-05-08T23:39:20.123-07:00'::TIMESTAMPTZ)AS V FROM(VALUES(1))V1;
 
 -- result
 "v"
@@ -305,7 +304,37 @@ ORDER BY 1;
 -- epilog
 DROP TABLE IF EXISTS accounts ;
 
+-- provided
+select trunc(to_date('2013-05-08'), 'MONTH') AS month;
 
+-- expected
+select date_trunc('MONTH', '2013-05-08'::DATE) AS month;
+
+-- result
+"month"
+"2013-05-01"
+
+
+-- provided
+SELECT CONVERT_TIMEZONE('America/Los_Angeles', 'America/New_York', '2019-01-01 14:00:00'::timestamp_ntz) AS conv;
+
+-- expected
+SELECT '2019-01-01 14:00:00'::TIMESTAMP AT TIME ZONE 'America/New_York' AT TIME ZONE 'America/Los_Angeles' AS CONV;
+
+-- result
+"conv"
+"2019-01-01 11:00:00.0"
+
+
+-- provided
+SELECT CONVERT_TIMEZONE('America/Los_Angeles', '2018-04-05 12:00:00 +02:00') AS time_in_la;
+
+-- expected
+SELECT TIMESTAMP WITH TIME ZONE '2018-04-05T10:00:00.000+0000' AT TIME ZONE 'America/Los_Angeles' AS TIME_IN_LA;
+
+-- result
+"time_in_la"
+"2018-04-05 03:00:00.0"
 
 
 
