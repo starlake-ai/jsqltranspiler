@@ -27,13 +27,13 @@ import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
-import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
+import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 
@@ -53,12 +53,9 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
 
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE
-    , TRUNC, DATE, TIME, TO_TIMESTAMP_LTZ, TO_TIMESTAMP_NTZ, TO_TIMESTAMP_TZ,CONVERT_TIMEZONE
-    , TO_DATE, TO_TIME, TO_TIMESTAMP
+    DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE, TRUNC, DATE, TIME, TO_TIMESTAMP_LTZ, TO_TIMESTAMP_NTZ, TO_TIMESTAMP_TZ, CONVERT_TIMEZONE, TO_DATE, TO_TIME, TO_TIMESTAMP
 
-    , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE
-    ;
+    , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE;
     // @FORMATTER:ON
 
 
@@ -152,8 +149,10 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             switch (parameters.size()) {
               case 4:
                 // select make_time(12, 34, (56 || '.' || 987654321)::DOUBLE ) AS time;
-                CastExpression castExpression = new CastExpression(new Parenthesis(BinaryExpression
-                    .concat(parameters.get(2), new StringValue("."), parameters.get(3))), "DOUBLE");
+                CastExpression castExpression = new CastExpression(
+                    new ParenthesedExpressionList<>(BinaryExpression.concat(parameters.get(2),
+                        new StringValue("."), parameters.get(3))),
+                    "DOUBLE");
                 function.setParameters(parameters.get(0), parameters.get(1), castExpression);
               case 3:
                 function.setName("MAKE_TIME");
@@ -174,8 +173,9 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             switch (parameters.size()) {
               // TIMESTAMP_FROM_PARTS( <date_expr>, <time_expr> )
               case 2:
-                rewrittenExpression = new CastExpression(new Parenthesis(BinaryExpression
-                    .add(castDateTime(parameters.get(0)), castDateTime(parameters.get(1)))),
+                rewrittenExpression = new CastExpression(
+                    new ParenthesedExpressionList<>(BinaryExpression
+                        .add(castDateTime(parameters.get(0)), castDateTime(parameters.get(1)))),
                     "TIMESTAMP");
                 break;
 
@@ -185,8 +185,10 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
               case 8:
                 rewrittenExpression = new TimezoneExpression(function, parameters.get(7));
               case 7:
-                CastExpression castExpression = new CastExpression(new Parenthesis(BinaryExpression
-                    .concat(parameters.get(5), new StringValue("."), parameters.get(6))), "DOUBLE");
+                CastExpression castExpression = new CastExpression(
+                    new ParenthesedExpressionList<>(BinaryExpression.concat(parameters.get(5),
+                        new StringValue("."), parameters.get(6))),
+                    "DOUBLE");
                 function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2),
                     parameters.get(3), parameters.get(4), castExpression);
 
@@ -234,7 +236,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
           if (hasParameters) {
             switch (parameters.size()) {
               case 1:
-                rewrittenExpression = new CastExpression(parameters.get(0),"TIMESTAMP");
+                rewrittenExpression = new CastExpression(parameters.get(0), "TIMESTAMP");
                 break;
             }
           }
@@ -244,7 +246,8 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
           if (hasParameters) {
             switch (parameters.size()) {
               case 1:
-                rewrittenExpression = new CastExpression(parameters.get(0), "TIMESTAMP WITH TIME ZONE");
+                rewrittenExpression =
+                    new CastExpression(parameters.get(0), "TIMESTAMP WITH TIME ZONE");
                 break;
             }
           }
@@ -273,7 +276,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
           function.setParameters(
               rewriteDateLiteral(parameters.get(0), DateTimeLiteralExpression.DateTime.TIMESTAMP),
               new CastExpression(
-                  new Parenthesis(
+                  new ParenthesedExpressionList<>(
                       BinaryExpression.concat(parameters.get(1), new StringValue(" MONTH"))),
                   "INTERVAL"));
           break;
@@ -286,7 +289,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             function.setName("date_add");
             function.setParameters(
                 rewriteDateLiteral(parameters.get(2), DateTimeLiteralExpression.DateTime.TIMESTAMP),
-                new CastExpression(new Parenthesis(
+                new CastExpression(new ParenthesedExpressionList<>(
                     BinaryExpression.concat(parameters.get(1), toDateTimePart(parameters.get(0)))),
                     "INTERVAL"));
           }
@@ -319,22 +322,23 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
           }
           break;
         case TRUNC:
-          if (hasParameters && parameters.size()==2) {
+          if (hasParameters && parameters.size() == 2) {
             function.setName("Date_Trunc$$");
-            function.setParameters( toDateTimePart(parameters.get(1)), castDateTime(parameters.get(0)) );
+            function.setParameters(toDateTimePart(parameters.get(1)),
+                castDateTime(parameters.get(0)));
           }
           break;
         case CONVERT_TIMEZONE:
           if (hasParameters) {
             switch (parameters.size()) {
               case 2:
-                rewrittenExpression = new TimezoneExpression( castDateTime(parameters.get(1)), parameters.get(0));
+                rewrittenExpression =
+                    new TimezoneExpression(castDateTime(parameters.get(1)), parameters.get(0));
                 break;
               case 3:
-                rewrittenExpression = new TimezoneExpression (
-                        new TimezoneExpression( castDateTime(parameters.get(2)), parameters.get(1))
-                        , parameters.get(0)
-                );
+                rewrittenExpression = new TimezoneExpression(
+                    new TimezoneExpression(castDateTime(parameters.get(2)), parameters.get(1)),
+                    parameters.get(0));
                 break;
             }
           }
@@ -342,14 +346,15 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
         case REGEXP_COUNT:
           function.setName("Length$$");
           function.setParameters(
-                  new Function("regexp_split_to_array", parameters.get(0), parameters.get(1)));
+              new Function("regexp_split_to_array", parameters.get(0), parameters.get(1)));
           rewrittenExpression =
-                  new Subtraction().withLeftExpression(function).withRightExpression(new LongValue(1));
+              new Subtraction().withLeftExpression(function).withRightExpression(new LongValue(1));
           break;
         case REGEXP_SUBSTR_ALL:
           function.setName("Regexp_Extract_All");
         case REGEXP_EXTRACT_ALL:
-          // REGEXP_SUBSTR_ALL( <subject> , <pattern> [ , <position> [ , <occurrence> [ , <regex_parameters> [ , <group_num> ] ] ] ] )
+          // REGEXP_SUBSTR_ALL( <subject> , <pattern> [ , <position> [ , <occurrence> [ ,
+          // <regex_parameters> [ , <group_num> ] ] ] ] )
           // regexp_extract_all(string, regex[, group = 0])
           if (hasParameters) {
             switch (parameters.size()) {
@@ -373,17 +378,17 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             }
 
             Expression whenExpr = new GreaterThan(
-                    new Function("Length$$",
-                                 new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1))),
-                    new LongValue(1));
+                new Function("Length$$",
+                    new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1))),
+                new LongValue(1));
             Expression thenExpr = BinaryExpression.add(new Function("Length$$",
-                                                                    new ArrayExpression(
-                                                                            new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1)),
-                                                                            new LongValue(1), null, null)),
-                                                       new LongValue(1));
+                new ArrayExpression(
+                    new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1)),
+                    new LongValue(1), null, null)),
+                new LongValue(1));
 
             rewrittenExpression =
-                    new CaseExpression(new LongValue(0), new WhenClause(whenExpr, thenExpr));
+                new CaseExpression(new LongValue(0), new WhenClause(whenExpr, thenExpr));
           }
         case REGEXP_SUBSTR:
           // REGEXP_SUBSTR( source_string, pattern [, position [, occurrence [, parameters ] ] ] )
@@ -410,7 +415,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
                   function.setParameters(parameters.get(0), parameters.get(1), longValue);
                 } else {
                   function.setParameters(parameters.get(0), parameters.get(1),
-                                         BinaryExpression.subtract(parameters.get(3), new LongValue(1)));
+                      BinaryExpression.subtract(parameters.get(3), new LongValue(1)));
                 }
                 break;
               case 5:
@@ -427,11 +432,11 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
                   LongValue longValue = (LongValue) parameters.get(3);
                   longValue.setValue(longValue.getValue() - 1);
                   function.setParameters(parameters.get(0), parameters.get(1), longValue,
-                                         parameters.get(4));
+                      parameters.get(4));
                 } else {
                   function.setParameters(parameters.get(0), parameters.get(1),
-                                         BinaryExpression.subtract(parameters.get(3), new LongValue(1)),
-                                         parameters.get(4));
+                      BinaryExpression.subtract(parameters.get(3), new LongValue(1)),
+                      parameters.get(4));
                 }
 
                 break;
@@ -442,7 +447,8 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
           function.setName("Regexp_Matches");
           break;
         case REGEXP_REPLACE:
-          //REGEXP_REPLACE( <subject> , <pattern> [ , <replacement> , <position> , <occurrence> , <parameters> ] )
+          // REGEXP_REPLACE( <subject> , <pattern> [ , <replacement> , <position> , <occurrence> ,
+          // <parameters> ] )
           if (hasParameters) {
             switch (parameters.size()) {
               case 6:
@@ -453,17 +459,18 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
                 parameters.remove(3);
               case 3:
                 // add the "global" flag
-                if (parameters.size()==3) {
-                  function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2)
-                          , new StringValue("g"));
+                if (parameters.size() == 3) {
+                  function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2),
+                      new StringValue("g"));
                 } else {
-                  function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2)
-                          , BinaryExpression.concat(parameters.get(3), new StringValue("g")));
+                  function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2),
+                      BinaryExpression.concat(parameters.get(3), new StringValue("g")));
                 }
                 break;
 
               case 2:
-                function.setParameters(parameters.get(0), parameters.get(1), new StringValue(""), new StringValue("g"));
+                function.setParameters(parameters.get(0), parameters.get(1), new StringValue(""),
+                    new StringValue("g"));
                 break;
             }
           }

@@ -33,7 +33,6 @@ import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.NullValue;
 import net.sf.jsqlparser.expression.OracleNamedFunctionParameter;
-import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.StructType;
 import net.sf.jsqlparser.expression.TimeKeyExpression;
@@ -1198,7 +1197,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     select = new PlainSelect().withSelectItems(new SelectItem<Function>(encode, "bytes"))
         .withFromItem(new ParenthesedSelect().withSelect(select));
 
-    Parenthesis p = new Parenthesis(select);
+    ParenthesedExpressionList<PlainSelect> p = new ParenthesedExpressionList<>(select);
 
     return p;
   }
@@ -1214,7 +1213,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     select = new PlainSelect().withSelectItems(new SelectItem<Function>(stringAgg, "characters"))
         .withFromItem(new ParenthesedSelect().withSelect(select));
 
-    Parenthesis p = new Parenthesis(select);
+    ParenthesedExpressionList<PlainSelect> p = new ParenthesedExpressionList<>(select);
 
     return p;
   }
@@ -2077,7 +2076,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   public static Expression castInterval(Expression e1, Expression e2,
       JSQLTranspiler.Dialect dialect) {
     return new CastExpression(
-        new Parenthesis(BinaryExpression.concat(e1, toDateTimePart(e2, dialect))), "INTERVAL");
+        new ParenthesedExpressionList<>(BinaryExpression.concat(e1, toDateTimePart(e2, dialect))),
+        "INTERVAL");
   }
 
   public static Expression castInterval(Expression expression) {

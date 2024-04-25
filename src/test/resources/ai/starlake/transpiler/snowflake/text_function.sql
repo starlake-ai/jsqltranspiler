@@ -128,3 +128,21 @@ SELECT REGEXP_REPLACE('Customers - (NY)', '\(|\)','', 'g') AS customers;
 -- result
 "customers"
 "Customers - NY"
+
+
+-- provided
+SELECT column1, ASCII(column1)
+  FROM (values('!'), ('A'), ('a'), ('bcd'), (''), (null));
+
+-- expected
+SELECT COLUMN1,ASCII(COLUMN1)FROM((SELECT UNNEST([{COLUMN1:'!'},{COLUMN1:'A'},{COLUMN1:'a'},{COLUMN1:'bcd'},{COLUMN1:''},{COLUMN1:NULL}],RECURSIVE=>TRUE)));
+
+-- results
+"column1","ascii(column1)"
+"!","33"
+"A","65"
+"a","97"
+"bcd","98"
+"","0"
+"",""
+

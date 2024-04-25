@@ -28,7 +28,6 @@ import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
-import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
@@ -37,6 +36,7 @@ import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
+import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 
@@ -314,7 +314,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           function.setParameters(
               rewriteDateLiteral(parameters.get(0), DateTimeLiteralExpression.DateTime.TIMESTAMP),
               new CastExpression(
-                  new Parenthesis(
+                  new ParenthesedExpressionList<>(
                       BinaryExpression.concat(parameters.get(1), new StringValue(" MONTH"))),
                   "INTERVAL"));
           break;
@@ -369,8 +369,10 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
             // date_add(caldate, (30 ||' day')::INTERVAL)
             function.setName("date_add$$");
             function.setParameters(parameters.get(2),
-                new CastExpression(new Parenthesis(BinaryExpression.concat(parameters.get(1),
-                    new StringValue(" " + parameters.get(0).toString()))), "INTERVAL"));
+                new CastExpression(
+                    new ParenthesedExpressionList<>(BinaryExpression.concat(parameters.get(1),
+                        new StringValue(" " + parameters.get(0).toString()))),
+                    "INTERVAL"));
           }
           break;
         case DATEDIFF:
@@ -565,7 +567,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
       return;
     }
 
-    if (function.getNullHandling()!=null && function.isIgnoreNullsOutside()) {
+    if (function.getNullHandling() != null && function.isIgnoreNullsOutside()) {
       function.setIgnoreNullsOutside(false);
     }
 
