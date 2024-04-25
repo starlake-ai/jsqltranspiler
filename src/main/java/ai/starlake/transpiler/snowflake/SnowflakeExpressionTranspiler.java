@@ -19,15 +19,21 @@ package ai.starlake.transpiler.snowflake;
 import ai.starlake.transpiler.JSQLExpressionTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.ArrayExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
+import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
+import net.sf.jsqlparser.expression.WhenClause;
+import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 
@@ -49,7 +55,10 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
     // @FORMATTER:OFF
     DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE
     , TRUNC, DATE, TIME, TO_TIMESTAMP_LTZ, TO_TIMESTAMP_NTZ, TO_TIMESTAMP_TZ,CONVERT_TIMEZONE
-    , TO_DATE, TO_TIME, TO_TIMESTAMP;
+    , TO_DATE, TO_TIME, TO_TIMESTAMP
+
+    , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE
+    ;
     // @FORMATTER:ON
 
 
@@ -326,6 +335,135 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
                         new TimezoneExpression( castDateTime(parameters.get(2)), parameters.get(1))
                         , parameters.get(0)
                 );
+                break;
+            }
+          }
+          break;
+        case REGEXP_COUNT:
+          function.setName("Length$$");
+          function.setParameters(
+                  new Function("regexp_split_to_array", parameters.get(0), parameters.get(1)));
+          rewrittenExpression =
+                  new Subtraction().withLeftExpression(function).withRightExpression(new LongValue(1));
+          break;
+        case REGEXP_SUBSTR_ALL:
+          function.setName("Regexp_Extract_All");
+        case REGEXP_EXTRACT_ALL:
+          // REGEXP_SUBSTR_ALL( <subject> , <pattern> [ , <position> [ , <occurrence> [ , <regex_parameters> [ , <group_num> ] ] ] ] )
+          // regexp_extract_all(string, regex[, group = 0])
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 6:
+              case 5:
+                parameters.remove(4);
+              case 4:
+                parameters.remove(3);
+              case 3:
+                warning("unsupported parameters");
+                parameters.remove(2);
+            }
+          }
+          break;
+        case REGEXP_INSTR:
+          // case when len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$'))>1 then
+          // len(REGEXP_SPLIT_TO_ARRAY(venuename,'[cC]ent(er|re)$')[1])+1 else 0 end
+          if (parameters != null) {
+            while (parameters.size() > 2) {
+              parameters.remove(parameters.size() - 1);
+            }
+
+            Expression whenExpr = new GreaterThan(
+                    new Function("Length$$",
+                                 new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1))),
+                    new LongValue(1));
+            Expression thenExpr = BinaryExpression.add(new Function("Length$$",
+                                                                    new ArrayExpression(
+                                                                            new Function("REGEXP_SPLIT_TO_ARRAY", parameters.get(0), parameters.get(1)),
+                                                                            new LongValue(1), null, null)),
+                                                       new LongValue(1));
+
+            rewrittenExpression =
+                    new CaseExpression(new LongValue(0), new WhenClause(whenExpr, thenExpr));
+          }
+        case REGEXP_SUBSTR:
+          // REGEXP_SUBSTR( source_string, pattern [, position [, occurrence [, parameters ] ] ] )
+          // REGEXP_SUBSTR skips the first occurrence -1 matches. The default is 1.
+          if (parameters != null) {
+            function.setName("Regexp_Extract$$");
+            switch (parameters.size()) {
+              case 2:
+                function.setParameters(parameters.get(0), parameters.get(1), new LongValue(0));
+                break;
+              case 3:
+                warning("Position Parameter unsupported");
+                parameters.remove(2);
+
+                function.setParameters(parameters.get(0), parameters.get(1), new LongValue(0));
+                break;
+
+              case 4:
+                warning("Position Parameter unsupported");
+
+                if (parameters.get(3) instanceof LongValue) {
+                  LongValue longValue = (LongValue) parameters.get(3);
+                  longValue.setValue(longValue.getValue() - 1);
+                  function.setParameters(parameters.get(0), parameters.get(1), longValue);
+                } else {
+                  function.setParameters(parameters.get(0), parameters.get(1),
+                                         BinaryExpression.subtract(parameters.get(3), new LongValue(1)));
+                }
+                break;
+              case 5:
+                warning("Position Parameter unsupported");
+
+                if (parameters.get(4).toString().contains("p")) {
+                  warning("PCRE unsupported");
+                }
+                if (parameters.get(4).toString().contains("e")) {
+                  warning("Sub-Expression");
+                }
+
+                if (parameters.get(3) instanceof LongValue) {
+                  LongValue longValue = (LongValue) parameters.get(3);
+                  longValue.setValue(longValue.getValue() - 1);
+                  function.setParameters(parameters.get(0), parameters.get(1), longValue,
+                                         parameters.get(4));
+                } else {
+                  function.setParameters(parameters.get(0), parameters.get(1),
+                                         BinaryExpression.subtract(parameters.get(3), new LongValue(1)),
+                                         parameters.get(4));
+                }
+
+                break;
+            }
+          }
+          break;
+        case REGEXP_LIKE:
+          function.setName("Regexp_Matches");
+          break;
+        case REGEXP_REPLACE:
+          //REGEXP_REPLACE( <subject> , <pattern> [ , <replacement> , <position> , <occurrence> , <parameters> ] )
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 6:
+              case 5:
+                parameters.remove(4);
+              case 4:
+                warning("unsupported parameters");
+                parameters.remove(3);
+              case 3:
+                // add the "global" flag
+                if (parameters.size()==3) {
+                  function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2)
+                          , new StringValue("g"));
+                } else {
+                  function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2)
+                          , BinaryExpression.concat(parameters.get(3), new StringValue("g")));
+                }
+                break;
+
+              case 2:
+                function.setParameters(parameters.get(0), parameters.get(1), new StringValue(""), new StringValue("g"));
                 break;
             }
           }

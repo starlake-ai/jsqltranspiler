@@ -2112,6 +2112,16 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
   }
 
+  public void visit(LikeExpression likeExpression) {
+    LikeExpression.KeyWord keyword = likeExpression.getLikeKeyWord();
+    switch (keyword) {
+      case REGEXP:
+      case RLIKE:
+        likeExpression.setLikeKeyWord("SIMILAR TO");
+    }
+    super.visit(likeExpression);
+  }
+
   public static boolean isEmpty(Collection<?> collection) {
     return collection == null || collection.isEmpty();
   }
