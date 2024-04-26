@@ -23,8 +23,10 @@ import ai.starlake.transpiler.snowflake.SnowflakeTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.parser.SimpleNode;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.Statements;
+import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
@@ -440,7 +442,8 @@ public class JSQLTranspiler extends SelectDeParser {
   }
 
   public void visit(TableFunction tableFunction) {
-    if (tableFunction.getFunction().getName().equalsIgnoreCase("unnest")) {
+    String name = tableFunction.getFunction().getName();
+    if (name.equalsIgnoreCase("unnest")) {
       PlainSelect select = new PlainSelect()
           .withSelectItems(new SelectItem<>(tableFunction.getFunction(), tableFunction.getAlias()));
 
@@ -452,6 +455,19 @@ public class JSQLTranspiler extends SelectDeParser {
       super.visit(tableFunction);
     }
   }
+
+  public void visit(PlainSelect plainSelect) {
+    // remove any DUAL pseudo tables
+    FromItem fromItem = plainSelect.getFromItem();
+    if (fromItem instanceof Table) {
+      Table table = (Table) fromItem;
+      if (table.getName().equalsIgnoreCase("dual")) {
+        plainSelect.setFromItem(null);
+      }
+    }
+    super.visit(plainSelect);
+  }
+
 
   /**
    * The enum Dialect.

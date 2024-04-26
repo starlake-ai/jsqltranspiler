@@ -16,6 +16,12 @@
  */
 package ai.starlake.transpiler;
 
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -47,4 +53,15 @@ public class DebugTest extends JSQLTranspilerTest {
     super.transpile(f, idx, t);
   }
 
+
+  @Disabled
+  @Test
+  void testParse() throws JSQLParserException {
+    String sqlStr = "SELECT *\n"
+        + "    FROM (VALUES ('a b'), ('cde'), ('f|g'), ('')) AS t1, LATERAL STRTOK_SPLIT_TO_TABLE(t1.column1, ' ')\n"
+        + "    ORDER BY SEQ, INDEX, value;";
+    Statement st = CCJSqlParserUtil.parse(sqlStr);
+
+    Assertions.assertNotNull(st);
+  }
 }

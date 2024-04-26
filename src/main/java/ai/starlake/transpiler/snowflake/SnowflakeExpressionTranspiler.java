@@ -26,6 +26,8 @@ import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.HexValue;
+import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
@@ -33,9 +35,12 @@ import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
+import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
+
+import java.util.ArrayList;
 
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
@@ -55,7 +60,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
     // @FORMATTER:OFF
     DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE, TRUNC, DATE, TIME, TO_TIMESTAMP_LTZ, TO_TIMESTAMP_NTZ, TO_TIMESTAMP_TZ, CONVERT_TIMEZONE, TO_DATE, TO_TIME, TO_TIMESTAMP
 
-    , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE;
+    , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE, BIT_LENGTH, OCTET_LENGTH, CHAR, INSERT, RTRIMMED_LENGTH, SPACE, SPLIT_TO_TABLE, STRTOK_SPLIT_TO_TABLE, STRTOK, STRTOK_TO_ARRAY, UUID_STRING, CHARINDEX, POSITION, EDITDISTANCE, ENDSWITH, STARTSWITH, JAROWINKLER_SIMILARITY;
     // @FORMATTER:ON
 
 
@@ -76,9 +81,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
   }
 
   enum UnsupportedFunction {
-    CRC32, DIFFERENCE, INITCAP, SOUNDEX, STRTOL, NEXT_DAY
-
-    ;
+    CRC32, DIFFERENCE, INITCAP, SOUNDEX, STRTOL, NEXT_DAY, PARSE_IP, PARSE_URL, SOUNDEX_P123;
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
     public static UnsupportedFunction from(String name) {
@@ -475,6 +478,156 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             }
           }
           break;
+        case BIT_LENGTH:
+          if (hasParameters && parameters.size() == 1) {
+            CaseExpression caseExpression = new CaseExpression(
+                new Function("Octet_Length$$",
+                    new CastExpression("Try_Cast", parameters.get(0), "BLOB")),
+                new WhenClause(new StringValue("VARCHAR"),
+                    new Function("Octet_Length$$",
+                        new Function("Encode",
+                            new CastExpression("Try_Cast", parameters.get(0), "VARCHAR")))))
+                .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+            rewrittenExpression = BinaryExpression.multiply(new LongValue(8), caseExpression);
+          }
+          break;
+        case OCTET_LENGTH:
+          // case typeof('abc')
+          // when 'VARCHAR' then OCTET_LENGTH(encode('abc'))
+          // else octet_length( try_cast('abc' AS BLOB) ) end
+          if (hasParameters && parameters.size() == 1) {
+            rewrittenExpression = new CaseExpression(
+                new Function("Octet_Length$$",
+                    new CastExpression("Try_Cast", parameters.get(0), "BLOB")),
+                new WhenClause(new StringValue("VARCHAR"),
+                    new Function("Octet_Length$$",
+                        new Function("Encode",
+                            new CastExpression("Try_Cast", parameters.get(0), "VARCHAR")))))
+                .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+          }
+          break;
+        case CHAR:
+          function.setName("Chr");
+          break;
+        case INSERT:
+          // INSERT('abcdef', 3, 2, 'zzz')
+          // substr('abcdef',0,3) || 'zzz' || substr('abcdef', 2+3)
+          rewrittenExpression = BinaryExpression.concat(
+              new Function("SubStr", parameters.get(0), new LongValue(0), parameters.get(1)),
+              parameters.get(3), new Function("SubStr", parameters.get(0),
+                  BinaryExpression.add(parameters.get(1), parameters.get(2))));
+          break;
+        case RTRIMMED_LENGTH:
+          // LEN(RTRIM(' ABCD '))
+          if (hasParameters && parameters.size() == 1) {
+            function.setName("Len");
+            function.setParameters(new Function("RTrim", parameters.get(0)));
+            break;
+          }
+        case SPACE:
+          if (hasParameters && parameters.size() == 1) {
+            function.setName("Repeat");
+            function.setParameters(new StringValue(" "), parameters.get(0));
+            break;
+          }
+        case SPLIT_TO_TABLE:
+          if (hasParameters && parameters.size() == 2) {
+            function.setName("regexp_split_to_table");
+            function.setParameters(parameters.get(0),
+                new Function("regexp_escape", parameters.get(1)));
+          }
+          break;
+        case STRTOK_SPLIT_TO_TABLE:
+          if (hasParameters && parameters.size() == 2) {
+
+            // list_aggregate( list_transform( str_split_regex('hello␣world. 42', ''), x ->
+            // regexp_escape(x)), 'string_agg', '|')
+            Function splitParameter = new Function("list_aggregate",
+                new Function("list_transform",
+                    new Function("str_split_regex", parameters.get(1), new StringValue("")),
+                    new LambdaExpression("x", new Function("regexp_escape", new Column("x")))),
+                new StringValue("string_agg"), new StringValue("|"));
+
+            function.setName("regexp_split_to_table");
+            function.setParameters(parameters.get(0), splitParameter);
+          }
+          break;
+        case STRTOK:
+          if (hasParameters && parameters.size() == 3) {
+            Function splitParameter = new Function("list_aggregate",
+                new Function("list_transform",
+                    new Function("str_split_regex", parameters.get(1), new StringValue("")),
+                    new LambdaExpression("x", new Function("regexp_escape", new Column("x")))),
+                new StringValue("string_agg"), new StringValue("|"));
+
+            function.setName("Str_Split_Regex");
+            function.setParameters(parameters.get(0), splitParameter);
+
+            rewrittenExpression = new ArrayExpression(function, parameters.get(2));
+          }
+          break;
+        case STRTOK_TO_ARRAY:
+          if (hasParameters && parameters.size() == 2) {
+            Function splitParameter = new Function("list_aggregate",
+                new Function("list_transform",
+                    new Function("str_split_regex", parameters.get(1), new StringValue("")),
+                    new LambdaExpression("x", new Function("regexp_escape", new Column("x")))),
+                new StringValue("string_agg"), new StringValue("|"));
+
+            function.setName("Str_Split_Regex");
+            function.setParameters(parameters.get(0), splitParameter);
+          }
+          break;
+        case UUID_STRING:
+          function.setName("UUID");
+          break;
+        case CHARINDEX:
+        case POSITION:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 2:
+                function.setName("InStr");
+                function.setParameters(parameters.get(1), parameters.get(0));
+                break;
+              case 3:
+                function.setName("InStr");
+                function.setParameters(new Function("SubStr", parameters.get(1), parameters.get(2)),
+                    parameters.get(0));
+                break;
+            }
+          }
+          break;
+        case EDITDISTANCE:
+          if (hasParameters) {
+            switch (parameters.size()) {
+              case 2:
+                function.setName("editdist3");
+                function.setParameters(parameters.get(0), parameters.get(1));
+                break;
+              case 3:
+                function.setName("Least");
+                function.setParameters(
+                    new Function("editdist3", parameters.get(0), parameters.get(1)),
+                    parameters.get(2));
+                break;
+            }
+          }
+          break;
+        case ENDSWITH:
+          if (hasParameters && parameters.size() == 2) {
+            function.setName("Ends_With");
+          }
+          break;
+        case STARTSWITH:
+          if (hasParameters && parameters.size() == 2) {
+            function.setName("Starts_With");
+          }
+          break;
+        case JAROWINKLER_SIMILARITY:
+          if (hasParameters && parameters.size() == 2) {
+            function.setName("JARO_WINKLER_SIMILARITY");
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -516,6 +669,43 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
       column.setColumnName("CURRENT_DATE");
     }
     super.visit(column);
+  }
+
+  public void visit(HexValue hexValue) {
+    CastExpression castExpression = new CastExpression("$$", hexValue.getBlob(), "BLOB");
+    super.visit(castExpression);
+  }
+
+  public void visit(LikeExpression likeExpression) {
+    ArrayList<LikeExpression> likes = new ArrayList<>();
+    Expression l = likeExpression.getLeftExpression();
+    Expression r = likeExpression.getRightExpression();
+
+
+    if (r instanceof Function) {
+      Function f = (Function) r;
+      String name = f.getName().toUpperCase();
+
+      if (name.equals("ALL")) {
+        for (Expression e : f.getParameters()) {
+          likes.add(new LikeExpression().withLeftExpression(l).withRightExpression(e)
+              .withEscape(likeExpression.getEscape())
+              .setLikeKeyWord(likeExpression.getLikeKeyWord()));
+        }
+        BinaryExpression.and(likes.toArray(new LikeExpression[0])).accept(this);
+        return;
+      } else if (name.equals("ANY")) {
+        for (Expression e : f.getParameters()) {
+          likes.add(new LikeExpression().withLeftExpression(l).withRightExpression(e)
+              .withEscape(likeExpression.getEscape())
+              .setLikeKeyWord(likeExpression.getLikeKeyWord()));
+        }
+        BinaryExpression.or(likes.toArray(new LikeExpression[0])).accept(this);
+        return;
+      }
+    }
+
+    super.visit(likeExpression);
   }
 
   public ColDataType rewriteType(ColDataType colDataType) {

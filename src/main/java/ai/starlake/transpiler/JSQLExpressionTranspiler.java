@@ -1691,9 +1691,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   public void visit(StringValue stringValue) {
-    if ("b".equalsIgnoreCase(stringValue.getPrefix())) {
-      stringValue
-          .setValue(JSQLExpressionTranspiler.convertByteStringToUnicode(stringValue.getValue()));
+    String prefix = stringValue.getPrefix();
+    if ("b".equalsIgnoreCase(prefix)) {
+      stringValue.setValue(convertByteStringToUnicode(stringValue.getValue()));
 
       Function encode = new Function("encode", stringValue.withPrefix(""));
       visit(encode);
@@ -1827,7 +1827,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         }
 
         buffer.append(":");
-        buffer.append(e.getExpression());
+        e.getExpression().accept(this);
 
         i++;
       }
