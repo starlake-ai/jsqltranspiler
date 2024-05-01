@@ -242,7 +242,7 @@ public class JSQLTranspilerTest {
   @BeforeAll
   // setting up a TEST Database according to
   // https://docs.aws.amazon.com/redshift/latest/dg/c_sampledb.html
-  static void init() throws SQLException, IOException, JSQLParserException {
+  static synchronized void init() throws SQLException, IOException, JSQLParserException {
     File extractionPathFolder = new File(EXTRACTION_PATH);
     boolean mkdirs = extractionPathFolder.mkdirs();
 
@@ -325,6 +325,16 @@ public class JSQLTranspilerTest {
               }
             }
           }
+        }
+      }
+
+      // used by the Snowflake examples
+      // see https://duckdb.org/docs/extensions/tpch
+      LOGGER.info("Preparing TPCH with load factor 0.2");
+      try (Statement st = connDuck.createStatement()) {
+        for (String s : new String[]{"INSTALL tpch;", "LOAD tpch;", "CALL dbgen(sf = 0.2);"}) {
+          LOGGER.fine("execute: " + s);
+          st.execute(s);
         }
       }
 
