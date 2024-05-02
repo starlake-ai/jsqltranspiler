@@ -19,6 +19,7 @@ package ai.starlake.transpiler.snowflake;
 import ai.starlake.transpiler.JSQLExpressionTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.ArrayExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
@@ -29,13 +30,16 @@ import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.HexValue;
 import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.NotExpression;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
+import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
 import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
+import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
@@ -60,7 +64,10 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
     // @FORMATTER:OFF
     DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE, TRUNC, DATE, TIME, TO_TIMESTAMP_LTZ, TO_TIMESTAMP_NTZ, TO_TIMESTAMP_TZ, CONVERT_TIMEZONE, TO_DATE, TO_TIME, TO_TIMESTAMP
 
-    , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE, BIT_LENGTH, OCTET_LENGTH, CHAR, INSERT, RTRIMMED_LENGTH, SPACE, SPLIT_TO_TABLE, STRTOK_SPLIT_TO_TABLE, STRTOK, STRTOK_TO_ARRAY, UUID_STRING, CHARINDEX, POSITION, EDITDISTANCE, ENDSWITH, STARTSWITH, JAROWINKLER_SIMILARITY;
+    , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE, BIT_LENGTH, OCTET_LENGTH, CHAR, INSERT, RTRIMMED_LENGTH, SPACE, SPLIT_TO_TABLE, STRTOK_SPLIT_TO_TABLE, STRTOK, STRTOK_TO_ARRAY, UUID_STRING, CHARINDEX, POSITION, EDITDISTANCE, ENDSWITH, STARTSWITH, JAROWINKLER_SIMILARITY
+
+    , ARRAYAGG, ARRAY_CONSTRUCT, ARRAY_COMPACT, ARRAY_CONSTRUCT_COMPACT, ARRAY_CONTAINS, ARRAY_DISTINCT, ARRAY_EXCEPT, ARRAY_FLATTEN, ARRAY_GENERATE_RANGE, ARRAY_INSERT, ARRAY_INTERSECTION, ARRAY_MAX, ARRAY_MIN, ARRAY_POSITION, ARRAY_PREPEND, ARRAY_REMOVE, ARRAY_REMOVE_AT, ARRAY_SIZE, ARRAY_SLICE, ARRAY_SORT, ARRAY_TO_STRING, ARRAYS_OVERLAP
+    ;
     // @FORMATTER:ON
 
 
@@ -115,6 +122,7 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
   public void visit(Function function) {
     String functionName = function.getName();
     boolean hasParameters = hasParameters(function);
+    int paramCount = hasParameters ? function.getParameters().size() : 0;
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
@@ -628,6 +636,177 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
             function.setName("JARO_WINKLER_SIMILARITY");
           }
           break;
+        case ARRAYAGG:
+          function.setName("ARRAY_AGG");
+          break;
+        case ARRAY_CONSTRUCT:
+          rewrittenExpression = new ArrayConstructor(parameters, true);
+          break;
+        case ARRAY_COMPACT:
+          if (hasParameters && parameters.size()==1) {
+            function.setName("list_filter");
+            function.setParameters(
+                    parameters.get(0),
+                    new LambdaExpression("x", new IsNullExpression(new Column("x")).withNot(true))
+            );
+          }
+          break;
+        case ARRAY_CONSTRUCT_COMPACT:
+          if (hasParameters) {
+            function.setName("list_filter");
+            function.setParameters(
+                    new ArrayConstructor(parameters, true),
+                    new LambdaExpression("x", new IsNullExpression(new Column("x")).withNot(true))
+            );
+          }
+          break;
+        case ARRAY_CONTAINS:
+          if (paramCount==2) {
+            function.setParameters(parameters.get(1), parameters.get(0));
+          }
+        case ARRAY_DISTINCT:
+          warning("Removes NULL and shuffles elements.");
+          break;
+        case ARRAY_EXCEPT:
+          //list_filter(['A', 'B', 'C'], x -> not list_contains(['B', 'C'],x) )
+          if (paramCount==2) {
+            function.setName("List_Filter");
+            function.setParameters(
+                    parameters.get(0)
+                    , new LambdaExpression( "x", new NotExpression( new Function("List_Contains", parameters.get(1), new Column("x"))))
+            );
+          }
+          break;
+        case ARRAY_FLATTEN:
+          function.setName("Flatten");
+          break;
+        case ARRAY_GENERATE_RANGE:
+          function.setName("Range");
+          break;
+        case ARRAY_INSERT:
+          //[0,1,2,3][0:2] || ['hello'] || [0,1,2,3][2+1:]
+          if (paramCount==3) {
+            rewrittenExpression = BinaryExpression.concat(
+                    new ArrayExpression(parameters.get(0), new LongValue(0), parameters.get(1))
+                    , new ArrayConstructor(new ExpressionList<Expression>(parameters.get(2)), false)
+                    , new ArrayExpression(
+                            parameters.get(0)
+                            , BinaryExpression.add(parameters.get(1), new LongValue(1))
+                            , null)
+            );
+          }
+          break;
+        case ARRAY_INTERSECTION:
+          function.setName("Array_Intersect");
+          break;
+        case ARRAY_MAX:
+          //list_reverse_sort(list_filter([20, 0, NULL, 10, NULL], x -> x is not null))[1]
+          if (paramCount==1) {
+            rewrittenExpression = new ArrayExpression(
+                    new Function(
+                            "list_reverse_sort"
+                            , new Function("list_filter", parameters.get(0), new LambdaExpression("x", new IsNullExpression(new Column("x")).withNot(true)))
+                    )
+                    , new LongValue(1)
+            );
+          }
+          break;
+        case ARRAY_MIN:
+          if (paramCount==1) {
+            rewrittenExpression = new ArrayExpression(
+                    new Function(
+                            "list_sort"
+                            , new Function("list_filter", parameters.get(0), new LambdaExpression("x", new IsNullExpression(new Column("x")).withNot(true)))
+                    )
+                    , new LongValue(1)
+            );
+          }
+          break;
+        case ARRAY_POSITION:
+          // nullif(ARRAY_POSITION(array['hello', 'hi'], 'hi'::varchar)-1, -1)
+          if (paramCount==2) {
+            function.setName("NullIf");
+            function.setParameters(
+                    BinaryExpression.subtract(
+                      new Function("Array_Position$$", parameters.get(1), parameters.get(0))
+                      , new LongValue(1)
+                    )
+                    , new LongValue(-1)
+            );
+          }
+          break;
+        case ARRAY_PREPEND:
+          if (paramCount==2) {
+            function.setParameters(parameters.get(1), parameters.get(0));
+          }
+          break;
+        case ARRAY_REMOVE:
+          //list_filter([1, 5, 5.00, 5.00::DOUBLE, '5', 5, NULL], x -> x!=5)
+          if (paramCount==2) {
+            function.setName("List_Filter");
+            function.setParameters(
+                    parameters.get(0)
+                    , new LambdaExpression("x", new NotEqualsTo(new Column("x"), parameters.get(1)))
+            );
+          }
+          break;
+        case ARRAY_REMOVE_AT:
+          // [2, 5, 7][:0] || [2, 5, 7][0+2:]
+          if (paramCount==2) {
+            warning("Negative positions not supported");
+            rewrittenExpression = BinaryExpression.concat(
+                    new ArrayExpression(parameters.get(0), null, parameters.get(1))
+                    , new ArrayExpression(parameters.get(0), BinaryExpression.add(parameters.get(1), new LongValue(2)), null)
+            );
+          }
+          break;
+        case ARRAY_SIZE:
+          if (paramCount==1) {
+            function.setName("Len$$");
+          }
+          break;
+        case ARRAY_SLICE:
+          if (paramCount==3) {
+            warning("Negative position not supported");
+            function.setParameters(
+                    parameters.get(0)
+                    , BinaryExpression.add(parameters.get(1), new LongValue(1))
+                    , parameters.get(2)
+            );
+          }
+          break;
+        case ARRAY_SORT:
+          switch (paramCount) {
+            case 3:
+              function.setParameters(
+                      parameters.get(0)
+                      , new Function("If", parameters.get(1), new StringValue("ASC"),  new StringValue("DESC"))
+                      , new Function("If", parameters.get(2), new StringValue("NULLS FIRST"),  new StringValue("NULLS LAST"))
+              );
+              break;
+            case 2:
+              function.setParameters(
+                      parameters.get(0)
+                      , new Function("If", parameters.get(1), new StringValue("ASC"),  new StringValue("DESC"))
+              );
+              break;
+          }
+          break;
+        case ARRAY_TO_STRING:
+          function.setName("Array_To_String$$");
+          break;
+        case ARRAYS_OVERLAP:
+          //len(Array_Intersect(ARRAY['hello', 'aloha'],
+          //                      array['hello', 'hi', 'hey']))>0
+          if (paramCount==2) {
+            rewrittenExpression = new GreaterThan(
+                    new Function("Len$$"
+                      , new Function("Array_Intersect", parameters.get(0), parameters.get(1))
+                    )
+              , new LongValue(0)
+            );
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -657,6 +836,14 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
 
     Expression rewrittenExpression = null;
     TranspiledFunction f = TranspiledFunction.from(functionName);
+    if (f != null) {
+      switch (f) {
+        case ARRAYAGG:
+          function.setName("ARRAY_AGG");
+          break;
+      }
+    }
+
     if (rewrittenExpression == null) {
       super.visit(function);
     } else {
@@ -721,6 +908,8 @@ public class SnowflakeExpressionTranspiler extends JSQLExpressionTranspiler {
       colDataType.setDataType("TIMESTAMPTZ");
     } else if (colDataType.getDataType().equalsIgnoreCase("NUMBER")) {
       colDataType.setDataType("NUMERIC");
+    } else if (colDataType.getDataType().equalsIgnoreCase("VARIANT")) {
+      colDataType.setDataType("VARCHAR");
     }
     return super.rewriteType(colDataType);
   }
