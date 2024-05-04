@@ -251,23 +251,21 @@ from values
  ,('')
 
 -- expected
-SELECT  column1
-        , Len( column1 ) AS len
-        , 8
-                 * CASE Typeof( column1 )
-                    WHEN 'VARCHAR'
-                        THEN Octet_Length( Encode(  Try_Cast( column1 AS VARCHAR ) ) )
-                    ELSE Octet_Length(  Try_Cast( column1 AS BLOB ) )
-                    END AS bits
-FROM (  SELECT Unnest(  [
-                            { column1:'Joyeux Noël' }
-                            , { column1:'Merry Christmas' }
-                            , { column1:'Veselé Vianoce' }
-                            , { column1:'Wesołych Świąt' }
-                            , { column1:'圣诞节快乐' }
-                            , { column1:'' }
-                        ], recursive => True ) )
-;
+SELECT COLUMN1
+    ,CASE TYPEOF(COLUMN1)
+        WHEN 'VARCHAR' THEN LENGTH(TRY_CAST(COLUMN1 AS VARCHAR))
+        WHEN 'BLOB' THEN OCTET_LENGTH(TRY_CAST(COLUMN1 AS BLOB))END AS LEN
+    ,8*CASE TYPEOF(COLUMN1)
+        WHEN 'VARCHAR' THEN OCTET_LENGTH(ENCODE(TRY_CAST(COLUMN1 AS VARCHAR)))
+        ELSE OCTET_LENGTH(TRY_CAST(COLUMN1 AS BLOB))END AS BITS
+FROM ( SELECT UNNEST([
+            {COLUMN1:'Joyeux Noël'}
+            ,{COLUMN1:'Merry Christmas'}
+            ,{COLUMN1:'Veselé Vianoce'}
+            ,{COLUMN1:'Wesołych Świąt'}
+            ,{COLUMN1:'圣诞节快乐'}
+            ,{COLUMN1:''}
+            ],RECURSIVE=>TRUE));
 
 -- result
 "column1","len","bits"

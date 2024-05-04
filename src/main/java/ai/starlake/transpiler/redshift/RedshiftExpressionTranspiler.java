@@ -46,7 +46,7 @@ import java.util.regex.Pattern;
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
   public static final Pattern NUMBER_FORMAT_PATTERN =
-      Pattern.compile("((?<!(%))(?<!(%-))[09D.G,]+)");
+      Pattern.compile("((?<!(%))(?<!(%-))(?i:[09D.G,]+))");
 
   public RedshiftExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
     super(transpiler, buffer);
@@ -123,6 +123,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public void visit(Function function) {
     String functionName = function.getName();
+    boolean hasParameters = hasParameters(function);
+    int paramCount = hasParameters ? function.getParameters().size() : 0;
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
@@ -377,7 +379,6 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case DATEDIFF:
           if (parameters != null && parameters.size() == 3) {
-            function.setName("date_diff$$");
             function.setParameters(new StringValue(parameters.get(0).toString()),
                 castDateTime(parameters.get(1)), castDateTime(parameters.get(2)));
           }
@@ -494,17 +495,21 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           }
           break;
         case TO_CHAR:
-          if (parameters != null && parameters.size() == 2) {
-            StringValue stringValue = (StringValue) parameters.get(1);
-            String formatStr = toFormat(stringValue.getValue());
+          switch (paramCount) {
+            case 1:
+              rewrittenExpression = new CastExpression(parameters.get(0), "VARCHAR");
+              break;
+            case 2:
+              StringValue stringValue = (StringValue) parameters.get(1);
+              String formatStr = toFormat(stringValue.getValue());
 
-            stringValue = new StringValue(formatStr);
+              stringValue = new StringValue(formatStr);
 
-            // this is totally whack, but I did not see any other way to decide
-            // when to used which function
-            // @todo: submit PR to DuckDB
-            function.setName(formatStr.contains("%g") ? "printf" : "strftime");
-            function.setParameters(parameters.get(0), stringValue);
+              // this is totally whack, but I did not see any other way to decide
+              // when to used which function
+              // @todo: submit PR to DuckDB
+              function.setName(formatStr.contains("%g") ? "printf" : "strftime");
+              function.setParameters(parameters.get(0), stringValue);
           }
           break;
         case ARRAY:
@@ -619,20 +624,22 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     String replacedFormatStr = s;
     for (String[] r : REPLACEMENT) {
       // replace any occurrence except when preceded by "%" or "%-"
-      replacedFormatStr = replacedFormatStr.replaceAll("(?<!(%))(?<!(%-))" + r[0], r[1]);
+      replacedFormatStr = replacedFormatStr.replaceAll("(?<!(%))(?<!(%-))(?i:" + r[0] + ")", r[1]);
     }
 
     // "SELECT PRINTF('%010.2f', 125.8) AS chars;";
     // 0000125.80
+    if (s.equals(replacedFormatStr)) {
+      Matcher matcher = NUMBER_FORMAT_PATTERN.matcher(replacedFormatStr);
+      while (matcher.find()) {
+        String found = matcher.group(1);
+        // boolean zeroPadded = found.startsWith("0");
 
-    Matcher matcher = NUMBER_FORMAT_PATTERN.matcher(replacedFormatStr);
-    while (matcher.find()) {
-      String found = matcher.group(1);
-      // boolean zeroPadded = found.startsWith("0");
-
-      String replacement = "%g";
-      replacedFormatStr = replacedFormatStr.replace(found, replacement);
+        String replacement = "%g";
+        replacedFormatStr = replacedFormatStr.replace(found, replacement);
+      }
     }
+
 
     return replacedFormatStr;
   }

@@ -108,3 +108,116 @@ INSERT INTO winsales VALUES
   (30004, '2004-4-18', 3, 'b', 20, null),
   (30007, '2004-9-7', 3, 'c', 30, null)
 ;
+
+CREATE OR REPLACE TABLE menu_items(
+  menu_id INT NOT NULL,
+  menu_category VARCHAR(20),
+  menu_item_name VARCHAR(50),
+  menu_cogs_usd NUMERIC(7,2),
+  menu_price_usd NUMERIC(7,2)
+  );
+
+INSERT INTO menu_items VALUES(1,'Beverage','Bottled Soda',0.500,3.00);
+INSERT INTO menu_items VALUES(2,'Beverage','Bottled Water',0.500,2.00);
+INSERT INTO menu_items VALUES(3,'Main','Breakfast Crepe',5.00,12.00);
+INSERT INTO menu_items VALUES(4,'Main','Buffalo Mac & Cheese',6.00,10.00);
+INSERT INTO menu_items VALUES(5,'Main','Chicago Dog',4.00,9.00);
+INSERT INTO menu_items VALUES(6,'Main','Chicken Burrito',3.2500,12.500);
+INSERT INTO menu_items VALUES(7,'Main','Chicken Pot Pie Crepe',6.00,15.00);
+INSERT INTO menu_items VALUES(8,'Main','Combination Curry',9.00,15.00);
+INSERT INTO menu_items VALUES(9,'Main','Combo Fried Rice',5.00,11.00);
+INSERT INTO menu_items VALUES(10,'Main','Combo Lo Mein',6.00,13.00);
+INSERT INTO menu_items VALUES(11,'Main','Coney Dog',5.00,10.00);
+INSERT INTO menu_items VALUES(12,'Main','Creamy Chicken Ramen',8.00,17.2500);
+INSERT INTO menu_items VALUES(13,'Snack','Crepe Suzette',4.00,9.00);
+INSERT INTO menu_items VALUES(14,'Main','Fish Burrito',3.7500,12.500);
+INSERT INTO menu_items VALUES(15,'Snack','Fried Pickles',1.2500,6.00);
+INSERT INTO menu_items VALUES(16,'Snack','Greek Salad',4.00,11.00);
+INSERT INTO menu_items VALUES(17,'Main','Gyro Plate',8.00,12.00);
+INSERT INTO menu_items VALUES(18,'Main','Hot Ham & Cheese',7.00,11.00);
+INSERT INTO menu_items VALUES(19,'Dessert','Ice Cream Sandwich',1.00,4.00);
+INSERT INTO menu_items VALUES(20,'Beverage','Iced Tea',0.7500,3.00);
+INSERT INTO menu_items VALUES(21,'Main','Italian',6.00,11.00);
+INSERT INTO menu_items VALUES(22,'Main','Lean Beef Tibs',6.00,13.00);
+INSERT INTO menu_items VALUES(23,'Main','Lean Burrito Bowl',3.500,12.500);
+INSERT INTO menu_items VALUES(24,'Main','Lean Chicken Tibs',5.00,11.00);
+INSERT INTO menu_items VALUES(25,'Main','Lean Chicken Tikka Masala',10.00,17.00);
+INSERT INTO menu_items VALUES(26,'Beverage','Lemonade',0.6500,3.500);
+INSERT INTO menu_items VALUES(27,'Main','Lobster Mac & Cheese',10.00,15.00);
+INSERT INTO menu_items VALUES(28,'Dessert','Mango Sticky Rice',1.2500,5.00);
+INSERT INTO menu_items VALUES(29,'Main','Miss Piggie',2.600,6.00);
+INSERT INTO menu_items VALUES(30,'Main','Mothers Favorite',4.500,12.00);
+INSERT INTO menu_items VALUES(31,'Main','New York Dog',4.00,8.00);
+INSERT INTO menu_items VALUES(32,'Main','Pastrami',8.00,11.00);
+INSERT INTO menu_items VALUES(33,'Dessert','Popsicle',0.500,3.00);
+INSERT INTO menu_items VALUES(34,'Main','Pulled Pork Sandwich',7.00,12.00);
+INSERT INTO menu_items VALUES(35,'Main','Rack of Pork Ribs',11.2500,21.00);
+INSERT INTO menu_items VALUES(36,'Snack','Seitan Buffalo Wings',4.00,7.00);
+INSERT INTO menu_items VALUES(37,'Main','Spicy Miso Vegetable Ramen',7.00,17.2500);
+INSERT INTO menu_items VALUES(38,'Snack','Spring Mix Salad',2.2500,6.00);
+INSERT INTO menu_items VALUES(39,'Main','Standard Mac & Cheese',3.00,8.00);
+INSERT INTO menu_items VALUES(40,'Dessert','Sugar Cone',2.500,6.00);
+INSERT INTO menu_items VALUES(41,'Main','Tandoori Mixed Grill',11.00,18.00);
+INSERT INTO menu_items VALUES(42,'Main','The Classic',4.00,12.00);
+INSERT INTO menu_items VALUES(43,'Main','The King Combo',12.00,20.00);
+INSERT INTO menu_items VALUES(44,'Main','The Kitchen Sink',6.00,14.00);
+INSERT INTO menu_items VALUES(45,'Main','The Original',1.500,5.00);
+INSERT INTO menu_items VALUES(46,'Main','The Ranch',2.400,6.00);
+INSERT INTO menu_items VALUES(47,'Main','The Salad of All Salads',6.00,12.00);
+INSERT INTO menu_items VALUES(48,'Main','Three Meat Plate',10.00,17.00);
+INSERT INTO menu_items VALUES(49,'Main','Three Taco Combo Plate',7.00,11.00);
+INSERT INTO menu_items VALUES(50,'Main','Tonkotsu Ramen',7.00,17.2500);
+INSERT INTO menu_items VALUES(51,'Main','Two Meat Plate',9.00,14.00);
+INSERT INTO menu_items VALUES(52,'Dessert','Two Scoop Bowl',3.00,7.00);
+INSERT INTO menu_items VALUES(53,'Main','Two Taco Combo Plate',6.00,9.00);
+INSERT INTO menu_items VALUES(54,'Main','Veggie Burger',5.00,9.00);
+INSERT INTO menu_items VALUES(55,'Main','Veggie Combo',4.00,9.00);
+INSERT INTO menu_items VALUES(56,'Main','Veggie Taco Bowl',6.00,10.00);
+INSERT INTO menu_items VALUES(57,'Dessert','Waffle Cone',2.500,6.00);
+INSERT INTO menu_items VALUES(58,'Main','Wonton Soup',2.00,6.00);
+INSERT INTO menu_items VALUES(59,'Main','Mini Pizza',null,null);
+INSERT INTO menu_items VALUES(60,'Main','Large Pizza',null,null);
+
+CREATE TABLE store_sales (
+    branch_ID    INTEGER,
+    city        VARCHAR,
+    gross_sales NUMERIC(9, 2),
+    gross_costs NUMERIC(9, 2),
+    net_profit  NUMERIC(9, 2)
+    );
+
+INSERT INTO store_sales (branch_ID, city, gross_sales, gross_costs)
+    VALUES
+    (1, 'Vancouver', 110000, 100000),
+    (2, 'Vancouver', 140000, 125000),
+    (3, 'Montreal', 150000, 140000),
+    (4, 'Montreal', 155000, 146000);
+
+UPDATE store_sales SET net_profit = gross_sales - gross_costs;
+
+CREATE OR REPLACE TABLE example_cumulative (p INT, o INT, i INT);
+
+INSERT INTO example_cumulative VALUES
+    (  0, 1, 10), (0, 2, 20), (0, 3, 30),
+    (100, 1, 10),(100, 2, 30),(100, 2, 5),(100, 3, 11),(100, 3, 120),
+    (200, 1, 10000),(200, 1, 200),(200, 1, 808080),(200, 2, 33333),(200, 3, null), (200, 3, 4),
+    (300, 1, null), (300, 1, null);
+
+
+CREATE TABLE example_sliding
+  (p INT, o INT, i INT, r INT, s VARCHAR(100));
+
+INSERT INTO example_sliding VALUES
+  (100,1,1,70,'seventy'),(100,2,2,30, 'thirty'),(100,3,3,40,'forty'),(100,4,NULL,90,'ninety'),
+  (100,5,5,50,'fifty'),(100,6,6,30,'thirty'),
+  (200,7,7,40,'forty'),(200,8,NULL,NULL,'n_u_l_l'),(200,9,NULL,NULL,'n_u_l_l'),(200,10,10,20,'twenty'),
+  (200,11,NULL,90,'ninety'),
+  (300,12,12,30,'thirty'),
+  (400,13,NULL,20,'twenty');
+
+CREATE TABLE sales_table (salesperson_name VARCHAR, sales_in_dollars INTEGER);
+INSERT INTO sales_table (salesperson_name, sales_in_dollars) VALUES
+    ('Smith', 600),
+    ('Jones', 1000),
+    ('Torkelson', 700),
+    ('Dolenz', 800);

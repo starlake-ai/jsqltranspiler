@@ -169,7 +169,7 @@ order by dateid;
 select datediff(week,'2009-01-01','2009-12-31') as numweeks;
 
 -- expected
-select date_diff('week',DATE '2009-01-01', DATE '2009-12-31') as numweeks;
+select datediff('week',DATE '2009-01-01', DATE '2009-12-31') as numweeks;
 
 -- result
 "numweeks"
@@ -180,7 +180,7 @@ select date_diff('week',DATE '2009-01-01', DATE '2009-12-31') as numweeks;
 select datediff(hour, '2023-01-01', '2023-01-03 05:04:03') AS diff;
 
 -- expected
-select date_diff('hour', DATE '2023-01-01',  TIMESTAMP WITHOUT TIME ZONE '2023-01-03T05:04:03.000') AS diff;
+select datediff('hour', DATE '2023-01-01',  TIMESTAMP WITHOUT TIME ZONE '2023-01-03T05:04:03.000') AS diff;
 
 -- result
 "diff"
@@ -284,9 +284,9 @@ group by 1
 order by 1;
 
 -- expected
-select date_diff('day', saletime, last_day(saletime)) as "Days Remaining", sum(qtysold) AS tally
+select datediff('day', saletime, last_day(saletime)) as "Days Remaining", sum(qtysold) AS tally
 from sales
-where date_diff('day', saletime, last_day(saletime)) < 7
+where datediff('day', saletime, last_day(saletime)) < 7
 group by 1
 order by 1;
 
