@@ -25,6 +25,7 @@ import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
+import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.HexValue;
@@ -70,6 +71,8 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
     , ARRAYAGG, ARRAY_CONSTRUCT, ARRAY_COMPACT, ARRAY_CONSTRUCT_COMPACT, ARRAY_CONTAINS, ARRAY_DISTINCT, ARRAY_EXCEPT, ARRAY_FLATTEN, ARRAY_GENERATE_RANGE, ARRAY_INSERT, ARRAY_INTERSECTION, ARRAY_MAX, ARRAY_MIN, ARRAY_POSITION, ARRAY_PREPEND, ARRAY_REMOVE, ARRAY_REMOVE_AT, ARRAY_SIZE, ARRAY_SLICE, ARRAY_SORT, ARRAY_TO_STRING, ARRAYS_OVERLAP
 
     , VARIANCE_POP, VARIANCE_SAMP, BITAND_AGG, BITOR_AGG, BITXOR_AGG, BOOLAND_AGG, BOOLOR_AGG, BOOLXOR_AGG, SKEW, GROUPING_ID, TO_VARCHAR, TO_BINARY, TRY_TO_BINARY, TO_DECIMAL, TO_NUMBER, TO_NUMERIC, TRY_TO_DECIMAL, TRY_TO_NUMBER, TRY_TO_NUMERIC, TO_DOUBLE, TRY_TO_DOUBLE, TO_BOOLEAN, TRY_TO_BOOLEAN, TRY_TO_DATE, TRY_TO_TIME, TRY_TO_TIMESTAMP, TRY_TO_TIMESTAMP_LTZ, TRY_TO_TIMESTAMP_NTZ, TRY_TO_TIMESTAMP_TZ
+
+    , RANDOM, DIV0, DIV0NULL, ROUND, SQUARE
 
     ;
     // @FORMATTER:ON
@@ -266,12 +269,12 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
           }
           break;
         case DATE_PART:
-          if (paramCount==2) {
+          if (paramCount == 2) {
             function.setParameters(toDateTimePart(parameters.get(0)), parameters.get(1));
           }
           break;
         case LAST_DAY:
-          if (paramCount==2) {
+          if (paramCount == 2) {
             throw new RuntimeException("LAST_DATE with DatePart is not supported.");
           }
           break;
@@ -837,19 +840,16 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
         case TRY_TO_NUMBER:
         case TRY_TO_NUMERIC:
           // TO_DECIMAL( <expr> [, '<format>' ] [, <precision> [, <scale> ] ] )
-          // list_aggregate(regexp_extract_all('-1,000.00', '[\+|\-\d|\.]'),'string_agg', '')::NUMERIC
+          // list_aggregate(regexp_extract_all('-1,000.00', '[\+|\-\d|\.]'),'string_agg',
+          // '')::NUMERIC
 
-          Function f1 = new Function(
-                  "List_Aggregate"
-                  , new Function("Regexp_Extract_All", parameters.get(0), new StringValue("[\\+|\\-\\d|\\.]"))
-                  , new StringValue("string_agg")
-                  , new StringValue("")
-          );
-          f1 = new Function("If"
-                  , new EqualsTo(new Function("TypeOf", parameters.get(0)), new StringValue("VARCHAR"))
-                  , f1
-                  , parameters.get(0)
-          );
+          Function f1 = new Function("List_Aggregate",
+              new Function("Regexp_Extract_All", parameters.get(0),
+                  new StringValue("[\\+|\\-\\d|\\.]")),
+              new StringValue("string_agg"), new StringValue(""));
+          f1 = new Function("If",
+              new EqualsTo(new Function("TypeOf", parameters.get(0)), new StringValue("VARCHAR")),
+              f1, parameters.get(0));
 
           switch (paramCount) {
             case 4:
@@ -858,9 +858,8 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
                   && parameters.get(3) instanceof LongValue) {
                 String typeStr = "DECIMAL(" + ((LongValue) parameters.get(2)).getValue() + ", "
                     + ((LongValue) parameters.get(3)).getValue() + ")";
-                rewrittenExpression =
-                    new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                        f1, typeStr);
+                rewrittenExpression = new CastExpression(
+                    functionName.startsWith("TRY") ? "Try_Cast" : "Cast", f1, typeStr);
               }
               break;
             case 3:
@@ -868,35 +867,30 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
                   && parameters.get(2) instanceof LongValue) {
                 warning("Format Parameter not supported.");
                 String typeStr = "DECIMAL(" + ((LongValue) parameters.get(2)).getValue() + ")";
-                rewrittenExpression =
-                    new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                        f1, typeStr);
+                rewrittenExpression = new CastExpression(
+                    functionName.startsWith("TRY") ? "Try_Cast" : "Cast", f1, typeStr);
               } else if (parameters.get(1) instanceof LongValue
                   && parameters.get(2) instanceof LongValue) {
                 String typeStr = "DECIMAL(" + ((LongValue) parameters.get(1)).getValue() + ", "
                     + ((LongValue) parameters.get(2)).getValue() + ")";
-                rewrittenExpression =
-                    new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                        f1, typeStr);
+                rewrittenExpression = new CastExpression(
+                    functionName.startsWith("TRY") ? "Try_Cast" : "Cast", f1, typeStr);
               }
               break;
             case 2:
               if (parameters.get(1) instanceof StringValue) {
                 warning("Format Parameter not supported.");
-                rewrittenExpression =
-                        new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                                           f1, "DECIMAL(12,0)");
+                rewrittenExpression = new CastExpression(
+                    functionName.startsWith("TRY") ? "Try_Cast" : "Cast", f1, "DECIMAL(12,0)");
               } else if (parameters.get(1) instanceof LongValue) {
                 String typeStr = "DECIMAL(" + ((LongValue) parameters.get(1)).getValue() + ")";
-                rewrittenExpression =
-                    new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                        f1, typeStr);
+                rewrittenExpression = new CastExpression(
+                    functionName.startsWith("TRY") ? "Try_Cast" : "Cast", f1, typeStr);
               }
               break;
             case 1:
-              rewrittenExpression =
-                  new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                      f1, "DECIMAL(12,0)");
+              rewrittenExpression = new CastExpression(
+                  functionName.startsWith("TRY") ? "Try_Cast" : "Cast", f1, "DECIMAL(12,0)");
               break;
           }
           break;
@@ -920,6 +914,44 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
               rewrittenExpression =
                   new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
                       parameters.get(0), "BOOLEAN");
+          }
+          break;
+        case RANDOM:
+          if (paramCount == 1) {
+            warning("SEED parameter not supported");
+          }
+          // ((random() - 0.5) * 1E19)::int64
+          rewrittenExpression = new CastExpression("Cast",
+              BinaryExpression.multiply(
+                  new ParenthesedExpressionList<>(
+                      BinaryExpression.subtract(new Function("Random$$"), new DoubleValue(0.5d))),
+                  new DoubleValue("1E19")),
+              "INT64");
+          break;
+        case DIV0:
+        case DIV0NULL:
+          if (paramCount == 2) {
+            function.setName("Coalesce");
+            function.setParameters(new Function("Divide", parameters.get(0), parameters.get(1)),
+                new LongValue(0));
+          }
+          break;
+        case ROUND:
+          switch (paramCount) {
+            case 3:
+              warning("Limited support for rounding mode");
+              if ("'HALF_TO_EVEN'".equalsIgnoreCase(parameters.get(2).toString())) {
+                function.setName("Round_Even");
+              }
+            case 2:
+              function.setParameters(parameters.get(0), parameters.get(1));
+              break;
+          }
+          break;
+        case SQUARE:
+          if (paramCount == 1) {
+            function.setName("Power");
+            function.setParameters(parameters.get(0), new LongValue(2));
           }
           break;
       }
@@ -991,7 +1023,7 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
       }
     }
 
-      super.visit(function);
+    super.visit(function);
   }
 
   public void visit(Column column) {

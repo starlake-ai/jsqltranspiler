@@ -80,6 +80,7 @@ public class SnowflakeTranspiler extends JSQLTranspiler {
       PlainSelect select = new PlainSelect();
       for (Expression expression : tableFunction.getFunction().getParameters()) {
         Alias alias = null;
+        boolean addExpression = false;
         if (expression instanceof Function) {
           Function f = (Function) expression;
           String fName = f.getName().toUpperCase();
@@ -91,15 +92,24 @@ public class SnowflakeTranspiler extends JSQLTranspiler {
 
             select.addSelectItem(expression, alias);
             alias = new Alias("value", true);
+            addExpression = true;
+          } else if (fName.equalsIgnoreCase("GENERATOR")) {
+            // select range AS seq4 FROM range(0,3);
+            select.addSelectItem(new Column("range"), new Alias("seq4", true));
+            select.setFromItem(new TableFunction(
+                new Function("Range", new LongValue(0), f.getParameters().get(0))));
+            alias = new Alias("value", true);
           }
         }
-        select.addSelectItem(expression, alias);
+        if (addExpression) {
+          select.addSelectItem(expression, alias);
+        }
       }
       ParenthesedSelect parenthesedSelect =
           new ParenthesedSelect().withSelect(select).withAlias(tableFunction.getAlias());
 
       visit(parenthesedSelect);
-    } else if (prefix.equalsIgnoreCase("lateral")) {
+    } else if ("lateral".equalsIgnoreCase(prefix)) {
       PlainSelect select = new PlainSelect();
       if (name.equalsIgnoreCase("SPLIT_TO_TABLE")
           || name.equalsIgnoreCase("STRTOK_SPLIT_TO_TABLE")) {
