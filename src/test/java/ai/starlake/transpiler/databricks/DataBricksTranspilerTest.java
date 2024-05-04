@@ -18,7 +18,6 @@ package ai.starlake.transpiler.databricks;
 
 import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.JSQLTranspilerTest;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -35,7 +34,6 @@ public class DataBricksTranspilerTest extends JSQLTranspilerTest {
         JSQLTranspiler.Dialect.DATABRICKS, JSQLTranspiler.Dialect.DUCK_DB));
   }
 
-  @Disabled
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
   @MethodSource("getSqlTestMap")
   protected void transpile(File f, int idx, SQLTest t) throws Exception {

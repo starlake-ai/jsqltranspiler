@@ -254,6 +254,8 @@ public class JSQLTranspilerTest {
     connDuck = DriverManager.getConnection("jdbc:duckdb:" + fileDuckDB.getAbsolutePath(), info);
 
     if (!isInitialised) {
+      JSQLTranspiler.createMacros(connDuck);
+
       String sqlStr = IOUtils.resourceToString(
           JSQLTranspilerTest.class.getCanonicalName().replaceAll("\\.", "/") + "_DDL.sql",
           Charset.defaultCharset(), JSQLTranspilerTest.class.getClassLoader());

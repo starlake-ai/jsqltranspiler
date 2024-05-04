@@ -32,7 +32,6 @@ import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.SetOperationList;
 import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.statement.select.Top;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
@@ -54,6 +53,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -281,16 +282,6 @@ public class JSQLTranspiler extends SelectDeParser {
         default:
           return transpile(select);
       }
-    } else if (st instanceof SetOperationList) {
-      SetOperationList setOperationList = (SetOperationList) st;
-
-      switch (dialect) {
-        case GOOGLE_BIG_QUERY:
-          return transpileGoogleBigQuery(setOperationList);
-        default:
-          throw new RuntimeException("The " + st.getClass().getName()
-              + " is not supported yet. Only `PlainSelect` is supported right now.");
-      }
     } else {
       throw new RuntimeException("The " + st.getClass().getName()
           + " is not supported yet. Only `PlainSelect` is supported right now.");
@@ -345,6 +336,22 @@ public class JSQLTranspiler extends SelectDeParser {
         writer.write(transpiledSqlStr);
       } catch (IOException e) {
         LOGGER.log(Level.SEVERE, "Failed to write to " + outputFile.getAbsolutePath());
+      }
+    }
+  }
+
+  public static void createMacros(Connection conn) throws SQLException, IOException, JSQLParserException {
+    String sqlStr = IOUtils.resourceToString(
+            JSQLTranspiler.class.getCanonicalName().replaceAll("\\.", "/") + "Macro.sql",
+            Charset.defaultCharset(), JSQLTranspiler.class.getClassLoader());
+
+    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr);
+    LOGGER.info("Create the DuckDB Macros");
+
+    try (java.sql.Statement st = conn.createStatement()) {
+      for (net.sf.jsqlparser.statement.Statement statement : statements) {
+        LOGGER.fine("execute: " + statement.toString());
+        st.execute(statement.toString());
       }
     }
   }

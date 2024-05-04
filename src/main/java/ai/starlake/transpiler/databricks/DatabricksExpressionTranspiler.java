@@ -16,23 +16,31 @@
  */
 package ai.starlake.transpiler.databricks;
 
-import ai.starlake.transpiler.JSQLExpressionTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
+import ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.BinaryExpression;
+import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 
-public class DatabricksExpressionTranspiler extends JSQLExpressionTranspiler {
+public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler {
   public DatabricksExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
     super(transpiler, buffer);
   }
 
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    DATE_FROM_PARTS
+    DATE_FROM_PARTS, BINARY, BITMAP_COUNT, BTRIM, CHAR, CHAR_LENGTH, CHARACTER_LENGTH, CHARINDEX, ENDSWITH, STARTSWITH
+    , FIND_IN_SET, LEVENSHTEIN
+
+
+    , ARRAY
 
     ;
     // @FORMATTER:ON
@@ -83,6 +91,8 @@ public class DatabricksExpressionTranspiler extends JSQLExpressionTranspiler {
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public void visit(Function function) {
     String functionName = function.getName();
+    boolean hasParameters = hasParameters(function);
+    int paramCount = hasParameters ? function.getParameters().size() : 0;
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
@@ -110,6 +120,67 @@ public class DatabricksExpressionTranspiler extends JSQLExpressionTranspiler {
     if (f != null) {
       switch (f) {
         case DATE_FROM_PARTS:
+          break;
+        case BINARY:
+          function.setName("Encode");
+          break;
+        case BITMAP_COUNT:
+          if (paramCount==1) {
+            function.setName("Bit_Count");
+            function.setParameters(new CastExpression(parameters.get(0), "BIT"));
+          }
+          break;
+        case BTRIM:
+          function.setName("Trim");
+          break;
+        case CHAR:
+          function.setName("Chr");
+          break;
+        case CHAR_LENGTH:
+        case CHARACTER_LENGTH:
+          function.setName("Len$$");
+          break;
+        case CHARINDEX:
+          switch (paramCount) {
+            case 2:
+              function.setName("InStr");
+              function.setParameters(parameters.get(1), parameters.get(0));
+              break;
+            case 3:
+              // ifplus( instr(substr('abcbarbar', 5), 'bar'), 0, 5-1)
+              function.setName("IfPlus");
+              function.setParameters(
+                      new Function("InStr", new Function("SubStr", parameters.get(1), parameters.get(2)), parameters.get(0))
+                      , new LongValue(0)
+                      , BinaryExpression.subtract( parameters.get(2), new LongValue(1))
+              );
+              break;
+          }
+          break;
+        case ARRAY:
+          function.setName("Array_Value");
+          break;
+        case ENDSWITH:
+          function.setName("Ends_With");
+          break;
+        case STARTSWITH:
+          function.setName("Starts_With");
+          break;
+        case FIND_IN_SET:
+          //list_position(str_split_regex('abc,b,ab,c,def', ','), 'ab')
+          if (paramCount==2) {
+            function.setName("List_position");
+            function.setParameters(
+                    new Function("Str_Split_Regex", parameters.get(1), new StringValue(","))
+                    , parameters.get(0)
+            );
+          }
+          break;
+        case LEVENSHTEIN:
+          if (paramCount==3) {
+              function.setName("Least");
+              function.setParameters( new Function("Levenshtein", parameters.get(0), parameters.get(1)), parameters.get(2));
+          }
           break;
       }
     }

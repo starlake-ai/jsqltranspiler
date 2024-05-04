@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION ifplus(a, b, c) AS CASE a WHEN b THEN b ELSE a + c END;
