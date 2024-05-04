@@ -35,6 +35,7 @@ import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
@@ -836,6 +837,20 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
         case TRY_TO_NUMBER:
         case TRY_TO_NUMERIC:
           // TO_DECIMAL( <expr> [, '<format>' ] [, <precision> [, <scale> ] ] )
+          // list_aggregate(regexp_extract_all('-1,000.00', '[\+|\-\d|\.]'),'string_agg', '')::NUMERIC
+
+          Function f1 = new Function(
+                  "List_Aggregate"
+                  , new Function("Regexp_Extract_All", parameters.get(0), new StringValue("[\\+|\\-\\d|\\.]"))
+                  , new StringValue("string_agg")
+                  , new StringValue("")
+          );
+          f1 = new Function("If"
+                  , new EqualsTo(new Function("TypeOf", parameters.get(0)), new StringValue("VARCHAR"))
+                  , f1
+                  , parameters.get(0)
+          );
+
           switch (paramCount) {
             case 4:
               warning("Format Parameter not supported.");
@@ -845,7 +860,7 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
                     + ((LongValue) parameters.get(3)).getValue() + ")";
                 rewrittenExpression =
                     new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                        parameters.get(0), typeStr);
+                        f1, typeStr);
               }
               break;
             case 3:
@@ -855,30 +870,33 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
                 String typeStr = "DECIMAL(" + ((LongValue) parameters.get(2)).getValue() + ")";
                 rewrittenExpression =
                     new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                        parameters.get(0), typeStr);
+                        f1, typeStr);
               } else if (parameters.get(1) instanceof LongValue
                   && parameters.get(2) instanceof LongValue) {
                 String typeStr = "DECIMAL(" + ((LongValue) parameters.get(1)).getValue() + ", "
                     + ((LongValue) parameters.get(2)).getValue() + ")";
                 rewrittenExpression =
                     new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                        parameters.get(0), typeStr);
+                        f1, typeStr);
               }
               break;
             case 2:
               if (parameters.get(1) instanceof StringValue) {
                 warning("Format Parameter not supported.");
+                rewrittenExpression =
+                        new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
+                                           f1, "DECIMAL(12,0)");
               } else if (parameters.get(1) instanceof LongValue) {
                 String typeStr = "DECIMAL(" + ((LongValue) parameters.get(1)).getValue() + ")";
                 rewrittenExpression =
                     new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                        parameters.get(0), typeStr);
+                        f1, typeStr);
               }
               break;
             case 1:
               rewrittenExpression =
                   new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                      parameters.get(0), "DECIMAL(12,0)");
+                      f1, "DECIMAL(12,0)");
               break;
           }
           break;

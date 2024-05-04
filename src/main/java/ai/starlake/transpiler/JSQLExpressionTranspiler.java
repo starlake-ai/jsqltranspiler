@@ -37,6 +37,7 @@ import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.StructType;
 import net.sf.jsqlparser.expression.TimeKeyExpression;
 import net.sf.jsqlparser.expression.TimezoneExpression;
+import net.sf.jsqlparser.expression.TranscodingFunction;
 import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.WindowDefinition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
@@ -2120,6 +2121,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         likeExpression.setLikeKeyWord("SIMILAR TO");
     }
     super.visit(likeExpression);
+  }
+
+  public void visit(TranscodingFunction function) {
+    CastExpression castExpression = new CastExpression("Cast", function.getExpression(), function.getColDataType().toString());
+    castExpression.accept(this);
   }
 
   public static boolean isEmpty(Collection<?> collection) {

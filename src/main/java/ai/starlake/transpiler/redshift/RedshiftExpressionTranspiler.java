@@ -33,6 +33,7 @@ import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
@@ -70,7 +71,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
 
     , TRUNC
 
-    , TO_CHAR
+    , TO_CHAR, TO_NUMBER, CONVERT
 
     , APPROXIMATE_PERCENTILE_DISC, APPROXIMATE_COUNT
 
@@ -510,6 +511,33 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
               // @todo: submit PR to DuckDB
               function.setName(formatStr.contains("%g") ? "printf" : "strftime");
               function.setParameters(parameters.get(0), stringValue);
+          }
+          break;
+        case TO_NUMBER:
+          // list_aggregate(regexp_extract_all('-1,000.00', '[\+|\-\d|\.]'),'string_agg', '')::NUMERIC
+          Function f1 = new Function(
+                  "List_Aggregate"
+                  , new Function("Regexp_Extract_All", parameters.get(0), new StringValue("[\\+|\\-\\d|\\.]"))
+                  , new StringValue("string_agg")
+                  , new StringValue("")
+          );
+          f1 = new Function("If"
+                  , new EqualsTo(new Function("TypeOf", parameters.get(0)), new StringValue("VARCHAR"))
+                  , f1
+                  , parameters.get(0)
+          );
+          switch (paramCount) {
+            case 2:
+              warning("Format Parameter not supported.");
+              rewrittenExpression =
+                      new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
+                                         f1, "NUMERIC");
+              break;
+            case 1:
+              rewrittenExpression =
+                      new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
+                                         f1, "NUMERIC");
+              break;
           }
           break;
         case ARRAY:

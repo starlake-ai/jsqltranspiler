@@ -31,11 +31,12 @@ SELECT expr,
   FROM number_conv;
 
 -- expected
-SELECT EXPR
-    ,CAST(EXPR AS DECIMAL(12,0))AS N1
-    ,CAST(EXPR AS DECIMAL(10,1))AS N2
-    ,CAST(EXPR AS DECIMAL(10,8))AS N3
-FROM NUMBER_CONV;
+SELECT  expr
+        ,  Cast( If( Typeof( expr ) = 'VARCHAR', List_Aggregate( Regexp_Extract_All( expr, '[\+|\-\D|\.]' ), 'string_agg', '' ), expr ) AS DECIMAL (12, 0) ) AS n1
+        ,  Cast( If( Typeof( expr ) = 'VARCHAR', List_Aggregate( Regexp_Extract_All( expr, '[\+|\-\D|\.]' ), 'string_agg', '' ), expr ) AS DECIMAL (10, 1) ) AS n2
+        ,  Cast( If( Typeof( expr ) = 'VARCHAR', List_Aggregate( Regexp_Extract_All( expr, '[\+|\-\D|\.]' ), 'string_agg', '' ), expr ) AS DECIMAL (10, 8) ) AS n3
+FROM number_conv
+;
 
 -- result
 "expr","N1","N2","N3"
