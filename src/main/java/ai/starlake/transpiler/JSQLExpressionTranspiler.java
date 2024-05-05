@@ -453,6 +453,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public void visit(Function function) {
     String functionName = function.getName();
+    boolean hasParameters = hasParameters(function);
+    int paramCount = hasParameters ? function.getParameters().size() : 0;
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
@@ -744,7 +746,17 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           rewrittenExpression = new CaseExpression(new LongValue(0), when);
           break;
         case REGEXP_REPLACE:
-          // pass through
+          switch (paramCount) {
+            case 4:
+              warning("Position parameter is not supported.");
+              parameters.remove(3);
+            case 3:
+              function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2), new StringValue("g"));
+              break;
+            case 2:
+              function.setParameters(parameters.get(0), parameters.get(1), new StringValue(""), new StringValue("g"));
+              break;
+          }
           break;
         case UNNEST:
           if (parameters != null) {

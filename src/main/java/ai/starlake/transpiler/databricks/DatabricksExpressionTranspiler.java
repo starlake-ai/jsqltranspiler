@@ -37,7 +37,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
   enum TranspiledFunction {
     // @FORMATTER:OFF
     DATE_FROM_PARTS, BINARY, BITMAP_COUNT, BTRIM, CHAR, CHAR_LENGTH, CHARACTER_LENGTH, CHARINDEX, ENDSWITH, STARTSWITH
-    , FIND_IN_SET, LEVENSHTEIN
+    , FIND_IN_SET, LEVENSHTEIN, LOCATE, LTRIM, RTRIM, POSITION,  REGEXP_REGEX,  REGEXP_LIKE, REGEXP_EXTRACT, REGEXP_SUBSTR, SHA2, SPACE, SPLIT, STRING, SUBSTR
 
 
     , ARRAY
@@ -141,6 +141,8 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           function.setName("Len$$");
           break;
         case CHARINDEX:
+        case LOCATE:
+        case POSITION:
           switch (paramCount) {
             case 2:
               function.setName("InStr");
@@ -181,6 +183,60 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
               function.setName("Least");
               function.setParameters( new Function("Levenshtein", parameters.get(0), parameters.get(1)), parameters.get(2));
           }
+          break;
+        case LTRIM:
+        case RTRIM:
+          if (paramCount==2) {
+            function.setParameters( parameters.get(1), parameters.get(0));
+          }
+          break;
+        case REGEXP_REGEX:
+        case REGEXP_LIKE:
+          function.setName("Regexp_Matches");
+          break;
+        case REGEXP_SUBSTR:
+          function.setName("Regexp_Extract");
+        case REGEXP_EXTRACT:
+          switch (paramCount) {
+            case 4:
+              warning("Position parameter is not supported");
+              parameters.remove(3);
+            case 3:
+              warning("Only first occurrence");
+              function.setName(functionName + "$$");
+              break;
+          }
+          break;
+        case SHA2:
+          if (paramCount==2) {
+            warning("Only 256bits supported.");
+            function.setName("Sha256");
+            function.setParameters(parameters.get(0));
+          }
+          break;
+        case SPACE:
+          if (paramCount==1) {
+            function.setName("Repeat");
+            function.setParameters(new StringValue(" "), parameters.get(0));
+          }
+          break;
+        case SPLIT:
+          switch (paramCount) {
+            case 3:
+              warning("LIMIT parameter is not supported");
+              parameters.remove(2);
+            case 2:
+              function.setName("Regexp_Split_To_Array");
+              function.setParameters(parameters.get(0), parameters.get(1));
+          }
+          break;
+        case STRING:
+          if (paramCount==1) {
+            rewrittenExpression = new CastExpression(parameters.get(0), "VARCHAR");
+          }
+          break;
+        case SUBSTR:
+          function.setName("SubString");
           break;
       }
     }

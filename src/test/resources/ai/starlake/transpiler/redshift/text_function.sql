@@ -396,7 +396,7 @@ FROM users
 ORDER BY userid LIMIT 4;
 
 -- expected
-SELECT email, REGEXP_REPLACE(email, '@.*\.(org|gov|com|edu|ca)$', '') AS replaced
+SELECT email, REGEXP_REPLACE(email, '@.*\.(org|gov|com|edu|ca)$', '', 'g') AS replaced
 FROM users
 ORDER BY userid LIMIT 4;
 

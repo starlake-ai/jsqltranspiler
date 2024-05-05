@@ -235,23 +235,19 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
         case REGEXP_REPLACE:
           // REGEXP_REPLACE( source_string, pattern [, replace_string [ , position [, parameters ] ]
           // ] )
-          if (parameters != null) {
-            switch (parameters.size()) {
-              case 2:
-                function.setParameters(parameters.get(0), parameters.get(1), new StringValue(""));
-                break;
-              case 4:
-                warning("Position Parameter unsupported");
-                parameters.remove(3);
-                break;
-              case 5:
-                if (parameters.get(4).toString().contains("p")) {
-                  warning("PCRE unsupported");
-                }
-                warning("Position Parameter unsupported");
-                parameters.remove(3);
-                break;
-            }
+          switch (paramCount) {
+            case 4:
+              warning("Position Parameter unsupported");
+              parameters.remove(3);
+              break;
+            case 5:
+              if (parameters.get(4).toString().contains("p")) {
+                warning("PCRE unsupported");
+              }
+              warning("Position Parameter unsupported");
+              parameters.remove(3);
+              function.setName(functionName + "$$");
+              break;
           }
           break;
         case REGEXP_SUBSTR:
