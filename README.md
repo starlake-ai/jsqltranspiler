@@ -59,7 +59,7 @@ assertEquals(expectedSQL, result);
 
 ### Java Command Line Interface
 ```text
-usage: java -jar JSQLTranspiler.jar [-d <arg> | --any | --bigquery |
+usage: java -jar JSQLTranspilerCLI.jar [-d <arg> | --any | --bigquery |
        --databricks | --snowflake | --redshift]      [-D <arg> | --duckdb]
        [-i <arg>] [-o <arg>] [-h]
 
