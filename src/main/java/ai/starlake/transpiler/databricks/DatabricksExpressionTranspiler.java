@@ -19,6 +19,7 @@ package ai.starlake.transpiler.databricks;
 import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.ArrayExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.Expression;
@@ -36,8 +37,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
 
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    DATE_FROM_PARTS, BINARY, BITMAP_COUNT, BTRIM, CHAR, CHAR_LENGTH, CHARACTER_LENGTH, CHARINDEX, ENDSWITH, STARTSWITH
-    , FIND_IN_SET, LEVENSHTEIN, LOCATE, LTRIM, RTRIM, POSITION,  REGEXP_REGEX,  REGEXP_LIKE, REGEXP_EXTRACT, REGEXP_SUBSTR, SHA2, SPACE, SPLIT, STRING, SUBSTR
+    DATE_FROM_PARTS, BINARY, BITMAP_COUNT, BTRIM, CHAR, CHAR_LENGTH, CHARACTER_LENGTH, CHARINDEX, ENDSWITH, STARTSWITH, FIND_IN_SET, LEVENSHTEIN, LOCATE, LTRIM, RTRIM, POSITION, REGEXP_REGEX, REGEXP_LIKE, REGEXP_EXTRACT, REGEXP_SUBSTR, SHA2, SPACE, SPLIT, STRING, SUBSTR, SUBSTRING_INDEX, TRY_TO_BINARY, TO_BINARY, UNBASE64, ENCODE, DECODE
 
 
     , ARRAY
@@ -96,7 +96,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
-              "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
+          "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
     } else if (functionName.endsWith("$$")) {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
@@ -125,7 +125,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           function.setName("Encode");
           break;
         case BITMAP_COUNT:
-          if (paramCount==1) {
+          if (paramCount == 1) {
             function.setName("Bit_Count");
             function.setParameters(new CastExpression(parameters.get(0), "BIT"));
           }
@@ -151,11 +151,9 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
             case 3:
               // ifplus( instr(substr('abcbarbar', 5), 'bar'), 0, 5-1)
               function.setName("IfPlus");
-              function.setParameters(
-                      new Function("InStr", new Function("SubStr", parameters.get(1), parameters.get(2)), parameters.get(0))
-                      , new LongValue(0)
-                      , BinaryExpression.subtract( parameters.get(2), new LongValue(1))
-              );
+              function.setParameters(new Function("InStr",
+                  new Function("SubStr", parameters.get(1), parameters.get(2)), parameters.get(0)),
+                  new LongValue(0), BinaryExpression.subtract(parameters.get(2), new LongValue(1)));
               break;
           }
           break;
@@ -169,25 +167,26 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           function.setName("Starts_With");
           break;
         case FIND_IN_SET:
-          //list_position(str_split_regex('abc,b,ab,c,def', ','), 'ab')
-          if (paramCount==2) {
+          // list_position(str_split_regex('abc,b,ab,c,def', ','), 'ab')
+          if (paramCount == 2) {
             function.setName("List_position");
             function.setParameters(
-                    new Function("Str_Split_Regex", parameters.get(1), new StringValue(","))
-                    , parameters.get(0)
-            );
+                new Function("Str_Split_Regex", parameters.get(1), new StringValue(",")),
+                parameters.get(0));
           }
           break;
         case LEVENSHTEIN:
-          if (paramCount==3) {
-              function.setName("Least");
-              function.setParameters( new Function("Levenshtein", parameters.get(0), parameters.get(1)), parameters.get(2));
+          if (paramCount == 3) {
+            function.setName("Least");
+            function.setParameters(
+                new Function("Levenshtein", parameters.get(0), parameters.get(1)),
+                parameters.get(2));
           }
           break;
         case LTRIM:
         case RTRIM:
-          if (paramCount==2) {
-            function.setParameters( parameters.get(1), parameters.get(0));
+          if (paramCount == 2) {
+            function.setParameters(parameters.get(1), parameters.get(0));
           }
           break;
         case REGEXP_REGEX:
@@ -208,14 +207,14 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           }
           break;
         case SHA2:
-          if (paramCount==2) {
+          if (paramCount == 2) {
             warning("Only 256bits supported.");
             function.setName("Sha256");
             function.setParameters(parameters.get(0));
           }
           break;
         case SPACE:
-          if (paramCount==1) {
+          if (paramCount == 1) {
             function.setName("Repeat");
             function.setParameters(new StringValue(" "), parameters.get(0));
           }
@@ -231,12 +230,54 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           }
           break;
         case STRING:
-          if (paramCount==1) {
+          if (paramCount == 1) {
             rewrittenExpression = new CastExpression(parameters.get(0), "VARCHAR");
           }
           break;
         case SUBSTR:
           function.setName("SubString");
+          break;
+        case SUBSTRING_INDEX:
+          // substring_index('www.apache.org', '.', 2)
+          // list_aggregate(regexp_split_to_array('www.apache.org', regexp_escape('.'))[1:2],
+          // 'string_agg', '.')
+
+          if (paramCount == 3) {
+            function.setName("List_aggregate");
+            function.setParameters(new ArrayExpression(
+                new Function("RegExp_Split_To_Array", parameters.get(0),
+                    new Function("RegExp_Escape", parameters.get(1))),
+                new LongValue(1), parameters.get(2)), new StringValue("string_agg"),
+                parameters.get(1));
+          }
+          break;
+        case TRY_TO_BINARY:
+          warning("TRY is not supported.");
+        case TO_BINARY:
+          switch (paramCount) {
+            case 2:
+              String p = parameters.get(1).toString().toLowerCase();
+              if (p.equals("'hex'")) {
+                function.setName("UnHex");
+                function.setParameters(parameters.get(0));
+              } else if (p.equals("'base64'")) {
+                function.setName("From_Base64");
+                function.setParameters(parameters.get(0));
+              } else if (p.equals("'utf-8'")) {
+                function.setName("Encode");
+                function.setParameters(parameters.get(0));
+              }
+              break;
+            case 1:
+              function.setName("UnHex");
+          }
+          break;
+        case ENCODE:
+        case DECODE:
+          if (paramCount == 2) {
+            warning("CHARSET parameter not supported.");
+            function.setParameters(parameters.get(0));
+          }
           break;
       }
     }
@@ -252,7 +293,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
-              "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
+          "Unsupported: " + functionName + " is not supported by DuckDB (yet).");
     } else if (functionName.endsWith("$$")) {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
@@ -261,7 +302,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
       return;
     }
 
-    if (function.getNullHandling()!=null && function.isIgnoreNullsOutside()) {
+    if (function.getNullHandling() != null && function.isIgnoreNullsOutside()) {
       function.setIgnoreNullsOutside(false);
     }
 

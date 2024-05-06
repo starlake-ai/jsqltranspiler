@@ -482,6 +482,69 @@ SELECT SubString('Spark SQL' FROM 5 FOR 1) AS s;
 "k"
 
 
+-- provided
+SELECT substring_index('www.apache.org', '.', 2) AS i;
+
+-- expected
+select list_aggregate(regexp_split_to_array('www.apache.org', regexp_escape('.'))[1:2], 'string_agg', '.') AS i;
+
+-- result
+"i"
+"www.apache"
+
+
+-- provided
+SELECT cast(to_binary('537061726B') AS STRING) AS s;
+
+-- expected
+SELECT cast(unhex('537061726B') AS String) AS s;
+
+-- result
+"s"
+"Spark"
+
+
+-- provided
+SELECT cast(to_binary('537061726B', 'hex') AS STRING) AS s;
+
+-- expected
+SELECT cast(unhex('537061726B') AS String) AS s;
+
+-- result
+"s"
+"Spark"
+
+-- provided
+SELECT cast(to_binary('U3Bhcms=', 'base64') AS STRING) AS s;
+
+-- expected
+SELECT cast(From_Base64('U3Bhcms=') AS STRING) AS s;
+
+-- result
+"s"
+"Spark"
+
+
+-- provided
+SELECT hex(to_binary('서울시(Seoul)', 'UTF-8')) AS s;
+
+-- expected
+SELECT Hex(encode('서울시(Seoul)')) AS s;
+
+-- result
+"s"
+"EC849CEC9AB8EC8B9C2853656F756C29"
+
+
+-- provided
+SELECT cast(unbase64('U3BhcmsgU1FM') AS STRING) AS s;
+
+-- expected
+SELECT cast(From_Base64('U3BhcmsgU1FM') AS STRING) AS s;
+
+-- result
+"s"
+"Spark SQL"
 
 
 
