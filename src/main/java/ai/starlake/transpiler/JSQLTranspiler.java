@@ -35,33 +35,26 @@ import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.statement.select.Top;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.OptionGroup;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.io.IOUtils;
 
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 
 /**
- * The type Jsql transpiler.
+ * The type JSQLtranspiler.
  */
 public class JSQLTranspiler extends SelectDeParser {
   /**
@@ -115,145 +108,6 @@ public class JSQLTranspiler extends SelectDeParser {
       f = absolutePath.toFile();
     }
     return f;
-  }
-
-  /**
-   * Resolves the absolute File Name from a relative filename, considering $HOME variable and "~"
-   *
-   * @param filename the relative filename
-   * @return the resolved absolute file name
-   */
-  public static String getAbsoluteFileName(String filename) {
-    return getAbsoluteFile(filename).getAbsolutePath();
-  }
-
-  /**
-   * The entry point of application.
-   *
-   * @param args the input arguments
-   */
-  @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
-  public static void main(String[] args) {
-    Options options = new Options();
-    OptionGroup inputDialectOptions = new OptionGroup();
-    inputDialectOptions.addOption(Option.builder("d").longOpt("input-dialect").hasArg()
-        .type(Dialect.class)
-        .desc(
-            "The SQL dialect to parse.\n[ANY*, GOOGLE_BIG_QUERY, DATABRICKS, SNOWFLAKE, AMAZON_REDSHIFT]")
-        .build());
-    inputDialectOptions.addOption(Option.builder(null).longOpt("any").hasArg(false)
-        .desc("Interpret the SQL as Generic Dialect [DEFAULT].").build());
-    inputDialectOptions.addOption(Option.builder(null).longOpt("bigquery").hasArg(false)
-        .desc("Interpret the SQL as Google BigQuery Dialect.").build());
-    inputDialectOptions.addOption(Option.builder(null).longOpt("databricks").hasArg(false)
-        .desc("Interpret the SQL as DataBricks Dialect.").build());
-    inputDialectOptions.addOption(Option.builder(null).longOpt("snowflake").hasArg(false)
-        .desc("Interpret the SQL as Snowflake Dialect.").build());
-    inputDialectOptions.addOption(Option.builder(null).longOpt("redshift").hasArg(false)
-        .desc("Interpret the SQL as Amazon Snowflake Dialect.").build());
-
-    options.addOptionGroup(inputDialectOptions);
-
-
-    OptionGroup outputDialectOptions = new OptionGroup();
-    outputDialectOptions.addOption(Option.builder("D").longOpt("output-dialect").hasArg()
-        .desc("The SQL dialect to write.\n[DUCKDB*]").build());
-    outputDialectOptions.addOption(Option.builder(null).longOpt("duckdb").hasArg(false)
-        .desc("Write the SQL in the Duck DB Dialect [DEFAULT].").build());
-    options.addOptionGroup(outputDialectOptions);
-
-    options.addOption("i", "inputFile", true,
-        "The input SQL file or folder.\n  - Read from STDIN when no input file provided.");
-    options.addOption("o", "outputFile", true,
-        "The out SQL file for the formatted statements.\n  - Create new SQL file when folder provided.\n  - Append when existing file provided.\n  - Write to STDOUT when no output file provided.");
-
-    options.addOption("h", "help", false, "Print the help synopsis.");
-
-    // create the parser
-    CommandLineParser parser = new DefaultParser();
-    try {
-      // parse the command line arguments
-      CommandLine line = parser.parse(options, args);
-
-      if (line.hasOption("help") || line.getOptions().length == 0 && line.getArgs().length == 0) {
-        HelpFormatter formatter = new HelpFormatter();
-        formatter.setOptionComparator(null);
-
-        String startupCommand =
-            System.getProperty("java.vm.name").equalsIgnoreCase("Substrate VM") ? "./JSQLTranspiler"
-                : "java -jar JSQLTranspiler.jar";
-
-        formatter.printHelp(startupCommand, options, true);
-        return;
-      }
-
-      Dialect dialect = Dialect.ANY;
-      if (line.hasOption("d")) {
-        dialect = (Dialect) line.getParsedOptionValue("d");
-      } else if (line.hasOption("bigquery")) {
-        dialect = Dialect.GOOGLE_BIG_QUERY;
-      } else if (line.hasOption("databricks")) {
-        dialect = Dialect.DATABRICKS;
-      } else if (line.hasOption("snowflake")) {
-        dialect = Dialect.SNOWFLAKE;
-      } else if (line.hasOption("redshift")) {
-        dialect = Dialect.AMAZON_REDSHIFT;
-      }
-
-      File outputFile = null;
-      if (line.hasOption("outputFile")) {
-        outputFile = getAbsoluteFile(line.getOptionValue("outputFile"));
-
-        // if an existing folder was provided, create a new file in it
-        if (outputFile.exists() && outputFile.isDirectory()) {
-          outputFile = File.createTempFile(dialect.name() + "_transpiled_", ".sql", outputFile);
-        }
-      }
-
-      File inputFile = null;
-      if (line.hasOption("inputFile")) {
-        inputFile = getAbsoluteFile(line.getOptionValue("inputFile"));
-
-        if (!inputFile.canRead()) {
-          throw new IOException(
-              "Can't read the specified INPUT-FILE " + inputFile.getAbsolutePath());
-        }
-
-        try (FileInputStream inputStream = new FileInputStream(inputFile)) {
-          String sqlStr = IOUtils.toString(inputStream, Charset.defaultCharset());
-          transpile(sqlStr, outputFile);
-        } catch (IOException ex) {
-          throw new IOException(
-              "Can't read the specified INPUT-FILE " + inputFile.getAbsolutePath(), ex);
-        } catch (JSQLParserException ex) {
-          throw new RuntimeException("Failed to parse the provided SQL.", ex);
-        }
-      }
-
-      List<String> argsList = line.getArgList();
-      if (argsList.isEmpty() && !line.hasOption("inputFile")) {
-        throw new IOException("No SQL statements provided for formatting.");
-      } else {
-        for (String sqlStr : argsList) {
-          try {
-            transpile(sqlStr, outputFile);
-          } catch (JSQLParserException ex) {
-            throw new RuntimeException("Failed to parse the provided SQL.", ex);
-          }
-        }
-      }
-
-    } catch (ParseException ex) {
-      LOGGER.log(Level.FINE, "Parsing failed.  Reason: " + ex.getMessage(), ex);
-
-      HelpFormatter formatter = new HelpFormatter();
-      formatter.setOptionComparator(null);
-      formatter.printHelp("java -jar JSQLTranspiler.jar", options, true);
-
-      throw new RuntimeException("Could not parse the Command Line Arguments.", ex);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   /**
@@ -340,10 +194,31 @@ public class JSQLTranspiler extends SelectDeParser {
     }
   }
 
-  public static void createMacros(Connection conn) throws SQLException, IOException, JSQLParserException {
-    String sqlStr = IOUtils.resourceToString(
-            JSQLTranspiler.class.getCanonicalName().replaceAll("\\.", "/") + "Macro.sql",
-            Charset.defaultCharset(), JSQLTranspiler.class.getClassLoader());
+  public static String readResource(URL url) throws IOException {
+    URLConnection connection = url.openConnection();
+    StringBuilder content = new StringBuilder();
+
+    try (BufferedReader reader = new BufferedReader(
+        new InputStreamReader(connection.getInputStream(), Charset.defaultCharset()))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        content.append(line);
+        content.append(System.lineSeparator());
+      }
+    }
+    return content.toString();
+  }
+
+  public static String readResource(Class<?> clazz, String path) throws IOException {
+    URL url = JSQLTranspiler.class
+        .getResource("/" + clazz.getCanonicalName().replaceAll("\\.", "/") + path);
+    return readResource(url);
+  }
+
+  public static void createMacros(Connection conn)
+      throws SQLException, IOException, JSQLParserException {
+
+    String sqlStr = readResource(JSQLTranspiler.class, "Macro.sql");
 
     Statements statements = CCJSqlParserUtil.parseStatements(sqlStr);
     LOGGER.info("Create the DuckDB Macros");

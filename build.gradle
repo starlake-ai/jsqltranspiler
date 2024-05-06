@@ -44,12 +44,11 @@ configurations {
 
 dependencies {
     implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
-    implementation 'commons-cli:commons-cli:+'
-    implementation 'commons-io:commons-io:+'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.+'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.+'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.+'
+
     // we do need better matchers
     testImplementation("org.assertj:assertj-core:+")
 

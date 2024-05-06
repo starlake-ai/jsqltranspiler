@@ -279,6 +279,9 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
             function.setParameters(parameters.get(0));
           }
           break;
+        case UNBASE64:
+          function.setName("From_Base64");
+          break;
       }
     }
     if (rewrittenExpression == null) {
