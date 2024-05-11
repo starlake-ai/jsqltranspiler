@@ -45,13 +45,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
 
 /**
  * The type JSQLtranspiler.
@@ -85,29 +84,6 @@ public class JSQLTranspiler extends SelectDeParser {
 
   public JSQLTranspiler() {
     this(JSQLExpressionTranspiler.class);
-  }
-
-  /**
-   * Resolves the absolute File from a relative filename, considering $HOME variable and "~"
-   *
-   * @param filename the relative filename
-   * @return the resolved absolute file
-   */
-  public static File getAbsoluteFile(String filename) {
-    String homePath = new File(System.getProperty("user.home")).toURI().getPath();
-
-    String _filename = filename.replaceFirst("~", Matcher.quoteReplacement(homePath))
-        .replaceFirst("\\$\\{user.home}", Matcher.quoteReplacement(homePath));
-
-    File f = new File(_filename);
-    if (!f.isAbsolute()) {
-      Path basePath = Paths.get("").toAbsolutePath();
-
-      Path resolvedPath = basePath.resolve(filename);
-      Path absolutePath = resolvedPath.normalize();
-      f = absolutePath.toFile();
-    }
-    return f;
   }
 
   /**
@@ -194,6 +170,14 @@ public class JSQLTranspiler extends SelectDeParser {
     }
   }
 
+  /**
+   * Read the text content from a resource file.
+   *
+   *
+   * @param url the URL of the resource file
+   * @return the text content
+   * @throws IOException when the resource file can't be read
+   */
   public static String readResource(URL url) throws IOException {
     URLConnection connection = url.openConnection();
     StringBuilder content = new StringBuilder();
@@ -209,24 +193,69 @@ public class JSQLTranspiler extends SelectDeParser {
     return content.toString();
   }
 
-  public static String readResource(Class<?> clazz, String path) throws IOException {
+  /**
+   * Read the text content from a resource file relative to a particular class' suffix
+   *
+   *
+   * @param clazz the Class which defines the classpath URL of the resource file
+   * @param suffix the Class Name suffix used for naming the resource file
+   * @return the text content
+   * @throws IOException when the resource file can't be read
+   */
+  public static String readResource(Class<?> clazz, String suffix) throws IOException {
     URL url = JSQLTranspiler.class
-        .getResource("/" + clazz.getCanonicalName().replaceAll("\\.", "/") + path);
+        .getResource("/" + clazz.getCanonicalName().replaceAll("\\.", "/") + suffix);
     return readResource(url);
   }
 
-  public static void createMacros(Connection conn)
-      throws SQLException, IOException, JSQLParserException {
-
+  /**
+   * Get the Macro `CREATE FUNCTION` statements as a list of text
+   *
+   *
+   * @return the list of statement texts
+   * @throws IOException when the Macro resource file can't be read
+   * @throws JSQLParserException when statements in the Macro resource file can't be parsed
+   */
+  public static Collection<String> getMacros() throws IOException, JSQLParserException {
+    ArrayList<String> macroStrList = new ArrayList<>();
     String sqlStr = readResource(JSQLTranspiler.class, "Macro.sql");
 
     Statements statements = CCJSqlParserUtil.parseStatements(sqlStr);
-    LOGGER.info("Create the DuckDB Macros");
+    for (net.sf.jsqlparser.statement.Statement statement : statements) {
+      macroStrList.add(statement.toString());
+    }
+    return macroStrList;
+  }
 
+  /**
+   * Get the Macro `CREATE FUNCTION` statements as an Array of text
+   *
+   *
+   * @return the array of statement texts
+   * @throws IOException when the Macro resource file can't be read
+   * @throws JSQLParserException when statements in the Macro resource file can't be parsed
+   */
+  public static String[] getMacroArray() throws IOException, JSQLParserException {
+    return getMacros().toArray(getMacros().toArray(new String[0]));
+  }
+
+
+  /**
+   * Create the Macros in a given JDBC connection
+   *
+   *
+   * @throws IOException when the Macro resource file can't be read
+   * @throws JSQLParserException when statements in the Macro resource file can't be parsed
+   * @throws SQLException when statements can't be executed
+   */
+  public static void createMacros(Connection conn)
+      throws SQLException, IOException, JSQLParserException {
+
+    LOGGER.info("Create the DuckDB Macros");
     try (java.sql.Statement st = conn.createStatement()) {
-      for (net.sf.jsqlparser.statement.Statement statement : statements) {
-        LOGGER.fine("execute: " + statement.toString());
-        st.execute(statement.toString());
+      for (String sqlStr : getMacros()) {
+        LOGGER.fine("execute: " + sqlStr);
+        st.execute(sqlStr);
       }
     }
   }
