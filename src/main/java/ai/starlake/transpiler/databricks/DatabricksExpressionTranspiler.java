@@ -26,7 +26,10 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.TimeKeyExpression;
+import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 
@@ -41,6 +44,12 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
 
 
     , ARRAY
+
+    , GETDATE, NOW, CURDATE, CURRENT_TIMEZONE, DATEADD, DATE_ADD, DATEDIFF, DATE_DIFF, DATE_FORMAT, DATE_FROM_UNIX_DATE, DATE_SUB
+    
+    , DAY, DAYOFMONTH,DAYOFWEEK, DAYOFYEAR, HOUR, LAST_DAY,MINUTE,MONTH, QUARTER,SECOND, WEEKDAY, WEEKOFYEAR, YEAR
+
+    , FROM_UNIXTIME, TO_UNIX_TIMESTAMP, MAKE_TIMESTAMP, TIMESTAMP, TO_TIMESTAMP
 
     ;
     // @FORMATTER:ON
@@ -87,6 +96,13 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
     }
   }
 
+  public Expression toDateTimePart(Expression expression) {
+    return toDateTimePart(expression, JSQLTranspiler.Dialect.DATABRICKS);
+  }
+
+  public Expression castInterval(Expression e1, Expression e2) {
+    return castInterval(e1, e2, JSQLTranspiler.Dialect.DATABRICKS);
+  }
 
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public void visit(Function function) {
@@ -281,6 +297,123 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           break;
         case UNBASE64:
           function.setName("From_Base64");
+          break;
+        case GETDATE:
+        case CURDATE:
+          rewrittenExpression = new TimeKeyExpression("CURRENT_DATE");
+          break;
+        case NOW:
+          rewrittenExpression = new TimeKeyExpression("CURRENT_TIMESTAMP");
+          break;
+        case DATEADD:
+        case DATE_ADD:
+          switch (paramCount) {
+            case 2:
+              function.setName("DATE_ADD$$");
+              function.setParameters( castDateTime(parameters.get(0)), parameters.get(1));
+              break;
+            case 3:
+              function.setName("DATE_ADD$$");
+              function.setParameters(
+                    castDateTime(parameters.get(2)),
+                      new CastExpression(new ParenthesedExpressionList<>(
+                              BinaryExpression.concat(parameters.get(1), toDateTimePart(parameters.get(0)))),
+                                         "INTERVAL"));
+              break;
+          }
+          break;
+        case DATE_SUB:
+          if (paramCount==2) {
+              function.setName("DATE_ADD$$");
+              function.setParameters(castDateTime(parameters.get(0)), BinaryExpression.multiply(new LongValue(-1), parameters.get(1)));
+              break;
+          }
+        case DATEDIFF:
+          if (paramCount==2) {
+            rewrittenExpression= BinaryExpression.subtract( castDateTime(parameters.get(0)), castDateTime(parameters.get(1)));
+          }
+          break;
+        case DATE_DIFF:
+          if (paramCount == 3) {
+            function.setName("DATE_DIFF$$");
+            function.setParameters(toDateTimePart(parameters.get(0)),
+                                   castDateTime(parameters.get(1)), castDateTime(parameters.get(2)));
+          }
+          break;
+        case DATE_FORMAT:
+          if (paramCount == 2) {
+            function.setName("StrFTime");
+            function.setParameters(castDateTime(parameters.get(0)), parameters.get(1));
+          }
+          break;
+        case DATE_FROM_UNIX_DATE:
+          if (paramCount==1) {
+            rewrittenExpression = BinaryExpression.add(
+                    new CastExpression("DATE", "1970-01-01"), new CastExpression(new ParenthesedExpressionList<>(
+                            BinaryExpression.concat(parameters.get(0), new StringValue("DAY"))),
+                                                                    "INTERVAL")
+            );
+          }
+          break;
+        case DAY:
+        case DAYOFMONTH:
+        case DAYOFWEEK:
+        case DAYOFYEAR:
+        case HOUR:
+        case LAST_DAY:
+        case MINUTE:
+        case MONTH:
+        case QUARTER:
+        case SECOND:
+        case WEEKDAY:
+        case WEEKOFYEAR:
+        case YEAR:
+          if (paramCount==1) {
+            function.setParameters( castDateTime(parameters.get(0)));
+          }
+          break;
+        case FROM_UNIXTIME:
+          switch (paramCount) {
+            case 2:
+              warning("FORMAT parameter is not supported yet.");
+            case 1:
+              rewrittenExpression = BinaryExpression.add(
+                      new CastExpression("TIMESTAMP", "1969-12-31T16:00:00.000"), new CastExpression(new ParenthesedExpressionList<>(
+                              BinaryExpression.concat(parameters.get(0), new StringValue("SECOND"))),
+                                                                                   "INTERVAL")
+              );
+          }
+          break;
+        case TO_UNIX_TIMESTAMP:
+          switch (paramCount) {
+            case 2:
+              warning("FORMAT parameter is not supported yet.");
+            case 1:
+              function.setName("Epoch");
+              function.setParameters(castDateTime(parameters.get(0)));
+          }
+          break;
+        case MAKE_TIMESTAMP:
+          switch (paramCount) {
+            case 7:
+              function.setParameters( parameters.get(0), parameters.get(1), parameters.get(2)
+                      , parameters.get(3), parameters.get(4), parameters.get(5));
+              rewrittenExpression = new TimezoneExpression( function, parameters.get(6));
+              break;
+          }
+          break;
+        case TO_TIMESTAMP:
+          switch (paramCount) {
+            case 2:
+              warning("FORMAT parameter not supported yet.");
+            case 1:
+              rewrittenExpression = new CastExpression( parameters.get(0), "TIMESTAMP");
+          }
+          break;
+        case TIMESTAMP:
+          if (paramCount==1) {
+            rewrittenExpression = new CastExpression( parameters.get(0), "TIMESTAMP");
+          }
           break;
       }
     }

@@ -210,7 +210,7 @@ jacocoTestReport {
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
-                    "**CCJSqlParserTokenManager**"
+                    "net/sf/jsqlparser/parser/**"
             ])
         }))
     }
@@ -225,7 +225,7 @@ jacocoTestCoverageVerification {
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
-                    "**CCJSqlParserTokenManager**"
+                    "net/sf/jsqlparser/parser/**"
             ])
         }))
     }

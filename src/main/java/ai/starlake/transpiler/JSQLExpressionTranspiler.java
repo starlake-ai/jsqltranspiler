@@ -1340,8 +1340,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
   }
 
-  private static void rewriteFormatDateFunction(Function function, ExpressionList<?> parameters,
-      DateTimeLiteralExpression.DateTime dateTimeType) {
+  protected static void rewriteFormatDateFunction(Function function, ExpressionList<?> parameters,
+                                                  DateTimeLiteralExpression.DateTime dateTimeType) {
     ExpressionList<Expression> reversedParameters = new ExpressionList<>();
     Expression dateTimeExpression;
     switch (parameters.size()) {
@@ -2117,11 +2117,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return expression;
   }
 
-  public void visit(TimeKeyExpression timeKeyExpression) {
-    if (timeKeyExpression.getStringValue().toLowerCase().startsWith("current")) {
-      buffer.append(timeKeyExpression.getStringValue().replaceAll("[()]", ""));
+  public void visit(TimeKeyExpression expression) {
+    String value = expression.getStringValue().toUpperCase().replaceAll("[()]", "");
+    if (value.equals("CURRENT_TIMEZONE")) {
+      Function function = new Function("StrFTime", new TimeKeyExpression("CURRENT_TIMESTAMP"), new StringValue("%Z"));
+      function.accept(this);
     } else {
-      super.visit(timeKeyExpression);
+      expression.setStringValue(value);
+      super.visit(expression);
     }
   }
 
