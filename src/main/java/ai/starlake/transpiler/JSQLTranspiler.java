@@ -61,11 +61,22 @@ import java.util.logging.Logger;
  * The type JSQLtranspiler.
  */
 public class JSQLTranspiler extends SelectDeParser {
+  public static final Logger LOGGER = Logger.getLogger(JSQLTranspiler.class.getName());
+
   /**
-   * The constant LOGGER.
+   * The constant parser TIMEOUT in seconds.
    */
-  public final static Logger LOGGER = Logger.getLogger(JSQLTranspiler.class.getName());
+  public static final int TIMEOUT = 6;
+
+
+  /**
+   * The Expression transpiler.
+   */
   protected final JSQLExpressionTranspiler expressionTranspiler;
+
+  /**
+   * The builder holding the rewritten SQL statement text.
+   */
   protected StringBuilder resultBuilder;
 
   /**
@@ -82,7 +93,7 @@ public class JSQLTranspiler extends SelectDeParser {
       this.setExpressionVisitor(expressionTranspiler);
     } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
         | IllegalAccessException e) {
-      // this can't happen
+      // this really can't happen
       throw new RuntimeException(e);
     }
   }
@@ -144,12 +155,21 @@ public class JSQLTranspiler extends SelectDeParser {
     });
 
     executorService.shutdown();
-    boolean wasTerminated = executorService.awaitTermination(6, TimeUnit.SECONDS);
+    boolean wasTerminated = executorService.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
 
     return result;
   }
 
-
+  /**
+   * Transpile a query string from a file or STDIN and write the transformed query string into a
+   * file or STDOUT. Using the provided Executor Service for observing the parser.
+   *
+   * @param sqlStr the original query string
+   * @param outputFile the output file, writing to STDOUT when not defined
+   * @param executorService the ExecutorService to use for running and observing JSQLParser
+   * @param consumer the parser configuration to use for the parsing
+   * @throws JSQLParserException a parser exception when the statement can't be parsed
+   */
   public static void transpile(String sqlStr, File outputFile, ExecutorService executorService,
       Consumer<CCJSqlParser> consumer) throws JSQLParserException {
     JSQLTranspiler transpiler = new JSQLTranspiler();
@@ -163,8 +183,7 @@ public class JSQLTranspiler extends SelectDeParser {
 
         transpiler.getResultBuilder().append("\n;\n\n");
       } else {
-        LOGGER.log(Level.SEVERE,
-            st.getClass().getSimpleName() + " is not supported yet:\n" + st.toString());
+        LOGGER.log(Level.SEVERE, st.getClass().getSimpleName() + " is not supported yet:\n" + st);
       }
     }
 
@@ -209,7 +228,7 @@ public class JSQLTranspiler extends SelectDeParser {
           .withUnsupportedStatements();
     });
     executorService.shutdown();
-    return executorService.awaitTermination(6, TimeUnit.SECONDS);
+    return executorService.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
   }
 
   /**
@@ -247,7 +266,30 @@ public class JSQLTranspiler extends SelectDeParser {
   public static String readResource(Class<?> clazz, String suffix) throws IOException {
     URL url = JSQLTranspiler.class
         .getResource("/" + clazz.getCanonicalName().replaceAll("\\.", "/") + suffix);
+    assert url != null;
     return readResource(url);
+  }
+
+  /**
+   * Get the Macro `CREATE FUNCTION` statements as a list of text, using the provided
+   * ExecutorService to monitor the parser
+   *
+   * @param executorService the ExecutorService to use for running and observing JSQLParser
+   * @param consumer the parser configuration to use for the parsing
+   * @return the list of statement texts
+   * @throws IOException when the Macro resource file can't be read
+   * @throws JSQLParserException when statements in the Macro resource file can't be parsed
+   */
+  public static Collection<String> getMacros(ExecutorService executorService,
+      Consumer<CCJSqlParser> consumer) throws IOException, JSQLParserException {
+    ArrayList<String> macroStrList = new ArrayList<>();
+    String sqlStr = readResource(JSQLTranspiler.class, "Macro.sql");
+
+    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
+    for (net.sf.jsqlparser.statement.Statement statement : statements) {
+      macroStrList.add(statement.toString());
+    }
+    return macroStrList;
   }
 
   /**
@@ -257,15 +299,17 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the list of statement texts
    * @throws IOException when the Macro resource file can't be read
    * @throws JSQLParserException when statements in the Macro resource file can't be parsed
+   * @throws InterruptedException when the parser does not return a result with 6 seconds
    */
-  public static Collection<String> getMacros() throws IOException, JSQLParserException {
-    ArrayList<String> macroStrList = new ArrayList<>();
-    String sqlStr = readResource(JSQLTranspiler.class, "Macro.sql");
+  public static Collection<String> getMacros()
+      throws IOException, JSQLParserException, InterruptedException {
+    ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    Collection<String> macroStrList = getMacros(executorService, parser -> {
+    });
 
-    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr);
-    for (net.sf.jsqlparser.statement.Statement statement : statements) {
-      macroStrList.add(statement.toString());
-    }
+    executorService.shutdown();
+    boolean wasTerminated = executorService.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
+
     return macroStrList;
   }
 
@@ -276,8 +320,10 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the array of statement texts
    * @throws IOException when the Macro resource file can't be read
    * @throws JSQLParserException when statements in the Macro resource file can't be parsed
+   * @throws InterruptedException when the parser does not return a result with 6 seconds
    */
-  public static String[] getMacroArray() throws IOException, JSQLParserException {
+  public static String[] getMacroArray()
+      throws IOException, JSQLParserException, InterruptedException {
     return getMacros().toArray(getMacros().toArray(new String[0]));
   }
 
@@ -289,9 +335,10 @@ public class JSQLTranspiler extends SelectDeParser {
    * @throws IOException when the Macro resource file can't be read
    * @throws JSQLParserException when statements in the Macro resource file can't be parsed
    * @throws SQLException when statements can't be executed
+   * @throws InterruptedException when the parser does not return a result with 6 seconds
    */
   public static void createMacros(Connection conn)
-      throws SQLException, IOException, JSQLParserException {
+      throws SQLException, IOException, JSQLParserException, InterruptedException {
 
     LOGGER.info("Create the DuckDB Macros");
     try (java.sql.Statement st = conn.createStatement()) {
@@ -307,7 +354,6 @@ public class JSQLTranspiler extends SelectDeParser {
    *
    * @param select the select
    * @return the string
-   * @throws Exception the exception
    */
   public static String transpile(Select select) {
     JSQLTranspiler transpiler = new JSQLTranspiler();
@@ -321,7 +367,6 @@ public class JSQLTranspiler extends SelectDeParser {
    *
    * @param select the select
    * @return the string
-   * @throws Exception the exception
    */
   public static String transpileGoogleBigQuery(Select select) {
     BigQueryTranspiler transpiler = new BigQueryTranspiler();
@@ -335,7 +380,6 @@ public class JSQLTranspiler extends SelectDeParser {
    *
    * @param select the select
    * @return the string
-   * @throws Exception the exception
    */
   public static String transpileDatabricksQuery(Select select) {
     DatabricksTranspiler transpiler = new DatabricksTranspiler();
@@ -349,7 +393,6 @@ public class JSQLTranspiler extends SelectDeParser {
    *
    * @param select the select
    * @return the string
-   * @throws Exception the exception
    */
   public static String transpileSnowflakeQuery(Select select) {
     SnowflakeTranspiler transpiler = new SnowflakeTranspiler();
@@ -363,7 +406,6 @@ public class JSQLTranspiler extends SelectDeParser {
    *
    * @param select the select
    * @return the string
-   * @throws Exception the exception
    */
   public static String transpileAmazonRedshiftQuery(Select select) {
     RedshiftTranspiler transpiler = new RedshiftTranspiler();

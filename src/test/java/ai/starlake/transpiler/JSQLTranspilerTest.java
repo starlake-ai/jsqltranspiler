@@ -244,7 +244,8 @@ public class JSQLTranspilerTest {
   @BeforeAll
   // setting up a TEST Database according to
   // https://docs.aws.amazon.com/redshift/latest/dg/c_sampledb.html
-  static synchronized void init() throws SQLException, IOException, JSQLParserException {
+  static synchronized void init()
+      throws SQLException, IOException, JSQLParserException, InterruptedException {
     File extractionPathFolder = new File(EXTRACTION_PATH);
     boolean mkdirs = extractionPathFolder.mkdirs();
 
@@ -374,11 +375,7 @@ public class JSQLTranspilerTest {
         result.append(c);
         escaped = true;
       } else if (c == '\'') {
-        if (inQuotes && !escaped) {
-          inQuotes = false;
-        } else if (!inQuotes) {
-          inQuotes = true;
-        }
+        inQuotes = !inQuotes;
         result.append(c);
       } else {
         result.append(inQuotes ? c : Character.toUpperCase(c));
@@ -411,7 +408,7 @@ public class JSQLTranspilerTest {
         sanitizedSqlStr = sanitizedSqlStr.substring(0, sanitizedSqlStr.length() - 1).trim();
       }
       // @todo: "SELECT 1 AS ago" would trigger this wrongly, so we need to do this more
-      // sophisticated
+      // in a more sophisticated way
       // else if (sanitizedSqlStr.endsWith("go")) {
       // sanitizedSqlStr = sanitizedSqlStr.substring(0, sanitizedSqlStr.length() - 2).trim();
       // }
