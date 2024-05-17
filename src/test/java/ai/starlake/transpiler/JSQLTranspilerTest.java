@@ -59,6 +59,8 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -334,7 +336,7 @@ public class JSQLTranspilerTest {
       // see https://duckdb.org/docs/extensions/tpch
       LOGGER.info("Preparing TPCH with load factor 0.2");
       try (Statement st = connDuck.createStatement()) {
-        for (String s : new String[]{"INSTALL tpch;", "LOAD tpch;", "CALL dbgen(sf = 0.2);"}) {
+        for (String s : new String[] {"INSTALL tpch;", "LOAD tpch;", "CALL dbgen(sf = 0.2);"}) {
           LOGGER.fine("execute: " + s);
           st.execute(s);
         }
@@ -437,6 +439,7 @@ public class JSQLTranspilerTest {
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
   @MethodSource("getSqlTestMap")
   protected void transpile(File f, int idx, SQLTest t) throws Exception {
+    ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
     // ONLY if expected differs from provided:
     // Expect this query to fail since DuckDB does not support `TOP <integer>`
@@ -455,14 +458,17 @@ public class JSQLTranspilerTest {
     if (t.prologue != null && !t.prologue.isEmpty()) {
       try (Statement st = connDuck.createStatement();) {
         for (net.sf.jsqlparser.statement.Statement statement : CCJSqlParserUtil
-            .parseStatements(t.prologue)) {
+            .parseStatements(t.prologue, executorService, parser -> {
+            })) {
           st.executeUpdate(statement.toString());
         }
       }
     }
 
     // Assertions.assertNotNull(t.expectedSqlStr);
-    String transpiledSqlStr = JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect);
+    String transpiledSqlStr =
+        JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect, executorService, parser -> {
+        });
     Assertions.assertThat(transpiledSqlStr).isNotNull();
     Assertions.assertThat(sanitize(transpiledSqlStr, true))
         .isEqualTo(sanitize(t.expectedSqlStr, true));

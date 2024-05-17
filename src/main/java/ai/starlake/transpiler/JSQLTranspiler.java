@@ -21,6 +21,7 @@ import ai.starlake.transpiler.databricks.DatabricksTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftTranspiler;
 import ai.starlake.transpiler.snowflake.SnowflakeTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.parser.SimpleNode;
 import net.sf.jsqlparser.schema.Table;
@@ -49,6 +50,10 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -91,12 +96,15 @@ public class JSQLTranspiler extends SelectDeParser {
    *
    * @param qryStr the original query string
    * @param dialect the dialect of the query string
+   * @param executorService the ExecutorService to use for running and observing JSQLParser
+   * @param consumer the parser configuration to use for the parsing
    * @return the transformed query string
-   * @throws Exception the exception
+   * @throws JSQLParserException a parser exception when the statement can't be parsed
    */
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
-  public static String transpileQuery(String qryStr, Dialect dialect) throws Exception {
-    Statement st = CCJSqlParserUtil.parse(qryStr);
+  public static String transpileQuery(String qryStr, Dialect dialect,
+      ExecutorService executorService, Consumer<CCJSqlParser> consumer) throws JSQLParserException {
+    Statement st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
     if (st instanceof Select) {
       Select select = (Select) st;
 
@@ -119,23 +127,35 @@ public class JSQLTranspiler extends SelectDeParser {
   }
 
   /**
-   * Transpile a query string from a file or STDIN and write the transformed query string into a
-   * file or STDOUT.
+   * Transpile a query string in the defined dialect into DuckDB compatible SQL.
    *
-   *
-   * @param sqlStr the original query string
-   * @param outputFile the output file, writing to STDOUT when not defined
-   * @throws JSQLParserException the jsql parser exception
+   * @param qryStr the original query string
+   * @param dialect the dialect of the query string
+   * @return the transformed query string
+   * @throws JSQLParserException a parser exception when the statement can't be parsed
+   * @throws InterruptedException a time out exception, when the statement can't be parsed within 6
+   *         seconds (hanging parser)
    */
-  public static void transpile(String sqlStr, File outputFile) throws JSQLParserException {
+  public static String transpileQuery(String qryStr, Dialect dialect)
+      throws JSQLParserException, InterruptedException {
+    ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+
+    String result = transpileQuery(qryStr, dialect, executorService, parser -> {
+    });
+
+    executorService.shutdown();
+    boolean wasTerminated = executorService.awaitTermination(6, TimeUnit.SECONDS);
+
+    return result;
+  }
+
+
+  public static void transpile(String sqlStr, File outputFile, ExecutorService executorService,
+      Consumer<CCJSqlParser> consumer) throws JSQLParserException {
     JSQLTranspiler transpiler = new JSQLTranspiler();
 
     // @todo: we may need to split this manually to salvage any not parseable statements
-    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, parser -> {
-      parser.setErrorRecovery(true);
-      // parser.withTimeOut(60000);
-      // parser.withAllowComplexParsing(true);
-    });
+    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
     for (Statement st : statements) {
       if (st instanceof Select) {
         Select select = (Select) st;
@@ -168,6 +188,28 @@ public class JSQLTranspiler extends SelectDeParser {
         LOGGER.log(Level.SEVERE, "Failed to write to " + outputFile.getAbsolutePath());
       }
     }
+  }
+
+  /**
+   * Transpile a query string from a file or STDIN and write the transformed query string into a
+   * file or STDOUT.
+   *
+   *
+   * @param sqlStr the original query string
+   * @param outputFile the output file, writing to STDOUT when not defined
+   * @throws JSQLParserException a parser exception when the statement can't be parsed
+   * @throws InterruptedException a time out exception, when the statement can't be parsed within 6
+   *         seconds (hanging parser)
+   */
+  public static boolean transpile(String sqlStr, File outputFile)
+      throws JSQLParserException, InterruptedException {
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+    transpile(sqlStr, outputFile, executorService, parser -> {
+      parser.withErrorRecovery().withTimeOut(6000).withAllowComplexParsing(true)
+          .withUnsupportedStatements();
+    });
+    executorService.shutdown();
+    return executorService.awaitTermination(6, TimeUnit.SECONDS);
   }
 
   /**
@@ -267,7 +309,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpile(Select select) throws Exception {
+  public static String transpile(Select select) {
     JSQLTranspiler transpiler = new JSQLTranspiler();
     select.accept(transpiler);
 
@@ -281,7 +323,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpileGoogleBigQuery(Select select) throws Exception {
+  public static String transpileGoogleBigQuery(Select select) {
     BigQueryTranspiler transpiler = new BigQueryTranspiler();
     select.accept(transpiler);
 
@@ -295,7 +337,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpileDatabricksQuery(Select select) throws Exception {
+  public static String transpileDatabricksQuery(Select select) {
     DatabricksTranspiler transpiler = new DatabricksTranspiler();
     select.accept(transpiler);
 
@@ -309,7 +351,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpileSnowflakeQuery(Select select) throws Exception {
+  public static String transpileSnowflakeQuery(Select select) {
     SnowflakeTranspiler transpiler = new SnowflakeTranspiler();
     select.accept(transpiler);
 
@@ -323,7 +365,7 @@ public class JSQLTranspiler extends SelectDeParser {
    * @return the string
    * @throws Exception the exception
    */
-  public static String transpileAmazonRedshiftQuery(Select select) throws Exception {
+  public static String transpileAmazonRedshiftQuery(Select select) {
     RedshiftTranspiler transpiler = new RedshiftTranspiler();
     select.accept(transpiler);
 
