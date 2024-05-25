@@ -463,6 +463,40 @@ public class JSQLTranspiler extends SelectDeParser {
     super.visit(plainSelect);
   }
 
+  public void visit(Table table) {
+    String name = table.getName().toLowerCase();
+    String aliasName = table.getAlias()!=null ? table.getAlias().getName() : null;
+
+    for (String[] keyword : JSQLExpressionTranspiler.KEYWORDS) {
+      if (keyword[0].equals(name)) {
+        table.setName("\"" + table.getName() + "\"");
+        name = null;
+        if (aliasName==null) break;
+      }
+
+      if (keyword[0].equals(aliasName)) {
+        table.getAlias().setName( "\"" + table.getAlias().getName() + "\"");
+        aliasName = null;
+        if (name==null) break;;
+      }
+    }
+
+    super.visit(table);
+  }
+
+  public void visit(SelectItem selectItem) {
+    if (selectItem.getAlias()!=null) {
+      String aliasName = selectItem.getAlias().getName().toLowerCase();
+      for (String[] keyword : JSQLExpressionTranspiler.KEYWORDS) {
+        if (keyword[0].equals(aliasName)) {
+          selectItem.getAlias().setName("\"" + selectItem.getAlias().getName() + "\"");
+          break;
+        }
+      }
+    }
+    super.visit(selectItem);
+  }
+
 
   /**
    * The enum Dialect.
