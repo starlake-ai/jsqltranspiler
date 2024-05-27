@@ -72,6 +72,7 @@ public class SnowflakeTranspiler extends JSQLTranspiler {
     }
   }
 
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public void visit(TableFunction tableFunction) {
     String prefix = tableFunction.getPrefix();
     String name = tableFunction.getFunction().getName();

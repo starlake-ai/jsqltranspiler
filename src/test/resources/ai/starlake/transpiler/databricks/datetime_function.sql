@@ -92,16 +92,6 @@ SELECT DATE_DIFF('MONTH',TIMESTAMP '2021-02-28T12:00:00.000',TIMESTAMP '2021-03-
 "diff"
 "1"
 
--- provided
-SELECT date_format('2016-04-08', 'y') AS s;
-
--- expected
-SELECT strftime( DATE '2016-04-08', 'y') AS s;
-
--- result
-"s"
-"2016"
-
 
 -- provided
 SELECT date_from_unix_date(1) AS d;

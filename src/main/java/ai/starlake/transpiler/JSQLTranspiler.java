@@ -156,6 +156,7 @@ public class JSQLTranspiler extends SelectDeParser {
 
     executorService.shutdown();
     boolean wasTerminated = executorService.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
+    LOGGER.log(Level.FINE, "Exceutor Service terminated: " + wasTerminated);
 
     return result;
   }
@@ -286,7 +287,7 @@ public class JSQLTranspiler extends SelectDeParser {
     String sqlStr = readResource(JSQLTranspiler.class, "Macro.sql");
 
     Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
-    for (net.sf.jsqlparser.statement.Statement statement : statements) {
+    for (Statement statement : statements) {
       macroStrList.add(statement.toString());
     }
     return macroStrList;
@@ -309,6 +310,7 @@ public class JSQLTranspiler extends SelectDeParser {
 
     executorService.shutdown();
     boolean wasTerminated = executorService.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
+    LOGGER.log(Level.FINE, "Exceutor Service terminated: " + wasTerminated);
 
     return macroStrList;
   }
@@ -465,19 +467,23 @@ public class JSQLTranspiler extends SelectDeParser {
 
   public void visit(Table table) {
     String name = table.getName().toLowerCase();
-    String aliasName = table.getAlias()!=null ? table.getAlias().getName() : null;
+    String aliasName = table.getAlias() != null ? table.getAlias().getName() : null;
 
     for (String[] keyword : JSQLExpressionTranspiler.KEYWORDS) {
       if (keyword[0].equals(name)) {
         table.setName("\"" + table.getName() + "\"");
         name = null;
-        if (aliasName==null) break;
+        if (aliasName == null) {
+          break;
+        }
       }
 
       if (keyword[0].equals(aliasName)) {
-        table.getAlias().setName( "\"" + table.getAlias().getName() + "\"");
+        table.getAlias().setName("\"" + table.getAlias().getName() + "\"");
         aliasName = null;
-        if (name==null) break;;
+        if (name == null) {
+          break;
+        }
       }
     }
 
@@ -485,7 +491,7 @@ public class JSQLTranspiler extends SelectDeParser {
   }
 
   public void visit(SelectItem selectItem) {
-    if (selectItem.getAlias()!=null) {
+    if (selectItem.getAlias() != null) {
       String aliasName = selectItem.getAlias().getName().toLowerCase();
       for (String[] keyword : JSQLExpressionTranspiler.KEYWORDS) {
         if (keyword[0].equals(aliasName)) {

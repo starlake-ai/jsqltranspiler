@@ -74,483 +74,33 @@ import java.util.regex.Pattern;
  */
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class JSQLExpressionTranspiler extends ExpressionDeParser {
-  public final static String[][] KEYWORDS = {
-          { "abort", "unreserved"}
-          , { "absolute", "unreserved"}
-          , { "access", "unreserved"}
-          , { "action", "unreserved"}
-          , { "add", "unreserved"}
-          , { "admin", "unreserved"}
-          , { "after", "unreserved"}
-          , { "aggregate", "unreserved"}
-          , { "all", "reserved"}
-          , { "also", "unreserved"}
-          , { "alter", "unreserved"}
-          , { "always", "unreserved"}
-          , { "analyse", "reserved"}
-          , { "analyze", "reserved"}
-          , { "and", "reserved"}
-          , { "anti", "type_function"}
-          , { "any", "reserved"}
-          , { "array", "reserved"}
-          , { "as", "reserved"}
-          , { "asc", "reserved"}
-          , { "asof", "type_function"}
-          , { "assertion", "unreserved"}
-          , { "assignment", "unreserved"}
-          , { "asymmetric", "reserved"}
-          , { "at", "unreserved"}
-          , { "attach", "unreserved"}
-          , { "attribute", "unreserved"}
-          , { "authorization", "type_function"}
-          , { "backward", "unreserved"}
-          , { "before", "unreserved"}
-          , { "begin", "unreserved"}
-          , { "between", "column_name"}
-          , { "bigint", "column_name"}
-          , { "binary", "type_function"}
-          , { "bit", "column_name"}
-          , { "boolean", "column_name"}
-          , { "both", "reserved"}
-          , { "by", "unreserved"}
-          , { "cache", "unreserved"}
-          , { "call", "unreserved"}
-          , { "called", "unreserved"}
-          , { "cascade", "unreserved"}
-          , { "cascaded", "unreserved"}
-          , { "case", "reserved"}
-          , { "cast", "reserved"}
-          , { "catalog", "unreserved"}
-          , { "centuries", "unreserved"}
-          , { "century", "unreserved"}
-          , { "chain", "unreserved"}
-          , { "char", "column_name"}
-          , { "character", "column_name"}
-          , { "characteristics", "unreserved"}
-          , { "check", "reserved"}
-          , { "checkpoint", "unreserved"}
-          , { "class", "unreserved"}
-          , { "close", "unreserved"}
-          , { "cluster", "unreserved"}
-          , { "coalesce", "column_name"}
-          , { "collate", "reserved"}
-          , { "collation", "type_function"}
-          , { "column", "reserved"}
-          , { "columns", "type_function"}
-          , { "comment", "unreserved"}
-          , { "comments", "unreserved"}
-          , { "commit", "unreserved"}
-          , { "committed", "unreserved"}
-          , { "compression", "unreserved"}
-          , { "concurrently", "type_function"}
-          , { "configuration", "unreserved"}
-          , { "conflict", "unreserved"}
-          , { "connection", "unreserved"}
-          , { "constraint", "reserved"}
-          , { "constraints", "unreserved"}
-          , { "content", "unreserved"}
-          , { "continue", "unreserved"}
-          , { "conversion", "unreserved"}
-          , { "copy", "unreserved"}
-          , { "cost", "unreserved"}
-          , { "create", "reserved"}
-          , { "cross", "type_function"}
-          , { "csv", "unreserved"}
-          , { "cube", "unreserved"}
-          , { "current", "unreserved"}
-          , { "cursor", "unreserved"}
-          , { "cycle", "unreserved"}
-          , { "data", "unreserved"}
-          , { "database", "unreserved"}
-          , { "day", "unreserved"}
-          , { "days", "unreserved"}
-          , { "deallocate", "unreserved"}
-          , { "dec", "column_name"}
-          , { "decade", "unreserved"}
-          , { "decades", "unreserved"}
-          , { "decimal", "column_name"}
-          , { "declare", "unreserved"}
-          , { "default", "reserved"}
-          , { "defaults", "unreserved"}
-          , { "deferrable", "reserved"}
-          , { "deferred", "unreserved"}
-          , { "definer", "unreserved"}
-          , { "delete", "unreserved"}
-          , { "delimiter", "unreserved"}
-          , { "delimiters", "unreserved"}
-          , { "depends", "unreserved"}
-          , { "desc", "reserved"}
-          , { "describe", "reserved"}
-          , { "detach", "unreserved"}
-          , { "dictionary", "unreserved"}
-          , { "disable", "unreserved"}
-          , { "discard", "unreserved"}
-          , { "distinct", "reserved"}
-          , { "do", "reserved"}
-          , { "document", "unreserved"}
-          , { "domain", "unreserved"}
-          , { "double", "unreserved"}
-          , { "drop", "unreserved"}
-          , { "each", "unreserved"}
-          , { "else", "reserved"}
-          , { "enable", "unreserved"}
-          , { "encoding", "unreserved"}
-          , { "encrypted", "unreserved"}
-          , { "end", "reserved"}
-          , { "enum", "unreserved"}
-          , { "escape", "unreserved"}
-          , { "event", "unreserved"}
-          , { "except", "reserved"}
-          , { "exclude", "unreserved"}
-          , { "excluding", "unreserved"}
-          , { "exclusive", "unreserved"}
-          , { "execute", "unreserved"}
-          , { "exists", "column_name"}
-          , { "explain", "unreserved"}
-          , { "export", "unreserved"}
-          , { "export_state", "unreserved"}
-          , { "extension", "unreserved"}
-          , { "external", "unreserved"}
-          , { "extract", "column_name"}
-          , { "false", "reserved"}
-          , { "family", "unreserved"}
-          , { "fetch", "reserved"}
-          , { "filter", "unreserved"}
-          , { "first", "unreserved"}
-          , { "float", "column_name"}
-          , { "following", "unreserved"}
-          , { "for", "reserved"}
-          , { "force", "unreserved"}
-          , { "foreign", "reserved"}
-          , { "forward", "unreserved"}
-          , { "freeze", "type_function"}
-          , { "from", "reserved"}
-          , { "full", "type_function"}
-          , { "function", "unreserved"}
-          , { "functions", "unreserved"}
-          , { "generated", "type_function"}
-          , { "glob", "type_function"}
-          , { "global", "unreserved"}
-          , { "grant", "reserved"}
-          , { "granted", "unreserved"}
-          , { "group", "reserved"}
-          , { "grouping", "column_name"}
-          , { "grouping_id", "column_name"}
-          , { "groups", "unreserved"}
-          , { "handler", "unreserved"}
-          , { "having", "reserved"}
-          , { "header", "unreserved"}
-          , { "hold", "unreserved"}
-          , { "hour", "unreserved"}
-          , { "hours", "unreserved"}
-          , { "identity", "unreserved"}
-          , { "if", "unreserved"}
-          , { "ignore", "unreserved"}
-          , { "ilike", "type_function"}
-          , { "immediate", "unreserved"}
-          , { "immutable", "unreserved"}
-          , { "implicit", "unreserved"}
-          , { "import", "unreserved"}
-          , { "in", "reserved"}
-          , { "include", "unreserved"}
-          , { "including", "unreserved"}
-          , { "increment", "unreserved"}
-          , { "index", "unreserved"}
-          , { "indexes", "unreserved"}
-          , { "inherit", "unreserved"}
-          , { "inherits", "unreserved"}
-          , { "initially", "reserved"}
-          , { "inline", "unreserved"}
-          , { "inner", "type_function"}
-          , { "inout", "column_name"}
-          , { "input", "unreserved"}
-          , { "insensitive", "unreserved"}
-          , { "insert", "unreserved"}
-          , { "install", "unreserved"}
-          , { "instead", "unreserved"}
-          , { "int", "column_name"}
-          , { "integer", "column_name"}
-          , { "intersect", "reserved"}
-          , { "interval", "column_name"}
-          , { "into", "reserved"}
-          , { "invoker", "unreserved"}
-          , { "is", "type_function"}
-          , { "isnull", "type_function"}
-          , { "isolation", "unreserved"}
-          , { "join", "type_function"}
-          , { "json", "unreserved"}
-          , { "key", "unreserved"}
-          , { "label", "unreserved"}
-          , { "language", "unreserved"}
-          , { "large", "unreserved"}
-          , { "last", "unreserved"}
-          , { "lateral", "reserved"}
-          , { "leading", "reserved"}
-          , { "leakproof", "unreserved"}
-          , { "left", "type_function"}
-          , { "level", "unreserved"}
-          , { "like", "type_function"}
-          , { "limit", "reserved"}
-          , { "listen", "unreserved"}
-          , { "load", "unreserved"}
-          , { "local", "unreserved"}
-          , { "location", "unreserved"}
-          , { "lock", "unreserved"}
-          , { "locked", "unreserved"}
-          , { "logged", "unreserved"}
-          , { "macro", "unreserved"}
-          , { "map", "type_function"}
-          , { "mapping", "unreserved"}
-          , { "match", "unreserved"}
-          , { "materialized", "unreserved"}
-          , { "maxvalue", "unreserved"}
-          , { "method", "unreserved"}
-          , { "microsecond", "unreserved"}
-          , { "microseconds", "unreserved"}
-          , { "millennia", "unreserved"}
-          , { "millennium", "unreserved"}
-          , { "millisecond", "unreserved"}
-          , { "milliseconds", "unreserved"}
-          , { "minute", "unreserved"}
-          , { "minutes", "unreserved"}
-          , { "minvalue", "unreserved"}
-          , { "mode", "unreserved"}
-          , { "month", "unreserved"}
-          , { "months", "unreserved"}
-          , { "move", "unreserved"}
-          , { "name", "unreserved"}
-          , { "names", "unreserved"}
-          , { "national", "column_name"}
-          , { "natural", "type_function"}
-          , { "nchar", "column_name"}
-          , { "new", "unreserved"}
-          , { "next", "unreserved"}
-          , { "no", "unreserved"}
-          , { "none", "column_name"}
-          , { "not", "reserved"}
-          , { "nothing", "unreserved"}
-          , { "notify", "unreserved"}
-          , { "notnull", "type_function"}
-          , { "nowait", "unreserved"}
-          , { "null", "reserved"}
-          , { "nullif", "column_name"}
-          , { "nulls", "unreserved"}
-          , { "numeric", "column_name"}
-          , { "object", "unreserved"}
-          , { "of", "unreserved"}
-          , { "off", "unreserved"}
-          , { "offset", "reserved"}
-          , { "oids", "unreserved"}
-          , { "old", "unreserved"}
-          , { "on", "reserved"}
-          , { "only", "reserved"}
-          , { "operator", "unreserved"}
-          , { "option", "unreserved"}
-          , { "options", "unreserved"}
-          , { "or", "reserved"}
-          , { "order", "reserved"}
-          , { "ordinality", "unreserved"}
-          , { "others", "unreserved"}
-          , { "out", "column_name"}
-          , { "outer", "type_function"}
-          , { "over", "unreserved"}
-          , { "overlaps", "type_function"}
-          , { "overlay", "column_name"}
-          , { "overriding", "unreserved"}
-          , { "owned", "unreserved"}
-          , { "owner", "unreserved"}
-          , { "parallel", "unreserved"}
-          , { "parser", "unreserved"}
-          , { "partial", "unreserved"}
-          , { "partition", "unreserved"}
-          , { "passing", "unreserved"}
-          , { "password", "unreserved"}
-          , { "percent", "unreserved"}
-          , { "persistent", "unreserved"}
-          , { "pivot", "reserved"}
-          , { "pivot_longer", "reserved"}
-          , { "pivot_wider", "reserved"}
-          , { "placing", "reserved"}
-          , { "plans", "unreserved"}
-          , { "policy", "unreserved"}
-          , { "position", "column_name"}
-          , { "positional", "type_function"}
-          , { "pragma", "unreserved"}
-          , { "preceding", "unreserved"}
-          , { "precision", "column_name"}
-          , { "prepare", "unreserved"}
-          , { "prepared", "unreserved"}
-          , { "preserve", "unreserved"}
-          , { "primary", "reserved"}
-          , { "prior", "unreserved"}
-          , { "privileges", "unreserved"}
-          , { "procedural", "unreserved"}
-          , { "procedure", "unreserved"}
-          , { "program", "unreserved"}
-          , { "publication", "unreserved"}
-          , { "qualify", "reserved"}
-          , { "quote", "unreserved"}
-          , { "range", "unreserved"}
-          , { "read", "unreserved"}
-          , { "real", "column_name"}
-          , { "reassign", "unreserved"}
-          , { "recheck", "unreserved"}
-          , { "recursive", "unreserved"}
-          , { "ref", "unreserved"}
-          , { "references", "reserved"}
-          , { "referencing", "unreserved"}
-          , { "refresh", "unreserved"}
-          , { "reindex", "unreserved"}
-          , { "relative", "unreserved"}
-          , { "release", "unreserved"}
-          , { "rename", "unreserved"}
-          , { "repeatable", "unreserved"}
-          , { "replace", "unreserved"}
-          , { "replica", "unreserved"}
-          , { "reset", "unreserved"}
-          , { "respect", "unreserved"}
-          , { "restart", "unreserved"}
-          , { "restrict", "unreserved"}
-          , { "returning", "reserved"}
-          , { "returns", "unreserved"}
-          , { "revoke", "unreserved"}
-          , { "right", "type_function"}
-          , { "role", "unreserved"}
-          , { "rollback", "unreserved"}
-          , { "rollup", "unreserved"}
-          , { "row", "column_name"}
-          , { "rows", "unreserved"}
-          , { "rule", "unreserved"}
-          , { "sample", "unreserved"}
-          , { "savepoint", "unreserved"}
-          , { "schema", "unreserved"}
-          , { "schemas", "unreserved"}
-          , { "scope", "unreserved"}
-          , { "scroll", "unreserved"}
-          , { "search", "unreserved"}
-          , { "second", "unreserved"}
-          , { "seconds", "unreserved"}
-          , { "secret", "unreserved"}
-          , { "security", "unreserved"}
-          , { "select", "reserved"}
-          , { "semi", "type_function"}
-          , { "sequence", "unreserved"}
-          , { "sequences", "unreserved"}
-          , { "serializable", "unreserved"}
-          , { "server", "unreserved"}
-          , { "session", "unreserved"}
-          , { "set", "unreserved"}
-          , { "setof", "column_name"}
-          , { "sets", "unreserved"}
-          , { "share", "unreserved"}
-          , { "show", "reserved"}
-          , { "similar", "type_function"}
-          , { "simple", "unreserved"}
-          , { "skip", "unreserved"}
-          , { "smallint", "column_name"}
-          , { "snapshot", "unreserved"}
-          , { "some", "reserved"}
-          , { "sql", "unreserved"}
-          , { "stable", "unreserved"}
-          , { "standalone", "unreserved"}
-          , { "start", "unreserved"}
-          , { "statement", "unreserved"}
-          , { "statistics", "unreserved"}
-          , { "stdin", "unreserved"}
-          , { "stdout", "unreserved"}
-          , { "storage", "unreserved"}
-          , { "stored", "unreserved"}
-          , { "strict", "unreserved"}
-          , { "strip", "unreserved"}
-          , { "struct", "type_function"}
-          , { "subscription", "unreserved"}
-          , { "substring", "column_name"}
-          , { "summarize", "reserved"}
-          , { "symmetric", "reserved"}
-          , { "sysid", "unreserved"}
-          , { "system", "unreserved"}
-          , { "table", "reserved"}
-          , { "tables", "unreserved"}
-          , { "tablesample", "type_function"}
-          , { "tablespace", "unreserved"}
-          , { "temp", "unreserved"}
-          , { "template", "unreserved"}
-          , { "temporary", "unreserved"}
-          , { "text", "unreserved"}
-          , { "then", "reserved"}
-          , { "ties", "unreserved"}
-          , { "time", "column_name"}
-          , { "timestamp", "column_name"}
-          , { "to", "reserved"}
-          , { "trailing", "reserved"}
-          , { "transaction", "unreserved"}
-          , { "transform", "unreserved"}
-          , { "treat", "column_name"}
-          , { "trigger", "unreserved"}
-          , { "trim", "column_name"}
-          , { "true", "reserved"}
-          , { "truncate", "unreserved"}
-          , { "trusted", "unreserved"}
-          , { "try_cast", "type_function"}
-          , { "type", "unreserved"}
-          , { "types", "unreserved"}
-          , { "unbounded", "unreserved"}
-          , { "uncommitted", "unreserved"}
-          , { "unencrypted", "unreserved"}
-          , { "union", "reserved"}
-          , { "unique", "reserved"}
-          , { "unknown", "unreserved"}
-          , { "unlisten", "unreserved"}
-          , { "unlogged", "unreserved"}
-          , { "unpivot", "reserved"}
-          , { "until", "unreserved"}
-          , { "update", "unreserved"}
-          , { "use", "unreserved"}
-          , { "user", "unreserved"}
-          , { "using", "reserved"}
-          , { "vacuum", "unreserved"}
-          , { "valid", "unreserved"}
-          , { "validate", "unreserved"}
-          , { "validator", "unreserved"}
-          , { "value", "unreserved"}
-          , { "values", "column_name"}
-          , { "varchar", "column_name"}
-          , { "variadic", "reserved"}
-          , { "varying", "unreserved"}
-          , { "verbose", "type_function"}
-          , { "version", "unreserved"}
-          , { "view", "unreserved"}
-          , { "views", "unreserved"}
-          , { "virtual", "unreserved"}
-          , { "volatile", "unreserved"}
-          , { "week", "unreserved"}
-          , { "weeks", "unreserved"}
-          , { "when", "reserved"}
-          , { "where", "reserved"}
-          , { "whitespace", "unreserved"}
-          , { "window", "reserved"}
-          , { "with", "reserved"}
-          , { "within", "unreserved"}
-          , { "without", "unreserved"}
-          , { "work", "unreserved"}
-          , { "wrapper", "unreserved"}
-          , { "write", "unreserved"}
-          , { "xml", "unreserved"}
-          , { "xmlattributes", "column_name"}
-          , { "xmlconcat", "column_name"}
-          , { "xmlelement", "column_name"}
-          , { "xmlexists", "column_name"}
-          , { "xmlforest", "column_name"}
-          , { "xmlnamespaces", "column_name"}
-          , { "xmlparse", "column_name"}
-          , { "xmlpi", "column_name"}
-          , { "xmlroot", "column_name"}
-          , { "xmlserialize", "column_name"}
-          , { "xmltable", "column_name"}
-          , { "year", "unreserved"}
-          , { "years", "unreserved"}
-          , { "yes", "unreserved"}
-          , { "zone", "unreserved"}
+  // select ', { "' || keyword_name || '", "' || keyword_category || '" }'
+  // from duckdb_keywords() WHERE keyword_category = 'reserved';
+  public final static String[][] KEYWORDS = {{"all", "reserved"}, {"analyse", "reserved"},
+      {"analyze", "reserved"}, {"and", "reserved"}, {"any", "reserved"}
+      // , { "array", "reserved" }
+      , {"as", "reserved"}, {"asc", "reserved"}, {"asymmetric", "reserved"}, {"both", "reserved"},
+      {"case", "reserved"}, {"cast", "reserved"}, {"check", "reserved"}, {"collate", "reserved"},
+      {"column", "reserved"}, {"constraint", "reserved"}, {"create", "reserved"},
+      {"default", "reserved"}, {"deferrable", "reserved"}, {"desc", "reserved"},
+      {"describe", "reserved"}, {"distinct", "reserved"}, {"do", "reserved"}, {"else", "reserved"},
+      {"end", "reserved"}, {"except", "reserved"}, {"false", "reserved"}, {"fetch", "reserved"},
+      {"for", "reserved"}, {"foreign", "reserved"}, {"from", "reserved"}, {"grant", "reserved"},
+      {"group", "reserved"}, {"having", "reserved"}, {"in", "reserved"}, {"initially", "reserved"},
+      {"intersect", "reserved"}, {"into", "reserved"}, {"lateral", "reserved"},
+      {"leading", "reserved"}, {"limit", "reserved"}, {"not", "reserved"}, {"null", "reserved"},
+      {"offset", "reserved"}, {"on", "reserved"}, {"only", "reserved"}, {"or", "reserved"},
+      {"order", "reserved"}, {"pivot", "reserved"}, {"pivot_longer", "reserved"},
+      {"pivot_wider", "reserved"}, {"placing", "reserved"}, {"primary", "reserved"},
+      {"qualify", "reserved"}, {"references", "reserved"}, {"returning", "reserved"},
+      {"select", "reserved"}, {"show", "reserved"}, {"some", "reserved"}, {"summarize", "reserved"},
+      {"symmetric", "reserved"}, {"table", "reserved"}, {"then", "reserved"}, {"to", "reserved"},
+      {"trailing", "reserved"}
+      // , { "true", "reserved" }
+      , {"union", "reserved"}, {"unique", "reserved"}, {"unpivot", "reserved"},
+      {"using", "reserved"}, {"variadic", "reserved"}, {"when", "reserved"}, {"where", "reserved"},
+      {"window", "reserved"}, {"with", "reserved"}
+
   };
 
   enum TranspiledFunction {
@@ -1230,10 +780,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               warning("Position parameter is not supported.");
               parameters.remove(3);
             case 3:
-              function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2), new StringValue("g"));
+              function.setParameters(parameters.get(0), parameters.get(1), parameters.get(2),
+                  new StringValue("g"));
               break;
             case 2:
-              function.setParameters(parameters.get(0), parameters.get(1), new StringValue(""), new StringValue("g"));
+              function.setParameters(parameters.get(0), parameters.get(1), new StringValue(""),
+                  new StringValue("g"));
               break;
           }
           break;
@@ -1820,7 +1372,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   protected static void rewriteFormatDateFunction(Function function, ExpressionList<?> parameters,
-                                                  DateTimeLiteralExpression.DateTime dateTimeType) {
+      DateTimeLiteralExpression.DateTime dateTimeType) {
     ExpressionList<Expression> reversedParameters = new ExpressionList<>();
     Expression dateTimeExpression;
     switch (parameters.size()) {
@@ -2599,7 +2151,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   public void visit(TimeKeyExpression expression) {
     String value = expression.getStringValue().toUpperCase().replaceAll("[()]", "");
     if (value.equals("CURRENT_TIMEZONE")) {
-      Function function = new Function("StrFTime", new TimeKeyExpression("CURRENT_TIMESTAMP"), new StringValue("%Z"));
+      Function function = new Function("StrFTime", new TimeKeyExpression("CURRENT_TIMESTAMP"),
+          new StringValue("%Z"));
       function.accept(this);
     } else {
       expression.setStringValue(value);
@@ -2618,7 +2171,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   public void visit(TranscodingFunction function) {
-    CastExpression castExpression = new CastExpression("Cast", function.getExpression(), function.getColDataType().toString());
+    CastExpression castExpression =
+        new CastExpression("Cast", function.getExpression(), function.getColDataType().toString());
     castExpression.accept(this);
   }
 
@@ -2633,10 +2187,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   public void visit(Column column) {
     String name = column.getColumnName().toLowerCase();
     for (String[] keyword : KEYWORDS) {
-        if (keyword[0].equals(name)) {
-            column.setColumnName("\"" + column.getColumnName() + "\"");
-            break;
-        }
+      if (keyword[0].equals(name)) {
+        column.setColumnName("\"" + column.getColumnName() + "\"");
+        break;
+      }
     }
     super.visit(column);
   }

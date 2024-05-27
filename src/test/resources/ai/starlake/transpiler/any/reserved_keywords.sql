@@ -1,13 +1,13 @@
 -- prolog
-create table "character" (
-    "character" VARCHAR(255)
+create table "summarize" (
+    "summarize" VARCHAR(255)
 );
 
 -- provided
-select character as character from character as character;
+select summarize as summarize from summarize as summarize;
 
 -- expected;
-select "character" as "character" from "character" as "character";
+select "summarize" as "summarize" from "summarize" as "summarize";
 
 -- count
 0

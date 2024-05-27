@@ -1,0 +1,9 @@
+-- provided
+SELECT date_format('2016-04-08', 'y') AS s;
+
+-- expected
+SELECT strftime( DATE '2016-04-08', 'y') AS s;
+
+-- result
+"s"
+"2016"

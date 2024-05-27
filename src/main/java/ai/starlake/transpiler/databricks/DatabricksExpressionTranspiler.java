@@ -33,6 +33,7 @@ import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionLi
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 
+@SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler {
   public DatabricksExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
     super(transpiler, buffer);
@@ -445,7 +446,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
     }
 
     Expression rewrittenExpression = null;
-    TranspiledFunction f = TranspiledFunction.from(functionName);
+    // TranspiledFunction f = TranspiledFunction.from(functionName);
     if (rewrittenExpression == null) {
       super.visit(function);
     } else {
