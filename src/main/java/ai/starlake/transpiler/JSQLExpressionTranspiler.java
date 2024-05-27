@@ -84,7 +84,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       {"column", "reserved"}, {"constraint", "reserved"}, {"create", "reserved"},
       {"default", "reserved"}, {"deferrable", "reserved"}, {"desc", "reserved"},
       {"describe", "reserved"}, {"distinct", "reserved"}, {"do", "reserved"}, {"else", "reserved"},
-      {"end", "reserved"}, {"except", "reserved"}, {"false", "reserved"}, {"fetch", "reserved"},
+      {"end", "reserved"}, {"except", "reserved"}
+          //, {"false", "reserved"}
+      , {"fetch", "reserved"},
       {"for", "reserved"}, {"foreign", "reserved"}, {"from", "reserved"}, {"grant", "reserved"},
       {"group", "reserved"}, {"having", "reserved"}, {"in", "reserved"}, {"initially", "reserved"},
       {"intersect", "reserved"}, {"into", "reserved"}, {"lateral", "reserved"},
@@ -500,6 +502,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         && function.getMultipartName().get(0).equalsIgnoreCase("SAFE")) {
       warning("SAFE prefix is not supported.");
       function.getMultipartName().remove(0);
+    }
+
+    if (function.isIgnoreNullsOutside()) {
+      warning("RESPECT/IGNORE NULLS is not supported for non-window functions.");
+      function.setNullHandling(null);
+      function.setIgnoreNullsOutside(false);
     }
 
     Expression rewrittenExpression = null;

@@ -52,6 +52,8 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
 
     , FROM_UNIXTIME, TO_UNIX_TIMESTAMP, MAKE_TIMESTAMP, TIMESTAMP, TO_TIMESTAMP
 
+    , ANY, APPROX_PERCENTILE
+
     ;
     // @FORMATTER:ON
 
@@ -418,6 +420,16 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
             rewrittenExpression = new CastExpression(parameters.get(0), "TIMESTAMP");
           }
           break;
+        case ANY:
+          function.setName("Any_Value");
+          break;
+        case APPROX_PERCENTILE:
+          function.setName("Approx_Quantile");
+          if (paramCount==3) {
+            warning("PRECISION parameter not supported");
+            parameters.remove(2);
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -446,7 +458,14 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
     }
 
     Expression rewrittenExpression = null;
-    // TranspiledFunction f = TranspiledFunction.from(functionName);
+    TranspiledFunction f = TranspiledFunction.from(functionName);
+    if (f != null) {
+      switch (f) {
+        case ANY:
+          function.setName("Any_Value");
+          break;
+      }
+    }
     if (rewrittenExpression == null) {
       super.visit(function);
     } else {

@@ -7,3 +7,14 @@ SELECT strftime( DATE '2016-04-08', 'y') AS s;
 -- result
 "s"
 "2016"
+
+
+-- provided
+SELECT approx_percentile(col, array(0.5, 0.4, 0.1), 100) AS percentile FROM VALUES (0), (1), (2), (10) AS tab(col);
+
+-- expected
+SELECT approx_quantile(col, ARRAY_VALUE(0.5, 0.4, 0.1)) AS percentile FROM VALUES (0), (1), (2), (10) AS tab(col);
+
+-- result
+"percentile"
+"[2, 1, 0]"
