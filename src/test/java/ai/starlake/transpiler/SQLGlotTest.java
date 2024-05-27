@@ -73,10 +73,13 @@ public abstract class SQLGlotTest extends JSQLTranspilerTest {
     // Expect this transpiled query to succeed since DuckDB does not support `TOP <integer>`
     if (t.expectedTally >= 0) {
       int i = 0;
-      try (Statement st = connDuck.createStatement();
-          ResultSet rs = st.executeQuery(output.toString());) {
-        while (rs.next()) {
-          i++;
+      try (Statement st = connDuck.createStatement();) {
+        st.executeUpdate("set timezone='Asia/Bangkok'");
+
+        try (ResultSet rs = st.executeQuery(output.toString());) {
+          while (rs.next()) {
+            i++;
+          }
         }
       }
       Assertions.assertThat(i).isEqualTo(t.expectedTally).as("Returned records do not tally.");

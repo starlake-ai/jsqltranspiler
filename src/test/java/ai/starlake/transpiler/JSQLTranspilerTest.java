@@ -454,6 +454,7 @@ public class JSQLTranspilerTest {
 
     if (t.prologue != null && !t.prologue.isEmpty()) {
       try (Statement st = connDuck.createStatement();) {
+        st.executeUpdate("set timezone='Asia/Bangkok'");
         for (net.sf.jsqlparser.statement.Statement statement : CCJSqlParserUtil
             .parseStatements(t.prologue, executorService, parser -> {
             })) {
@@ -478,33 +479,38 @@ public class JSQLTranspilerTest {
     // Expect this transpiled query to succeed since DuckDB does not support `TOP <integer>`
     if (t.expectedTally >= 0) {
       int i = 0;
-      try (Statement st = connDuck.createStatement();
-          ResultSet rs = st.executeQuery(transpiledSqlStr);) {
-        while (rs.next()) {
-          i++;
+      try (Statement st = connDuck.createStatement()) {
+        st.executeUpdate("set timezone='Asia/Bangkok'");
+
+        try (ResultSet rs = st.executeQuery(transpiledSqlStr);) {
+          while (rs.next()) {
+            i++;
+          }
         }
       }
-      // Expect 10 records
       Assertions.assertThat(i).isEqualTo(t.expectedTally);
     }
 
 
     if (t.expectedResult != null && !t.expectedResult.isEmpty()) {
       // Compare output
-      try (Statement st = connDuck.createStatement();
-          ResultSet rs = st.executeQuery(transpiledSqlStr);
-          StringWriter stringWriter = new StringWriter();
-          CSVWriter csvWriter = new CSVWriter(stringWriter);) {
+      try (Statement st = connDuck.createStatement();) {
+        st.executeUpdate("set timezone='Asia/Bangkok'");
 
-        // enforce SQL compliant format
-        ResultSetHelperService resultSetHelperService = new ResultSetHelperService();
-        resultSetHelperService.setDateFormat("yyyy-MM-dd");
-        resultSetHelperService.setDateTimeFormat("yyyy-MM-dd HH:mm:ss.S");
-        csvWriter.setResultService(resultSetHelperService);
+        try (ResultSet rs = st.executeQuery(transpiledSqlStr);
+            StringWriter stringWriter = new StringWriter();
+            CSVWriter csvWriter = new CSVWriter(stringWriter);) {
 
-        csvWriter.writeAll(rs, true, false, true);
-        Assertions.assertThat(stringWriter.toString().trim())
-            .isEqualToIgnoringCase(t.expectedResult);
+          // enforce SQL compliant format
+          ResultSetHelperService resultSetHelperService = new ResultSetHelperService();
+          resultSetHelperService.setDateFormat("yyyy-MM-dd");
+          resultSetHelperService.setDateTimeFormat("yyyy-MM-dd HH:mm:ss.S");
+          csvWriter.setResultService(resultSetHelperService);
+
+          csvWriter.writeAll(rs, true, false, true);
+          Assertions.assertThat(stringWriter.toString().trim())
+              .isEqualToIgnoringCase(t.expectedResult);
+        }
       }
     }
 
