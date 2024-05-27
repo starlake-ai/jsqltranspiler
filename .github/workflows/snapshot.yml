@@ -21,13 +21,11 @@ jobs:
     - id: check
       name: Build with Gradle
       uses: gradle/actions/setup-gradle@v3
-      with:
-        arguments: check jacocoTestReport jacocoTestCoverageVerification coveralls
+      run: ./gradlew check jacocoTestReport jacocoTestCoverageVerification coveralls
       env:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
     - id: install-gradle-properties
       name: Install Gradle Properties from Secret
-      if: matrix.os == 'ubuntu-latest'
       env:
         GRADLE_PROPERTIES: ${{ secrets.GRADLE_PROPERTIES }}
         shell: bash
@@ -36,10 +34,8 @@ jobs:
         echo "GRADLE_USER_HOME=${HOME}/.gradle" >> $GITHUB_ENV
         echo "${GRADLE_PROPERTIES}" > ~/.gradle/gradle.properties
     - name: Publish to Sonatype
-      if: matrix.os == 'ubuntu-latest'
       uses: gradle/actions/setup-gradle@v3
-      with:
-        arguments: publish
+      run: ./gradlew publish
       env:
         USERNAME: ${{ github.actor }}
         TOKEN: ${{ secrets.GITHUB_TOKEN }}
