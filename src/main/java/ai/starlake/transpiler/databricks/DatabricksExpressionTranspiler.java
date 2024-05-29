@@ -20,6 +20,7 @@ import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.AnalyticType;
+import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.ArrayExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CastExpression;
@@ -58,6 +59,10 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
 
     , ANY, APPROX_PERCENTILE, ARRAY_AGG, COLLECT_LIST, COLLECT_SET, COUNT, COUNT_IF, FIRST, FIRST_VALUE, LAST, LAST_VALUE
 
+    , PERCENTILE, PERCENTILE_APPROX, REGR_INTERCEPT, REGR_SLOPE, KURTOSIS, SKEWNESS, STD
+
+    , TRY_AVG, TRY_SUM
+
     ;
     // @FORMATTER:ON
 
@@ -79,7 +84,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
   }
 
   enum UnsupportedFunction {
-    CRC32, DIFFERENCE, INITCAP, SOUNDEX, STRTOL, NEXT_DAY, KURTOSIS
+    CRC32, DIFFERENCE, INITCAP, SOUNDEX, STRTOL, NEXT_DAY
 
     ;
 
@@ -181,7 +186,9 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           }
           break;
         case ARRAY:
-          function.setName("Array_Value");
+          // see fixed issue #12252
+          // function.setName("Array_Value");
+          rewrittenExpression = new ArrayConstructor(parameters, false);
           break;
         case ENDSWITH:
           function.setName("Ends_With");
@@ -429,7 +436,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           break;
         case APPROX_PERCENTILE:
           function.setName("Approx_Quantile");
-          if (paramCount==3) {
+          if (paramCount == 3) {
             warning("PRECISION parameter not supported");
             parameters.remove(2);
           }
@@ -440,16 +447,16 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           // enforce an AnalyticExpression to get access to the aggregate function syntax
           rewrittenExpression = new AnalyticExpression(function).withType(AnalyticType.FILTER_ONLY);
           // preserve the position in the AST
-          rewrittenExpression.setASTNode( function.getASTNode() );
+          rewrittenExpression.setASTNode(function.getASTNode());
           break;
 
         case COUNT:
           // @todo: add support for multiple columns
           // @todo: NULL suppression
-          if (paramCount>1) {
+          if (paramCount > 1) {
             warning("Only one column supported.");
-            while (parameters.size()>1) {
-              parameters.remove( parameters.size() - 1);
+            while (parameters.size() > 1) {
+              parameters.remove(parameters.size() - 1);
             }
           }
           break;
@@ -463,10 +470,10 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           function.setName("First");
         case FIRST:
           // @todo: NULL suppression
-          if (paramCount>1) {
+          if (paramCount > 1) {
             warning("Ignore NULLs is not supported.");
-            while (parameters.size()>1) {
-              parameters.remove( parameters.size() - 1);
+            while (parameters.size() > 1) {
+              parameters.remove(parameters.size() - 1);
             }
           }
           break;
@@ -474,13 +481,42 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           function.setName("Last");
         case LAST:
           // @todo: NULL suppression
-          if (paramCount>1) {
+          if (paramCount > 1) {
             warning("Ignore NULLs is not supported.");
-            while (parameters.size()>1) {
-              parameters.remove( parameters.size() - 1);
+            while (parameters.size() > 1) {
+              parameters.remove(parameters.size() - 1);
             }
           }
           break;
+        case PERCENTILE:
+          function.setName("Quantile_Cont");
+          if (paramCount == 3) {
+            warning("FREQUENCY not supported");
+            parameters.remove(2);
+          }
+          break;
+        case PERCENTILE_APPROX:
+          function.setName("Approx_Quantile");
+          if (paramCount == 3) {
+            warning("ACCURACY not supported");
+            parameters.remove(2);
+          }
+          break;
+        case REGR_INTERCEPT:
+        case REGR_SLOPE:
+        case KURTOSIS:
+        case SKEWNESS:
+          warning("Unreliable, results may differ.");
+          break;
+        case STD:
+          function.setName("StdDev");
+          break;
+        case TRY_AVG:
+          warning("TRY error handling not supported.");
+          function.setName("Avg");
+        case TRY_SUM:
+          warning("TRY error handling not supported.");
+          function.setName("Sum");
       }
     }
     if (rewrittenExpression == null) {
@@ -517,14 +553,16 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           break;
         case ARRAY_AGG:
           if (isEmpty(function.getFuncOrderBy())) {
-            function.setFuncOrderBy(List.of( new OrderByElement().withExpression(function.getExpression())));
+            function.setFuncOrderBy(
+                List.of(new OrderByElement().withExpression(function.getExpression())));
           }
           break;
         case COLLECT_LIST:
           // todo: add FILTER( column IS NOT NULL)
           function.setName("List");
           if (isEmpty(function.getFuncOrderBy())) {
-            function.setFuncOrderBy(List.of( new OrderByElement().withExpression(function.getExpression())));
+            function.setFuncOrderBy(
+                List.of(new OrderByElement().withExpression(function.getExpression())));
           }
           break;
         case COLLECT_SET:
@@ -532,10 +570,25 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           function.setDistinct(true);
           function.setName("List");
           if (isEmpty(function.getFuncOrderBy())) {
-            function.setFuncOrderBy(List.of( new OrderByElement().withExpression(function.getExpression())));
+            function.setFuncOrderBy(
+                List.of(new OrderByElement().withExpression(function.getExpression())));
           }
-
           break;
+        case REGR_INTERCEPT:
+        case REGR_SLOPE:
+        case KURTOSIS:
+        case SKEWNESS:
+          warning("Unreliable, results may differ.");
+          break;
+        case STD:
+          function.setName("StdDev");
+          break;
+        case TRY_AVG:
+          warning("TRY error handling not supported.");
+          function.setName("Avg");
+        case TRY_SUM:
+          warning("TRY error handling not supported.");
+          function.setName("Sum");
       }
     }
     if (rewrittenExpression == null) {

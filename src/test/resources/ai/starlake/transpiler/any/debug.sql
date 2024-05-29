@@ -1,9 +1,9 @@
 -- provided
-SELECT current_timezone() as tz;
+SELECT max_by(x, y) AS max_by FROM VALUES (('a', 10)), (('b', 50)), (('c', 20)) AS tab(x, y);
 
 -- expected
-SELECT strftime( current_timestamp, '%Z') as tz;
+SELECT max_by(x, y) AS max_by FROM VALUES ('a', 10), ('b', 50), ('c', 20) AS tab(x, y);
 
 -- result
-"tz"
-"Asia/Bangkok"
+"max_by"
+"b"

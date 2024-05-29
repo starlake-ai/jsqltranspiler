@@ -176,7 +176,194 @@ SELECT first(col) AS first FROM VALUES (NULL), (5), (20) AS tab(col);
 ""
 
 
+-- provided
+SELECT max_by(x, y) AS max_by FROM VALUES (('a', 10)), (('b', 50)), (('c', 20)) AS tab(x, y);
+
+-- expected
+SELECT max_by(x, y) AS max_by FROM VALUES ('a', 10), ('b', 50), ('c', 20) AS tab(x, y);
+
+-- result
+"max_by"
+"b"
 
 
+-- provided
+SELECT mean(DISTINCT col) AS mean FROM VALUES (1), (1), (2), (NULL) AS tab(col);
+
+-- result
+"mean"
+"1.5"
 
 
+-- provided
+SELECT median(DISTINCT col) AS median FROM VALUES (1), (2), (2), (3), (4), (NULL) AS tab(col);
+
+-- result
+"median"
+"2.5"
+
+
+-- provided
+SELECT min_by(x, y) AS min_by FROM VALUES (('a', 10)), (('b', 50)), (('c', 20)) AS tab(x, y);
+
+-- expected
+SELECT min_by(x, y) AS min_by FROM VALUES ('a', 10), ('b', 50), ('c', 20) AS tab(x, y);
+
+-- result
+"min_by"
+"a"
+
+
+-- provided
+SELECT mode(col) AS mode FROM VALUES (1), (1), (2), (2), (3) AS tab(col);
+
+-- result
+"mode"
+"1"
+
+
+-- provided
+SELECT percentile(col, array(0.25, 0.75)) AS percentile FROM VALUES (0), (10) AS tab(col);
+
+-- expected
+SELECT quantile_cont(col, [0.25, 0.75]) AS percentile FROM VALUES (0), (10) AS tab(col);
+
+-- result
+"percentile"
+"[2.5, 7.5]"
+
+
+-- provided
+SELECT percentile_approx(DISTINCT col, 0.5, 100) AS percentile
+    FROM VALUES (0), (6), (7), (9), (10), (10), (10) AS tab(col);
+
+-- expected
+SELECT approx_quantile(DISTINCT col, 0.5) AS percentile
+    FROM VALUES (0), (6), (7), (9), (10), (10), (10) AS tab(col);
+
+-- result
+"percentile"
+"7"
+
+
+-- provided
+ SELECT percentile_cont(array(0.5, 0.4, 0.1)) WITHIN GROUP (ORDER BY col) AS percentile
+    FROM VALUES (0), (1), (2), (10) AS tab(col);
+
+-- expected
+ SELECT QUANTILE_CONT([0.5,0.4,0.1]ORDER BY COL)AS PERCENTILE FROM VALUES(0),(1),(2),(10)AS TAB(COL);
+
+-- result
+"percentile"
+"[1.5, 1.2000000000000002, 0.30000000000000004]"
+
+
+-- provided
+SELECT percentile_disc(array(0.5, 0.4, 0.1)) WITHIN GROUP (ORDER BY col) AS percentile
+    FROM VALUES (0), (1), (2), (10) AS tab(col);
+
+-- expected
+SELECT QUANTILE_DISC([0.5,0.4,0.1]ORDER BY COL)AS PERCENTILE FROM VALUES(0),(1),(2),(10)AS TAB(COL);
+
+-- result
+"percentile"
+"[1, 1, 0]"
+
+
+-- provided
+SELECT regr_avgx(y, x) AS regr_avgx FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4), (4, null) AS T(y, x);
+
+-- result
+"regr_avgx"
+"2.6666666666666665"
+
+
+-- provided
+SELECT regr_avgy(y, x)  AS regr_avgy FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4), (4, null) AS T(y, x);
+
+-- result
+"regr_avgy"
+"1.6666666666666667"
+
+
+-- provided
+SELECT regr_count(y, x) AS regr_count FROM VALUES (1, 2), (2, NULL), (2, 3), (2, 4) AS t(y, x);
+
+-- result
+"regr_count"
+"3"
+
+
+-- provided
+SELECT regr_intercept(y, x) AS regr_intercept FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4), (4, null) AS T(y, x);
+
+-- result
+"regr_intercept"
+"-0.9999999999999993"
+
+
+-- provided
+SELECT regr_r2(y, x) AS regr_r2 FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4), (4, null) AS T(y, x);
+
+-- result
+"regr_r2"
+"1.0"
+
+
+-- provided
+SELECT regr_slope(y, x) AS regr_slope FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4), (4, null) AS T(y, x);
+
+-- result
+"regr_slope"
+"0.9999999999999999"
+
+
+-- provided
+SELECT regr_sxx(y, x) AS regr_sxx FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4), (4, null) AS T(y, x);
+
+-- result
+"regr_sxx"
+"0.6666666666666667"
+
+
+-- provided
+SELECT regr_sxy(y, x) AS regr_sxy FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4), (4, null) AS T(y, x);
+
+-- result
+"regr_sxy"
+"0.6666666666666666"
+
+
+-- provided
+SELECT regr_syy(y, x) AS regr_syy FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4), (4, null) AS T(y, x);
+
+-- result
+"regr_syy"
+"0.6666666666666666"
+
+
+-- provided
+SELECT skewness(DISTINCT col) AS skewness FROM VALUES (-10), (-20), (100), (1000), (1000) AS tab(col);
+
+-- result
+"skewness"
+"1.9287524512029974"
+
+
+-- provided
+SELECT std(DISTINCT col) AS stddev FROM VALUES (1), (2), (3), (3) AS tab(col);
+
+-- expected
+SELECT stddev(DISTINCT col) AS stddev FROM VALUES (1), (2), (3), (3) AS tab(col);
+
+-- result
+"stddev"
+"1.0"
+
+
+-- provided
+SELECT stddev_pop(DISTINCT col) AS stddev_pop FROM VALUES (1), (2), (3), (3) AS tab(col);
+
+-- result
+"stddev_pop"
+"0.816496580927726"

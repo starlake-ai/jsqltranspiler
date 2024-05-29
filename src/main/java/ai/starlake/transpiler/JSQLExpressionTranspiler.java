@@ -85,19 +85,18 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       {"default", "reserved"}, {"deferrable", "reserved"}, {"desc", "reserved"},
       {"describe", "reserved"}, {"distinct", "reserved"}, {"do", "reserved"}, {"else", "reserved"},
       {"end", "reserved"}, {"except", "reserved"}
-          //, {"false", "reserved"}
-      , {"fetch", "reserved"},
-      {"for", "reserved"}, {"foreign", "reserved"}, {"from", "reserved"}, {"grant", "reserved"},
-      {"group", "reserved"}, {"having", "reserved"}, {"in", "reserved"}, {"initially", "reserved"},
-      {"intersect", "reserved"}, {"into", "reserved"}, {"lateral", "reserved"},
-      {"leading", "reserved"}, {"limit", "reserved"}, {"not", "reserved"}, {"null", "reserved"},
-      {"offset", "reserved"}, {"on", "reserved"}, {"only", "reserved"}, {"or", "reserved"},
-      {"order", "reserved"}, {"pivot", "reserved"}, {"pivot_longer", "reserved"},
-      {"pivot_wider", "reserved"}, {"placing", "reserved"}, {"primary", "reserved"},
-      {"qualify", "reserved"}, {"references", "reserved"}, {"returning", "reserved"},
-      {"select", "reserved"}, {"show", "reserved"}, {"some", "reserved"}, {"summarize", "reserved"},
-      {"symmetric", "reserved"}, {"table", "reserved"}, {"then", "reserved"}, {"to", "reserved"},
-      {"trailing", "reserved"}
+      // , {"false", "reserved"}
+      , {"fetch", "reserved"}, {"for", "reserved"}, {"foreign", "reserved"}, {"from", "reserved"},
+      {"grant", "reserved"}, {"group", "reserved"}, {"having", "reserved"}, {"in", "reserved"},
+      {"initially", "reserved"}, {"intersect", "reserved"}, {"into", "reserved"},
+      {"lateral", "reserved"}, {"leading", "reserved"}, {"limit", "reserved"}, {"not", "reserved"},
+      {"null", "reserved"}, {"offset", "reserved"}, {"on", "reserved"}, {"only", "reserved"},
+      {"or", "reserved"}, {"order", "reserved"}, {"pivot", "reserved"},
+      {"pivot_longer", "reserved"}, {"pivot_wider", "reserved"}, {"placing", "reserved"},
+      {"primary", "reserved"}, {"qualify", "reserved"}, {"references", "reserved"},
+      {"returning", "reserved"}, {"select", "reserved"}, {"show", "reserved"}, {"some", "reserved"},
+      {"summarize", "reserved"}, {"symmetric", "reserved"}, {"table", "reserved"},
+      {"then", "reserved"}, {"to", "reserved"}, {"trailing", "reserved"}
       // , { "true", "reserved" }
       , {"union", "reserved"}, {"unique", "reserved"}, {"unpivot", "reserved"},
       {"using", "reserved"}, {"variadic", "reserved"}, {"when", "reserved"}, {"where", "reserved"},
@@ -2201,5 +2200,16 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       }
     }
     super.visit(column);
+  }
+
+  public void visit(ExpressionList expressionList) {
+    // reduce obsolete parentheses like in:
+    // VALUES (('a', 10)), (('b', 50)), (('c', 20)) AS tab(x, y)
+    if (expressionList.size() == 1 && expressionList.get(0) instanceof ParenthesedExpressionList) {
+      ParenthesedExpressionList subList = (ParenthesedExpressionList) expressionList.get(0);
+      super.visit(subList);
+    } else {
+      super.visit(expressionList);
+    }
   }
 }
