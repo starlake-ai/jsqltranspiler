@@ -29,8 +29,8 @@ public class SampleSchemaProvider implements SchemaProvider {
                         "field2", "type2"
                     ),
                     "schema2", Map.of(
-                        "field1", "type1",
-                        "field2", "type2"
+                        "field11", "type1",
+                        "field12", "type2"
                     )
                 );
     }
