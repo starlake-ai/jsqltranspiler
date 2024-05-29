@@ -19,6 +19,7 @@ package ai.starlake.transpiler.databricks;
 import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.AnalyticType;
 import net.sf.jsqlparser.expression.ArrayExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CastExpression;
@@ -32,6 +33,9 @@ import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
+import net.sf.jsqlparser.statement.select.OrderByElement;
+
+import java.util.List;
 
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler {
@@ -52,7 +56,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
 
     , FROM_UNIXTIME, TO_UNIX_TIMESTAMP, MAKE_TIMESTAMP, TIMESTAMP, TO_TIMESTAMP
 
-    , ANY, APPROX_PERCENTILE
+    , ANY, APPROX_PERCENTILE, ARRAY_AGG, COLLECT_LIST, COLLECT_SET, COUNT, COUNT_IF, FIRST, FIRST_VALUE, LAST, LAST_VALUE
 
     ;
     // @FORMATTER:ON
@@ -75,7 +79,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
   }
 
   enum UnsupportedFunction {
-    CRC32, DIFFERENCE, INITCAP, SOUNDEX, STRTOL, NEXT_DAY
+    CRC32, DIFFERENCE, INITCAP, SOUNDEX, STRTOL, NEXT_DAY, KURTOSIS
 
     ;
 
@@ -430,6 +434,53 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
             parameters.remove(2);
           }
           break;
+        case ARRAY_AGG:
+        case COLLECT_LIST:
+        case COLLECT_SET:
+          // enforce an AnalyticExpression to get access to the aggregate function syntax
+          rewrittenExpression = new AnalyticExpression(function).withType(AnalyticType.FILTER_ONLY);
+          // preserve the position in the AST
+          rewrittenExpression.setASTNode( function.getASTNode() );
+          break;
+
+        case COUNT:
+          // @todo: add support for multiple columns
+          // @todo: NULL suppression
+          if (paramCount>1) {
+            warning("Only one column supported.");
+            while (parameters.size()>1) {
+              parameters.remove( parameters.size() - 1);
+            }
+          }
+          break;
+        case COUNT_IF:
+          if (function.isDistinct()) {
+            warning("DISTINCT is not supported (for Macro function).");
+            function.setDistinct(false);
+          }
+          break;
+        case FIRST_VALUE:
+          function.setName("First");
+        case FIRST:
+          // @todo: NULL suppression
+          if (paramCount>1) {
+            warning("Ignore NULLs is not supported.");
+            while (parameters.size()>1) {
+              parameters.remove( parameters.size() - 1);
+            }
+          }
+          break;
+        case LAST_VALUE:
+          function.setName("Last");
+        case LAST:
+          // @todo: NULL suppression
+          if (paramCount>1) {
+            warning("Ignore NULLs is not supported.");
+            while (parameters.size()>1) {
+              parameters.remove( parameters.size() - 1);
+            }
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -463,6 +514,27 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
       switch (f) {
         case ANY:
           function.setName("Any_Value");
+          break;
+        case ARRAY_AGG:
+          if (isEmpty(function.getFuncOrderBy())) {
+            function.setFuncOrderBy(List.of( new OrderByElement().withExpression(function.getExpression())));
+          }
+          break;
+        case COLLECT_LIST:
+          // todo: add FILTER( column IS NOT NULL)
+          function.setName("List");
+          if (isEmpty(function.getFuncOrderBy())) {
+            function.setFuncOrderBy(List.of( new OrderByElement().withExpression(function.getExpression())));
+          }
+          break;
+        case COLLECT_SET:
+          // todo: add FILTER( column IS NOT NULL)
+          function.setDistinct(true);
+          function.setName("List");
+          if (isEmpty(function.getFuncOrderBy())) {
+            function.setFuncOrderBy(List.of( new OrderByElement().withExpression(function.getExpression())));
+          }
+
           break;
       }
     }
