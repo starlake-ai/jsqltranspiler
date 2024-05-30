@@ -367,3 +367,108 @@ SELECT stddev_pop(DISTINCT col) AS stddev_pop FROM VALUES (1), (2), (3), (3) AS 
 -- result
 "stddev_pop"
 "0.816496580927726"
+
+
+-- provided
+SELECT a, b, cume_dist() OVER (PARTITION BY a ORDER BY b) AS cume_dist
+    FROM VALUES ('A1', 2), ('A1', 1), ('A2', 3), ('A1', 1) tab(a, b)
+    ORDER BY 1,2;
+
+-- result
+"a","b","cume_dist"
+"A1","1","0.6666666666666666"
+"A1","1","0.6666666666666666"
+"A1","2","1.0"
+"A2","3","1.0"
+
+
+-- provided
+SELECT a, b, lag(b) OVER (PARTITION BY a ORDER BY b) AS lag
+    FROM VALUES ('A1', 2), ('A1', 1), ('A2', 3), ('A1', 1) tab(a, b)
+    ORDER BY 1,2;
+
+-- result
+"a","b","lag"
+"A1","1",""
+"A1","1","1"
+"A1","2","1"
+"A2","3",""
+
+
+-- provided
+SELECT a, b, lead(b) OVER (PARTITION BY a ORDER BY b) AS lead
+    FROM VALUES ('A1', 2), ('A1', 1), ('A2', 3), ('A1', 1) tab(a, b)
+    ORDER BY 1,2
+    ;
+
+-- result
+"a","b","lead"
+"A1","1","1"
+"A1","1","2"
+"A1","2",""
+"A2","3",""
+
+
+-- provided
+SELECT a, b, nth_value(b, 2) OVER (PARTITION BY a ORDER BY b) AS nth_value
+    FROM VALUES ('A1', 2), ('A1', 1), ('A2', 3), ('A1', 1) tab(a, b)
+ORDER BY 1,2;
+
+-- result
+"a","b","nth_value"
+"A1","1","1"
+"A1","1","1"
+"A1","2","1"
+"A2","3",""
+
+
+-- provided
+SELECT a,
+         b,
+         dense_rank() OVER(PARTITION BY a ORDER BY b) AS dense_rank,
+         rank() OVER(PARTITION BY a ORDER BY b) AS rank,
+         row_number() OVER(PARTITION BY a ORDER BY b) AS row_number
+    FROM VALUES ('A1', 2), ('A1', 1), ('A2', 3), ('A1', 1) tab(a, b)
+ORDER BY 1,2,3;
+
+-- result
+"a","b","dense_rank","rank","row_number"
+"A1","1","1","1","1"
+"A1","1","1","1","2"
+"A1","2","2","3","3"
+"A2","3","1","1","1"
+
+-- provided
+ SELECT a, b, ntile(2) OVER (PARTITION BY a ORDER BY b) AS ntile
+ FROM VALUES ('A1', 2), ('A1', 1), ('A2', 3), ('A1', 1) tab(a, b)
+ ORDER BY 1,2;
+
+-- result
+"a","b","ntile"
+"A1","1","1"
+"A1","1","1"
+"A1","2","2"
+"A2","3","1"
+
+
+-- provided
+SELECT a, b, percent_rank(b) OVER (PARTITION BY a ORDER BY b) AS percent_rank
+    FROM VALUES ('A1', 2), ('A1', 1), ('A1', 3), ('A1', 6), ('A1', 7), ('A1', 7), ('A2', 3), ('A1', 1) tab(a, b)
+    ORDER BY 1,2;
+
+-- expected
+SELECT a, b, percent_rank() OVER (PARTITION BY a ORDER BY b) AS percent_rank
+    FROM VALUES ('A1', 2), ('A1', 1), ('A1', 3), ('A1', 6), ('A1', 7), ('A1', 7), ('A2', 3), ('A1', 1) tab(a, b)
+    ORDER BY 1,2;
+
+
+-- result
+"a","b","percent_rank"
+"A1","1","0.0"
+"A1","1","0.0"
+"A1","2","0.3333333333333333"
+"A1","3","0.5"
+"A1","6","0.6666666666666666"
+"A1","7","0.8333333333333334"
+"A1","7","0.8333333333333334"
+"A2","3","0.0"

@@ -59,9 +59,9 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
 
     , ANY, APPROX_PERCENTILE, ARRAY_AGG, COLLECT_LIST, COLLECT_SET, COUNT, COUNT_IF, FIRST, FIRST_VALUE, LAST, LAST_VALUE
 
-    , PERCENTILE, PERCENTILE_APPROX, REGR_INTERCEPT, REGR_SLOPE, KURTOSIS, SKEWNESS, STD
+    , PERCENTILE, PERCENTILE_APPROX, REGR_INTERCEPT, REGR_SLOPE, KURTOSIS, SKEWNESS, STD, NTH_VALUE
 
-    , TRY_AVG, TRY_SUM
+    , TRY_AVG, TRY_SUM, PERCENT_RANK
 
     ;
     // @FORMATTER:ON
@@ -586,9 +586,29 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
         case TRY_AVG:
           warning("TRY error handling not supported.");
           function.setName("Avg");
+          break;
         case TRY_SUM:
           warning("TRY error handling not supported.");
           function.setName("Sum");
+          break;
+        case NTH_VALUE:
+          // , ignoreNulls
+          if (function.getDefaultValue() != null) {
+            if (function.getDefaultValue().toString().equalsIgnoreCase("TRUE")) {
+              function.setNullHandling(Function.NullHandling.IGNORE_NULLS);
+            } else if (function.getDefaultValue().toString().equalsIgnoreCase("FALSE")) {
+              function.setNullHandling(Function.NullHandling.RESPECT_NULLS);
+            }
+            warning("ignoreNulls parameter not supported, use IGNORE/RESPECT NULLS instead.");
+            function.setDefaultValue(null);
+          }
+          break;
+        case PERCENT_RANK:
+          if (function.getExpression() != null) {
+            warning("PERCENT_RANK needs 0 parameters, got 1");
+            function.setExpression(null);
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
