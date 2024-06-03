@@ -23,19 +23,16 @@ import ai.starlake.transpiler.snowflake.SnowflakeTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.parser.SimpleNode;
-import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.Statements;
-import net.sf.jsqlparser.statement.select.FromItem;
-import net.sf.jsqlparser.statement.select.Limit;
-import net.sf.jsqlparser.statement.select.ParenthesedSelect;
-import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.delete.Delete;
+import net.sf.jsqlparser.statement.insert.Insert;
+import net.sf.jsqlparser.statement.merge.Merge;
 import net.sf.jsqlparser.statement.select.Select;
-import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.TableFunction;
-import net.sf.jsqlparser.statement.select.Top;
+import net.sf.jsqlparser.statement.update.Update;
+import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
+import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -60,7 +57,7 @@ import java.util.logging.Logger;
 /**
  * The type JSQLtranspiler.
  */
-public class JSQLTranspiler extends SelectDeParser {
+public class JSQLTranspiler extends StatementDeParser {
   public static final Logger LOGGER = Logger.getLogger(JSQLTranspiler.class.getName());
 
   /**
@@ -68,39 +65,33 @@ public class JSQLTranspiler extends SelectDeParser {
    */
   public static final int TIMEOUT = 6;
 
+  private final JSQLExpressionTranspiler expressionTranspiler;
+  private final JSQLSelectTranspiler selectTranspiler;
+  private final JSQLInsertTranspiler insertTranspiler;
+  private final JSQLUpdateTranspiler updateTranspiler;
+  private final JSQLDeleteTranspiler deleteTranspiler;
+  private final JSQLMergeTranspiler mergeTranspiler;
 
-  /**
-   * The Expression transpiler.
-   */
-  protected final JSQLExpressionTranspiler expressionTranspiler;
+  public JSQLTranspiler(Class<? extends JSQLExpressionTranspiler> expressionTranspilerClass, Class<? extends JSQLSelectTranspiler> selectTranspilerClass) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+    super(expressionTranspilerClass, selectTranspilerClass);
 
-  /**
-   * The builder holding the rewritten SQL statement text.
-   */
-  protected StringBuilder resultBuilder;
+    this.expressionTranspiler = expressionTranspilerClass.cast( this.getExpressionDeParser() );
+    this.selectTranspiler = selectTranspilerClass.cast(this.getSelectDeParser());
 
-  /**
-   * Instantiates a new transpiler.
-   */
-  protected JSQLTranspiler(Class<? extends JSQLExpressionTranspiler> expressionTranspilerClass) {
-    this.resultBuilder = new StringBuilder();
-    this.setBuffer(resultBuilder);
+    this.insertTranspiler = new JSQLInsertTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
 
-    try {
-      this.expressionTranspiler =
-          expressionTranspilerClass.getConstructor(JSQLTranspiler.class, StringBuilder.class)
-              .newInstance(this, this.resultBuilder);
-      this.setExpressionVisitor(expressionTranspiler);
-    } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
-        | IllegalAccessException e) {
-      // this really can't happen
-      throw new RuntimeException(e);
-    }
+    this.updateTranspiler = new JSQLUpdateTranspiler(this.expressionTranspiler, buffer);
+
+    this.deleteTranspiler = new JSQLDeleteTranspiler(this.expressionTranspiler, buffer);
+
+    this.mergeTranspiler = new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
+
   }
 
-  public JSQLTranspiler() {
-    this(JSQLExpressionTranspiler.class);
+  public JSQLTranspiler() throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+      this(JSQLExpressionTranspiler.class, JSQLSelectTranspiler.class);
   }
+
 
   /**
    * Transpile a query string in the defined dialect into DuckDB compatible SQL.
@@ -173,40 +164,47 @@ public class JSQLTranspiler extends SelectDeParser {
    */
   public static void transpile(String sqlStr, File outputFile, ExecutorService executorService,
       Consumer<CCJSqlParser> consumer) throws JSQLParserException {
-    JSQLTranspiler transpiler = new JSQLTranspiler();
+    try {
+      JSQLTranspiler transpiler = new JSQLTranspiler();
 
-    // @todo: we may need to split this manually to salvage any not parseable statements
-    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
-    for (Statement st : statements) {
-      if (st instanceof Select) {
-        Select select = (Select) st;
-        select.accept(transpiler);
+      // @todo: we may need to split this manually to salvage any not parseable statements
+      Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
+      for (Statement st : statements) {
+        if (st instanceof Select) {
+          Select select = (Select) st;
+          select.accept(transpiler);
 
-        transpiler.getResultBuilder().append("\n;\n\n");
-      } else {
-        LOGGER.log(Level.SEVERE, st.getClass().getSimpleName() + " is not supported yet:\n" + st);
-      }
-    }
-
-    String transpiledSqlStr = transpiler.getResultBuilder().toString();
-    LOGGER.fine("-- Transpiled SQL:\n" + transpiledSqlStr);
-
-    // write to STDOUT when there is no OUTPUT File
-    if (outputFile == null) {
-      System.out.println(transpiledSqlStr);
-    } else {
-      if (!outputFile.exists() && outputFile.getParentFile() != null) {
-        boolean mkdirs = outputFile.getParentFile().mkdirs();
-        if (mkdirs) {
-          LOGGER.fine("Created all the necessary folders.");
+          transpiler.getBuffer().append("\n;\n\n");
+        }
+        else {
+          LOGGER.log(Level.SEVERE, st.getClass().getSimpleName() + " is not supported yet:\n" + st);
         }
       }
 
-      try (FileWriter writer = new FileWriter(outputFile, Charset.defaultCharset(), true)) {
-        writer.write(transpiledSqlStr);
-      } catch (IOException e) {
-        LOGGER.log(Level.SEVERE, "Failed to write to " + outputFile.getAbsolutePath());
+      String transpiledSqlStr = transpiler.getBuffer().toString();
+      LOGGER.fine("-- Transpiled SQL:\n" + transpiledSqlStr);
+
+      // write to STDOUT when there is no OUTPUT File
+      if (outputFile == null) {
+        System.out.println(transpiledSqlStr);
       }
+      else {
+        if (!outputFile.exists() && outputFile.getParentFile() != null) {
+          boolean mkdirs = outputFile.getParentFile().mkdirs();
+          if (mkdirs) {
+            LOGGER.fine("Created all the necessary folders.");
+          }
+        }
+
+        try (FileWriter writer = new FileWriter(outputFile, Charset.defaultCharset(), true)) {
+          writer.write(transpiledSqlStr);
+        } catch (IOException e) {
+          LOGGER.log(Level.SEVERE, "Failed to write to " + outputFile.getAbsolutePath());
+        }
+      }
+    } catch (InvocationTargetException | NoSuchMethodException | InstantiationException | IllegalAccessException e) {
+        //  this should not really be possible
+        throw new RuntimeException("Failed to initiate the Transpiler Classes", e);
     }
   }
 
@@ -361,7 +359,7 @@ public class JSQLTranspiler extends SelectDeParser {
     JSQLTranspiler transpiler = new JSQLTranspiler();
     select.accept(transpiler);
 
-    return transpiler.getResultBuilder().toString();
+    return transpiler.getBuffer().toString();
   }
 
   /**
@@ -374,7 +372,7 @@ public class JSQLTranspiler extends SelectDeParser {
     BigQueryTranspiler transpiler = new BigQueryTranspiler();
     select.accept(transpiler);
 
-    return transpiler.getResultBuilder().toString();
+    return transpiler.getBuffer().toString();
   }
 
   /**
@@ -387,7 +385,7 @@ public class JSQLTranspiler extends SelectDeParser {
     DatabricksTranspiler transpiler = new DatabricksTranspiler();
     select.accept(transpiler);
 
-    return transpiler.getResultBuilder().toString();
+    return transpiler.getBuffer().toString();
   }
 
   /**
@@ -400,7 +398,7 @@ public class JSQLTranspiler extends SelectDeParser {
     SnowflakeTranspiler transpiler = new SnowflakeTranspiler();
     select.accept(transpiler);
 
-    return transpiler.getResultBuilder().toString();
+    return transpiler.getBuffer().toString();
   }
 
   /**
@@ -413,96 +411,30 @@ public class JSQLTranspiler extends SelectDeParser {
     RedshiftTranspiler transpiler = new RedshiftTranspiler();
     select.accept(transpiler);
 
-    return transpiler.getResultBuilder().toString();
+    return transpiler.getBuffer().toString();
   }
 
-  /**
-   * Gets result builder.
-   *
-   * @return the result builder
-   */
-  public StringBuilder getResultBuilder() {
-    return resultBuilder;
+  public void visit(Select select) {
+    select.accept(selectTranspiler);
   }
 
-  public void visit(Top top) {
-    // get the parent SELECT
-    SimpleNode node = (SimpleNode) top.getASTNode().jjtGetParent();
-    while (node.jjtGetValue() == null) {
-      node = (SimpleNode) node.jjtGetParent();
-    }
-    PlainSelect select = (PlainSelect) node.jjtGetValue();
-
-    // rewrite the TOP into a LIMIT
-    select.setTop(null);
-    select.setLimit(new Limit().withRowCount(top.getExpression()));
+  public void visit(Insert insert) {
+    insertTranspiler.deParse(insert);
   }
 
-  public void visit(TableFunction tableFunction) {
-    String name = tableFunction.getFunction().getName();
-    if (name.equalsIgnoreCase("unnest")) {
-      PlainSelect select = new PlainSelect()
-          .withSelectItems(new SelectItem<>(tableFunction.getFunction(), tableFunction.getAlias()));
+  public void visit(Update update) {
+    updateTranspiler.deParse(update);
 
-      ParenthesedSelect parenthesedSelect =
-          new ParenthesedSelect().withSelect(select).withAlias(tableFunction.getAlias());
-
-      visit(parenthesedSelect);
-    } else {
-      super.visit(tableFunction);
-    }
   }
 
-  public void visit(PlainSelect plainSelect) {
-    // remove any DUAL pseudo tables
-    FromItem fromItem = plainSelect.getFromItem();
-    if (fromItem instanceof Table) {
-      Table table = (Table) fromItem;
-      if (table.getName().equalsIgnoreCase("dual")) {
-        plainSelect.setFromItem(null);
-      }
-    }
-    super.visit(plainSelect);
+  public void visit(Delete delete) {
+    deleteTranspiler.deParse(delete);
   }
 
-  public void visit(Table table) {
-    String name = table.getName().toLowerCase();
-    String aliasName = table.getAlias() != null ? table.getAlias().getName() : null;
 
-    for (String[] keyword : JSQLExpressionTranspiler.KEYWORDS) {
-      if (keyword[0].equals(name)) {
-        table.setName("\"" + table.getName() + "\"");
-        name = null;
-        if (aliasName == null) {
-          break;
-        }
-      }
-
-      if (keyword[0].equals(aliasName)) {
-        table.getAlias().setName("\"" + table.getAlias().getName() + "\"");
-        aliasName = null;
-        if (name == null) {
-          break;
-        }
-      }
-    }
-
-    super.visit(table);
+  public void visit(Merge merge) {
+    mergeTranspiler.deParse(merge);
   }
-
-  public void visit(SelectItem selectItem) {
-    if (selectItem.getAlias() != null) {
-      String aliasName = selectItem.getAlias().getName().toLowerCase();
-      for (String[] keyword : JSQLExpressionTranspiler.KEYWORDS) {
-        if (keyword[0].equals(aliasName)) {
-          selectItem.getAlias().setName("\"" + selectItem.getAlias().getName() + "\"");
-          break;
-        }
-      }
-    }
-    super.visit(selectItem);
-  }
-
 
   /**
    * The enum Dialect.
