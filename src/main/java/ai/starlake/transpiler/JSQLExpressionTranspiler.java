@@ -49,6 +49,7 @@ import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
 import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
@@ -2199,7 +2200,34 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         break;
       }
     }
-    super.visit(column);
+
+    // overwrite this completely because Array Constructor beginning with 1
+    Table table = column.getTable();
+    String tableName = null;
+    if (table != null) {
+      if (table.getAlias() != null) {
+        tableName = table.getAlias().getName();
+      } else {
+        tableName = table.getFullyQualifiedName();
+      }
+    }
+
+    if (tableName != null && !tableName.isEmpty()) {
+      buffer.append(tableName).append(column.getTableDelimiter());
+    }
+
+    buffer.append(column.getColumnName());
+    if (column.getArrayConstructor() != null) {
+      ArrayConstructor arrayConstructor = column.getArrayConstructor();
+
+      ExpressionList<Expression> expressions = (ExpressionList<Expression>) arrayConstructor.getExpressions();
+      for (int i=0; i<expressions.size(); i++) {
+        expressions.set(i, BinaryExpression.add(expressions.get(i), new LongValue(1) ));
+      }
+      arrayConstructor.setExpressions(expressions);
+
+      column.getArrayConstructor().accept(this);
+    }
   }
 
   public void visit(ExpressionList expressionList) {

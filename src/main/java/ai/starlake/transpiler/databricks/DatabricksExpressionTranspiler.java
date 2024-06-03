@@ -26,11 +26,13 @@ import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimeKeyExpression;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
@@ -62,6 +64,8 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
     , PERCENTILE, PERCENTILE_APPROX, REGR_INTERCEPT, REGR_SLOPE, KURTOSIS, SKEWNESS, STD, NTH_VALUE
 
     , TRY_AVG, TRY_SUM, PERCENT_RANK
+
+    , ARRAY_APPEND, ARRAY_COMPACT
 
     ;
     // @FORMATTER:ON
@@ -514,9 +518,25 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
         case TRY_AVG:
           warning("TRY error handling not supported.");
           function.setName("Avg");
+          break;
         case TRY_SUM:
           warning("TRY error handling not supported.");
           function.setName("Sum");
+          break;
+        case ARRAY_APPEND:
+          if (paramCount==2) {
+            rewrittenExpression = BinaryExpression.concat(parameters.get(0), new ArrayConstructor(parameters.get(1)));
+          }
+          break;
+        case ARRAY_COMPACT:
+          if (paramCount==1) {
+            function.setName("List_Filter");
+            function.setParameters(
+                    parameters.get(0)
+                    , new LambdaExpression("x", new IsNullExpression("x", true))
+            );
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {
