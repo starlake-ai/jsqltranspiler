@@ -2,7 +2,7 @@ name: Gradle Publish Snapshots
 
 on:
   push:
-    branches: [ "fix/ci-snapshot" ]
+    branches: [ "main" ]
 permissions:
   contents: read
 
