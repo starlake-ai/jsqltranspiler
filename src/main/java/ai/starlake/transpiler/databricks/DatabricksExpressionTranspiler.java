@@ -16,7 +16,6 @@
  */
 package ai.starlake.transpiler.databricks;
 
-import ai.starlake.transpiler.JSQLSelectTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
@@ -29,6 +28,7 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.NotExpression;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimeKeyExpression;
 import net.sf.jsqlparser.expression.TimezoneExpression;
@@ -71,7 +71,7 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
 
     , TRY_AVG, TRY_SUM, PERCENT_RANK
 
-    , ARRAY_APPEND, ARRAY_COMPACT
+    , ARRAY_APPEND, ARRAY_COMPACT, ARRAY_EXCEPT
 
     ;
     // @FORMATTER:ON
@@ -542,6 +542,21 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
                 new LambdaExpression("x", new IsNullExpression("x", true)));
           }
           break;
+        case ARRAY_EXCEPT:
+          if (paramCount == 2) {
+            // LIST_DISTINCT(LIST_FILTER([1,2,2,3],X->NOT
+            // ARRAY_CONTAINS(LIST_INTERSECT([1,2,2,3],[1,1,3,5]),X)))
+
+            NotExpression notExpression = new NotExpression(new Function("Array_Contains",
+                new Function("List_Intersect", parameters.get(0), parameters.get(1)),
+                new Column("x")));
+
+            function.setName("List_Distinct");
+            function.setParameters(new Function("List_Filter", parameters.get(0),
+                new LambdaExpression("x", notExpression)));
+          }
+          break;
+
       }
     }
     if (rewrittenExpression == null) {

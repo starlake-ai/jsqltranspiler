@@ -16,9 +16,7 @@
  */
 package ai.starlake.transpiler.snowflake;
 
-import ai.starlake.transpiler.JSQLExpressionTranspiler;
 import ai.starlake.transpiler.JSQLSelectTranspiler;
-import ai.starlake.transpiler.JSQLTranspiler;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.Expression;

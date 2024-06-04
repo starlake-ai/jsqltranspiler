@@ -2,7 +2,11 @@
 
 A pure Java stand-alone SQL Transpiler for translating various large RDBMS SQL Dialects into a few smaller RDBMS Dialects for Unit Testing. Based on JSQLParser.
 
-Focus is on Queries (only) and work is on progress based on the [Feature Matrix](src/main/resources/doc/JSQLTranspiler.ods).
+Supports `SELECT` queries as well as `INSERT`, `UPDATE`, `DELETE` and `MERGE` statements.
+
+Internal Functions will be rewritten based on the actual meaning and purpose of the function (since DuckDB `Any()` function does not necessarily behave like the RDBMS specific `Any()`). Respecting different function arguments count, order and type.
+
+Rewrite of Window- and Aggregate-Functions.
 
 ## Dialects
 
@@ -55,6 +59,15 @@ String expectedSQL="SELECT Coalesce(null, 1) a";
 
 String result = JSQLTranspiler.transpile(providedSQL, Dialect.AMAZON_REDSHIFT);
 assertEquals(expectedSQL, result);
+```
+
+### Web API
+```shell
+curl -X 'POST'                                                                   \
+  'https://secure-api.starlake.ai/api/v1/transpiler/transpile?dialect=SNOWFLAKE' \
+  -H 'accept: text/plain'                                                        \
+  -H 'Content-Type: text/plain'                                                  \
+  -d 'SELECT Nvl(null, 1) a'
 ```
 
 ### Java Command Line Interface

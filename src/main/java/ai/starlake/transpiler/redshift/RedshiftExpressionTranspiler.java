@@ -17,8 +17,6 @@
 package ai.starlake.transpiler.redshift;
 
 import ai.starlake.transpiler.JSQLExpressionTranspiler;
-import ai.starlake.transpiler.JSQLSelectTranspiler;
-import ai.starlake.transpiler.JSQLTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.ArrayExpression;

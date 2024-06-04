@@ -1,6 +1,5 @@
 package ai.starlake.transpiler;
 
-import net.sf.jsqlparser.expression.ExpressionVisitor;
 import net.sf.jsqlparser.parser.SimpleNode;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.FromItem;

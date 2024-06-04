@@ -16,7 +16,6 @@
  */
 package ai.starlake.transpiler.snowflake;
 
-import ai.starlake.transpiler.JSQLSelectTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;

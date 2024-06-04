@@ -1,6 +1,6 @@
 .. meta::
    :description: Java Software Library for rewriting Big RDBMS Queries into Duck DB compatible queries.
-   :keywords: java sql query transpiler DuckDB H2 BigQuery Snowflake Redshift
+   :keywords: java sql query transpiler DuckDB H2 BigQuery Snowflake Redshift DataBricks
 
 *****************
 How to use it
@@ -13,6 +13,18 @@ How to use it
     java -jar JSQLTranspiler.jar [-d <arg> | --any | --bigquery |
        --databricks | --snowflake | --redshift]      [-D <arg> | --duckdb]
        [-i <arg>] [-o <arg>] [-h]
+
+
+.. tab:: Web API Call
+
+  .. code:: shell
+
+    curl -X 'POST'                                                                   \
+      'https://secure-api.starlake.ai/api/v1/transpiler/transpile?dialect=SNOWFLAKE' \
+      -H 'accept: text/plain'                                                        \
+      -H 'Content-Type: text/plain'                                                  \
+      -d 'SELECT Nvl(null, 1) a'
+
 
 .. tab:: Java Library Call
 

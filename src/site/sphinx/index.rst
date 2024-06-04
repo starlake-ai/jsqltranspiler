@@ -1,6 +1,6 @@
 .. meta::
    :description: Java Software Library for rewriting Big RDBMS Queries into Duck DB compatible queries.
-   :keywords: java sql query transpiler DuckDB H2 BigQuery Snowflake Redshift
+   :keywords: java sql query transpiler DuckDB H2 BigQuery Snowflake Redshift Databricks
 
 ###########################
 Java SQL Transpiler Library
@@ -17,7 +17,11 @@ Java SQL Transpiler Library
 
 A pure Java stand-alone SQL Transpiler for translating various large RDBMS SQL Dialects into a few smaller RDBMS Dialects for Unit Testing. Based on JSQLParser.
 
-Focus is on Queries (only) and work is on progress based on the [Feature Matrix](src/main/resources/doc/JSQLTranspiler.ods).
+Supports `SELECT` queries as well as `INSERT`, `UPDATE`, `DELETE` and `MERGE` statements.
+
+Internal Functions will be rewritten based on the actual meaning and purpose of the function (since DuckDB `Any()` function does not necessarily behave like the RDBMS specific `Any()`). Respecting different function arguments count, order and type.
+
+Rewrite of Window- and Aggregate-Functions.
 
 Latest stable release: |JSQLTRANSPILER_STABLE_VERSION_LINK|
 
@@ -71,13 +75,18 @@ Features
     * Comprehensive support for Query statements:
         - ``SELECT ...``
         - RDBMS specific Functions, Predicates and Operators
-        - Date formatting parameter
+        - Date and Number formatting parameters
+        - `ARRAY` access based on different indices (DuckDB starts with 1)
+    * `INSERT` statements
+    * `DELETE` statements
+    * `UPDATE` statements
+    * `MERGE` statements
 
     * Nested Expressions (e.g. Sub-Selects)
     * ``WITH`` clauses
     * PostgreSQL implicit ``CAST ::``
     * SQL Parameters (e.g. ``?`` or ``:parameter``)
-    * Arrays and JSON/XML
+    * Internal Function rewrite based on the actual meaning and purpose of the function (since DuckDB `Any()` is not always RDBMS specific `Any()`)
 
 
 

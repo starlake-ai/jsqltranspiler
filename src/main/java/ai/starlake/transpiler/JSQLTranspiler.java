@@ -16,13 +16,9 @@
  */
 package ai.starlake.transpiler;
 
-import ai.starlake.transpiler.bigquery.BigQuerySelectTranspiler;
 import ai.starlake.transpiler.bigquery.BigQueryTranspiler;
-import ai.starlake.transpiler.databricks.DatabricksSelectTranspiler;
 import ai.starlake.transpiler.databricks.DatabricksTranspiler;
-import ai.starlake.transpiler.redshift.RedshiftSelectTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftTranspiler;
-import ai.starlake.transpiler.snowflake.SnowflakeSelectTranspiler;
 import ai.starlake.transpiler.snowflake.SnowflakeTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParser;
@@ -57,7 +53,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The type JSQLtranspiler.
+ * The type JSQLTranspiler.
  */
 public class JSQLTranspiler extends StatementDeParser {
   public static final Logger LOGGER = Logger.getLogger(JSQLTranspiler.class.getName());
@@ -115,24 +111,17 @@ public class JSQLTranspiler extends StatementDeParser {
   public static String transpileQuery(String qryStr, Dialect dialect,
       ExecutorService executorService, Consumer<CCJSqlParser> consumer) throws JSQLParserException {
     Statement st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
-    if (st instanceof Select) {
-      Select select = (Select) st;
-
-      switch (dialect) {
-        case GOOGLE_BIG_QUERY:
-          return transpileGoogleBigQuery(select);
-        case DATABRICKS:
-          return transpileDatabricksQuery(select);
-        case SNOWFLAKE:
-          return transpileSnowflakeQuery(select);
-        case AMAZON_REDSHIFT:
-          return transpileAmazonRedshiftQuery(select);
-        default:
-          return transpile(select);
-      }
-    } else {
-      throw new RuntimeException("The " + st.getClass().getName()
-          + " is not supported yet. Only `PlainSelect` is supported right now.");
+    switch (dialect) {
+      case GOOGLE_BIG_QUERY:
+        return transpileBigQuery(st);
+      case DATABRICKS:
+        return transpileDatabricks(st);
+      case SNOWFLAKE:
+        return transpileSnowflake(st);
+      case AMAZON_REDSHIFT:
+        return transpileAmazonRedshift(st);
+      default:
+        return transpile(st);
     }
   }
 
@@ -143,7 +132,7 @@ public class JSQLTranspiler extends StatementDeParser {
    * @param dialect the dialect of the query string
    * @return the transformed query string
    * @throws JSQLParserException a parser exception when the statement can't be parsed
-   * @throws InterruptedException a time out exception, when the statement can't be parsed within 6
+   * @throws InterruptedException a time-out exception, when the statement can't be parsed within 6
    *         seconds (hanging parser)
    */
   public static String transpileQuery(String qryStr, Dialect dialect)
@@ -170,6 +159,7 @@ public class JSQLTranspiler extends StatementDeParser {
    * @param consumer the parser configuration to use for the parsing
    * @throws JSQLParserException a parser exception when the statement can't be parsed
    */
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public static void transpile(String sqlStr, File outputFile, ExecutorService executorService,
       Consumer<CCJSqlParser> consumer) throws JSQLParserException {
     try {
@@ -178,14 +168,8 @@ public class JSQLTranspiler extends StatementDeParser {
       // @todo: we may need to split this manually to salvage any not parseable statements
       Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
       for (Statement st : statements) {
-        if (st instanceof Select) {
-          Select select = (Select) st;
-          select.accept(transpiler);
-
-          transpiler.getBuffer().append("\n;\n\n");
-        } else {
-          LOGGER.log(Level.SEVERE, st.getClass().getSimpleName() + " is not supported yet:\n" + st);
-        }
+        st.accept(transpiler);
+        transpiler.getBuffer().append("\n;\n\n");
       }
 
       String transpiledSqlStr = transpiler.getBuffer().toString();
@@ -223,7 +207,7 @@ public class JSQLTranspiler extends StatementDeParser {
    * @param sqlStr the original query string
    * @param outputFile the output file, writing to STDOUT when not defined
    * @throws JSQLParserException a parser exception when the statement can't be parsed
-   * @throws InterruptedException a time out exception, when the statement can't be parsed within 6
+   * @throws InterruptedException a time-out exception, when the statement can't be parsed within 6
    *         seconds (hanging parser)
    */
   public static boolean transpile(String sqlStr, File outputFile)
@@ -315,7 +299,7 @@ public class JSQLTranspiler extends StatementDeParser {
 
     executorService.shutdown();
     boolean wasTerminated = executorService.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
-    LOGGER.log(Level.FINE, "Exceutor Service terminated: " + wasTerminated);
+    LOGGER.log(Level.FINE, "Executor Service terminated: " + wasTerminated);
 
     return macroStrList;
   }
@@ -357,15 +341,15 @@ public class JSQLTranspiler extends StatementDeParser {
   }
 
   /**
-   * Transpile string.
+   * Rewrite a given SQL Statement into a text representation.
    *
-   * @param select the select
+   * @param statement the statement
    * @return the string
    */
-  public static String transpile(Select select) {
+  public static String transpile(Statement statement) {
     try {
       JSQLTranspiler transpiler = new JSQLTranspiler();
-      select.accept(transpiler);
+      statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
@@ -376,15 +360,15 @@ public class JSQLTranspiler extends StatementDeParser {
   }
 
   /**
-   * Transpile google big query string.
+   * Rewrite a given BigQuery SQL Statement into a text representation.
    *
-   * @param select the select
+   * @param statement the statement
    * @return the string
    */
-  public static String transpileGoogleBigQuery(Select select) {
+  public static String transpileBigQuery(Statement statement) {
     try {
       BigQueryTranspiler transpiler = new BigQueryTranspiler();
-      select.accept(transpiler);
+      statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
@@ -395,15 +379,15 @@ public class JSQLTranspiler extends StatementDeParser {
   }
 
   /**
-   * Transpile databricks query string.
+   * Rewrite a given DataBricks SQL Statement into a text representation.
    *
-   * @param select the select
+   * @param statement the statement
    * @return the string
    */
-  public static String transpileDatabricksQuery(Select select) {
+  public static String transpileDatabricks(Statement statement) {
     try {
       DatabricksTranspiler transpiler = new DatabricksTranspiler();
-      select.accept(transpiler);
+      statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
@@ -414,15 +398,15 @@ public class JSQLTranspiler extends StatementDeParser {
   }
 
   /**
-   * Transpile snowflake query string.
+   * Rewrite a given Snowflake SQL Statement into a text representation.
    *
-   * @param select the select
+   * @param statement the statement
    * @return the string
    */
-  public static String transpileSnowflakeQuery(Select select) {
+  public static String transpileSnowflake(Statement statement) {
     try {
       SnowflakeTranspiler transpiler = new SnowflakeTranspiler();
-      select.accept(transpiler);
+      statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
@@ -433,15 +417,15 @@ public class JSQLTranspiler extends StatementDeParser {
   }
 
   /**
-   * Transpile amazon redshift query string.
+   * Rewrite a given Redshift SQL Statement into a text representation.
    *
-   * @param select the select
+   * @param statement the statement
    * @return the string
    */
-  public static String transpileAmazonRedshiftQuery(Select select) {
+  public static String transpileAmazonRedshift(Statement statement) {
     try {
       RedshiftTranspiler transpiler = new RedshiftTranspiler();
-      select.accept(transpiler);
+      statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
