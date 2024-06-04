@@ -4,10 +4,168 @@ Changelog
 ************************
 
 
-Latest Changes since |JSQLTRANSPILER_VERSION|
+Version 0.4
 =============================================================
 
 
+  * **feat: support Insert, Update, Delete and Merge statements**
+    
+    Andreas Reichel, 2024-06-04
+  * **feat: support Insert, Update, Delete and Merge statements**
+    
+    Andreas Reichel, 2024-06-04
+  * **feat: INSERT, UPDATE, DELETE, MERGE transpilers**
+    
+    Andreas Reichel, 2024-06-03
+  * **build: update Gradle**
+    
+    Andreas Reichel, 2024-06-03
+  * **feat: Databricks Aggregate functions**
+    
+    Andreas Reichel, 2024-05-30
+  * **improve mock**
+    
+    Hayssam Saleh, 2024-05-29
+  * **Proposed interface & mock implementation for tests case**
+    
+    Hayssam Saleh, 2024-05-29
+  * **feat: Databricks Aggregate functions**
+    
+    Andreas Reichel, 2024-05-29
+  * **feat: Databricks Aggregate functions**
+    
+    Andreas Reichel, 2024-05-29
+  * **feat: Databricks Aggregate functions**
+    
+    Andreas Reichel, 2024-05-27
+  * **chore: update the GitHub Actions**
+    
+    Andreas Reichel, 2024-05-27
+  * **chore: update the GitHub Actions**
+    
+    Andreas Reichel, 2024-05-27
+
+Version 0.2
+=============================================================
+
+
+  * **chore: update the GitHub Actions**
+    
+    Andreas Reichel, 2024-05-27
+  * **test: enforce time zone `Asia/Bangkok` for CI**
+    
+    Andreas Reichel, 2024-05-27
+  * **style: house-keeping and tidying**
+    
+    Andreas Reichel, 2024-05-27
+  * **feat: Quote DuckDB keywords in Table, Column and Alias**
+    
+    Andreas Reichel, 2024-05-25
+  * **Add snapshot Github Action**
+    
+    Hayssam Saleh, 2024-05-20
+  * **build: fix dependencies after split-off CLI**
+    
+    Andreas Reichel, 2024-05-18
+  * **feat: provide methods accepting prepared `ExecutorService` and `Consumer`**
+    
+    Andreas Reichel, 2024-05-17
+  * **feat: provide methods accepting prepared `ExecutorService` and `Consumer`**
+    
+    Andreas Reichel, 2024-05-17
+  * **style: check-style exception**
+    
+    Andreas Reichel, 2024-05-17
+  * **feat: Databricks Date functions**
+    
+    Andreas Reichel, 2024-05-13
+  * **build: bring back JaCoCo**
+    
+    Andreas Reichel, 2024-05-11
+  * **feat: get the Macros as text collection or array**
+    
+    Andreas Reichel, 2024-05-11
+  * **chore: split-off the CLI and minimize dependencies to `JSQLParser` only**
+    
+    Andreas Reichel, 2024-05-06
+  * **chore: split-off the CLI and minimize dependencies to `JSQLParser` only**
+    
+    Andreas Reichel, 2024-05-06
+  * **fix: complete DataBricks text functions**
+    
+    Andreas Reichel, 2024-05-06
+  * **fix: DataBricks text functions**
+    
+    Andreas Reichel, 2024-05-05
+  * **fix: DataBricks text functions**
+    
+    Andreas Reichel, 2024-05-04
+  * **feat: Snowflake math functions, complete**
+    
+    Andreas Reichel, 2024-05-04
+  * **feat: Add missing Redshift conversion functions**
+    
+    Andreas Reichel, 2024-05-04
+  * **feat: Snowflake conversion functions**
+    
+    Andreas Reichel, 2024-05-04
+  * **feat: Snowflake array functions**
+    
+    Andreas Reichel, 2024-05-02
+  * **feat: Snowflake aggregate function**
+    
+    Andreas Reichel, 2024-05-01
+  * **feat: Snowflake TEXT functions complete**
+    
+    Andreas Reichel, 2024-04-26
+  * **feature: remove `Parenthesis` in favor of `ParenthesedExpressionList`**
+    
+    Andreas Reichel, 2024-04-25
+  * **feature: Snowflake regular expressions**
+    
+    Andreas Reichel, 2024-04-25
+  * **feature: complete Snowflake Date/Time functions**
+    
+    Andreas Reichel, 2024-04-24
+  * **style: apply license headers**
+    
+    Andreas Reichel, 2024-04-24
+  * **feat: rework UnitTest and support Prologues and Epilogues as per test**
+    
+    Andreas Reichel, 2024-04-24
+  * **feat: Snowflake DateTime function and Structs with virtual columns**
+    
+    Andreas Reichel, 2024-04-23
+  * **feat: Snowflake DateTime functions**
+    
+    Andreas Reichel, 2024-04-23
+  * **feat: fascilitate BigQuery and Snowflake and add SQLGlot Tests for all**
+    
+    Andreas Reichel, 2024-04-23
+  * **feat: RedShift Window Functions complete**
+    
+    Andreas Reichel, 2024-04-21
+  * **feat: RedShift Window functions**
+    
+    Andreas Reichel, 2024-04-20
+  * **feat: RedShift Aggregate functions**
+    
+    Andreas Reichel, 2024-04-20
+  * **feat: Redshift MATH functions**
+    
+    Andreas Reichel, 2024-04-19
+  * **feat: Redshift ARRAY functions**
+    
+    Andreas Reichel, 2024-04-19
+  * **Fix artifact group name**
+    
+    Hayssam Saleh, 2024-04-16
+  * **build: rewrite `CURRENT_TIMESTAMP()` into `CURRENT_TIMESTAMP`**
+    
+    Andreas Reichel, 2024-04-16
+  * **build: remove unneeded plugins and task dependencies**
+    
+    Andreas Reichel, 2024-04-16
   * **feat: Redshift DateTime functions completed**
     
     Andreas Reichel, 2024-04-15
