@@ -16,6 +16,7 @@
  */
 package ai.starlake.transpiler.databricks;
 
+import ai.starlake.transpiler.JSQLSelectTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
@@ -37,19 +38,24 @@ import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionLi
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.statement.select.OrderByElement;
+import net.sf.jsqlparser.util.deparser.SelectDeParser;
 
 import java.util.List;
 
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler {
-  public DatabricksExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
-    super(transpiler, buffer);
+
+  public DatabricksExpressionTranspiler(SelectDeParser selectDeParser, StringBuilder buffer) {
+    super(selectDeParser, buffer);
   }
 
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    DATE_FROM_PARTS, BINARY, BITMAP_COUNT, BTRIM, CHAR, CHAR_LENGTH, CHARACTER_LENGTH, CHARINDEX, ENDSWITH, STARTSWITH, FIND_IN_SET, LEVENSHTEIN, LOCATE, LTRIM, RTRIM, POSITION, REGEXP_REGEX, REGEXP_LIKE, REGEXP_EXTRACT, REGEXP_SUBSTR, SHA2, SPACE, SPLIT, STRING, SUBSTR, SUBSTRING_INDEX, TRY_TO_BINARY, TO_BINARY, UNBASE64, ENCODE, DECODE
+    DATE_FROM_PARTS, BINARY, BITMAP_COUNT, BTRIM, CHAR, CHAR_LENGTH, CHARACTER_LENGTH, CHARINDEX, ENDSWITH, STARTSWITH
 
+    , FIND_IN_SET, LEVENSHTEIN, LOCATE, LTRIM, RTRIM, POSITION, REGEXP_REGEX, REGEXP_LIKE, REGEXP_EXTRACT, REGEXP_SUBSTR
+
+    , SHA2, SPACE, SPLIT, STRING, SUBSTR, SUBSTRING_INDEX, TRY_TO_BINARY, TO_BINARY, UNBASE64, ENCODE, DECODE
 
     , ARRAY
 
@@ -524,17 +530,16 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
           function.setName("Sum");
           break;
         case ARRAY_APPEND:
-          if (paramCount==2) {
-            rewrittenExpression = BinaryExpression.concat(parameters.get(0), new ArrayConstructor(parameters.get(1)));
+          if (paramCount == 2) {
+            rewrittenExpression =
+                BinaryExpression.concat(parameters.get(0), new ArrayConstructor(parameters.get(1)));
           }
           break;
         case ARRAY_COMPACT:
-          if (paramCount==1) {
+          if (paramCount == 1) {
             function.setName("List_Filter");
-            function.setParameters(
-                    parameters.get(0)
-                    , new LambdaExpression("x", new IsNullExpression("x", true))
-            );
+            function.setParameters(parameters.get(0),
+                new LambdaExpression("x", new IsNullExpression("x", true)));
           }
           break;
       }

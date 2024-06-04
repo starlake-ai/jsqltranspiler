@@ -16,12 +16,15 @@
  */
 package ai.starlake.transpiler.bigquery;
 
-import ai.starlake.transpiler.JSQLExpressionTranspiler;
-import net.sf.jsqlparser.util.deparser.SelectDeParser;
+import ai.starlake.transpiler.JSQLSelectTranspiler;
+import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
-public class BigQueryExpressionTranspiler extends JSQLExpressionTranspiler {
+import java.lang.reflect.InvocationTargetException;
 
-  public BigQueryExpressionTranspiler(SelectDeParser selectDeParser, StringBuilder buffer) {
-    super(selectDeParser, buffer);
+public class BigQuerySelectTranspiler extends JSQLSelectTranspiler {
+  public BigQuerySelectTranspiler(Class<? extends ExpressionDeParser> expressionDeparserClass,
+      StringBuilder builder) throws NoSuchMethodException, InvocationTargetException,
+      InstantiationException, IllegalAccessException {
+    super(expressionDeparserClass, builder);
   }
 }

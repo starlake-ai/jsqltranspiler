@@ -16,6 +16,7 @@
  */
 package ai.starlake.transpiler.snowflake;
 
+import ai.starlake.transpiler.JSQLSelectTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftExpressionTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
@@ -45,32 +46,66 @@ import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
+import net.sf.jsqlparser.util.deparser.SelectDeParser;
 
 import java.util.ArrayList;
 
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler {
-  public SnowflakeExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
-    super(transpiler, buffer);
+
+  public SnowflakeExpressionTranspiler(SelectDeParser deParser, StringBuilder buffer) {
+    super(deParser, buffer);
   }
 
   enum DatePart {
-    year, y, yy, yyy, yyyy, yr, years, yrs, month, mm, mon, mons, months, day, d, dd, days, dayofmonth, dayofweek, weekday, dow, dw, dayofweekiso, weekday_iso, dow_iso, dw_iso, dayofyear, yearday, doy, dy, week, w, wk, weekofyear, woy, wy, weekiso, week_iso, weekofyeariso, weekofyear_iso, quarter, q, qtr, qtrs, quarters, yearofweek, yearofweekiso
+    year, y, yy, yyy, yyyy, yr, years, yrs, month, mm, mon, mons, months, day, d, dd, days, dayofmonth, dayofweek
+
+    , weekday, dow, dw, dayofweekiso, weekday_iso, dow_iso, dw_iso, dayofyear, yearday, doy, dy, week, w, wk, weekofyear
+
+    , woy, wy, weekiso, week_iso, weekofyeariso, weekofyear_iso, quarter, q, qtr, qtrs, quarters, yearofweek, yearofweekiso
   }
 
   enum TimePart {
-    hour, h, hh, hr, hours, hrs, minute, m, mi, min, minutes, mins, second, s, sec, seconds, secs, millisecond, ms, msec, milliseconds, microsecond, us, usec, microseconds, nanosecond, ns, nsec, nanosec, nsecond, nanoseconds, nanosecs, nseconds, epoch_second, epoch, epoch_seconds, epoch_millisecond, epoch_milliseconds, epoch_microsecond, epoch_microseconds, epoch_nanosecond, epoch_nanoseconds, timezone_hour, tzh, timezone_minute, tzm
+    hour, h, hh, hr, hours, hrs, minute, m, mi, min, minutes, mins, second, s, sec, seconds, secs, millisecond, ms
+
+    , msec, milliseconds, microsecond, us, usec, microseconds, nanosecond, ns, nsec, nanosec, nsecond, nanoseconds
+
+    , nanosecs, nseconds, epoch_second, epoch, epoch_seconds, epoch_millisecond, epoch_milliseconds, epoch_microsecond
+
+    , epoch_microseconds, epoch_nanosecond, epoch_nanoseconds, timezone_hour, tzh, timezone_minute, tzm
   }
 
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS, TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS, TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD, TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE, TRUNC, DATE, TIME, TO_TIMESTAMP_LTZ, TO_TIMESTAMP_NTZ, TO_TIMESTAMP_TZ, CONVERT_TIMEZONE, TO_DATE, TO_TIME, TO_TIMESTAMP
+    DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS
 
-    , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE, BIT_LENGTH, OCTET_LENGTH, CHAR, INSERT, RTRIMMED_LENGTH, SPACE, SPLIT_TO_TABLE, STRTOK_SPLIT_TO_TABLE, STRTOK, STRTOK_TO_ARRAY, UUID_STRING, CHARINDEX, POSITION, EDITDISTANCE, ENDSWITH, STARTSWITH, JAROWINKLER_SIMILARITY
+    , TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS
 
-    , ARRAYAGG, ARRAY_CONSTRUCT, ARRAY_COMPACT, ARRAY_CONSTRUCT_COMPACT, ARRAY_CONTAINS, ARRAY_DISTINCT, ARRAY_EXCEPT, ARRAY_FLATTEN, ARRAY_GENERATE_RANGE, ARRAY_INSERT, ARRAY_INTERSECTION, ARRAY_MAX, ARRAY_MIN, ARRAY_POSITION, ARRAY_PREPEND, ARRAY_REMOVE, ARRAY_REMOVE_AT, ARRAY_SIZE, ARRAY_SLICE, ARRAY_SORT, ARRAY_TO_STRING, ARRAYS_OVERLAP
+    , TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD
 
-    , VARIANCE_POP, VARIANCE_SAMP, BITAND_AGG, BITOR_AGG, BITXOR_AGG, BOOLAND_AGG, BOOLOR_AGG, BOOLXOR_AGG, SKEW, GROUPING_ID, TO_VARCHAR, TO_BINARY, TRY_TO_BINARY, TO_DECIMAL, TO_NUMBER, TO_NUMERIC, TRY_TO_DECIMAL, TRY_TO_NUMBER, TRY_TO_NUMERIC, TO_DOUBLE, TRY_TO_DOUBLE, TO_BOOLEAN, TRY_TO_BOOLEAN, TRY_TO_DATE, TRY_TO_TIME, TRY_TO_TIMESTAMP, TRY_TO_TIMESTAMP_LTZ, TRY_TO_TIMESTAMP_NTZ, TRY_TO_TIMESTAMP_TZ
+    , TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE, TRUNC, DATE, TIME, TO_TIMESTAMP_LTZ
+
+    , TO_TIMESTAMP_NTZ, TO_TIMESTAMP_TZ, CONVERT_TIMEZONE, TO_DATE, TO_TIME, TO_TIMESTAMP
+
+    , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE
+
+    , BIT_LENGTH, OCTET_LENGTH, CHAR, INSERT, RTRIMMED_LENGTH, SPACE, SPLIT_TO_TABLE, STRTOK_SPLIT_TO_TABLE, STRTOK
+
+    , STRTOK_TO_ARRAY, UUID_STRING, CHARINDEX, POSITION, EDITDISTANCE, ENDSWITH, STARTSWITH, JAROWINKLER_SIMILARITY
+
+    , ARRAYAGG, ARRAY_CONSTRUCT, ARRAY_COMPACT, ARRAY_CONSTRUCT_COMPACT, ARRAY_CONTAINS, ARRAY_DISTINCT, ARRAY_EXCEPT
+
+    , ARRAY_FLATTEN, ARRAY_GENERATE_RANGE, ARRAY_INSERT, ARRAY_INTERSECTION, ARRAY_MAX, ARRAY_MIN, ARRAY_POSITION
+
+    , ARRAY_PREPEND, ARRAY_REMOVE, ARRAY_REMOVE_AT, ARRAY_SIZE, ARRAY_SLICE, ARRAY_SORT, ARRAY_TO_STRING, ARRAYS_OVERLAP
+
+    , VARIANCE_POP, VARIANCE_SAMP, BITAND_AGG, BITOR_AGG, BITXOR_AGG, BOOLAND_AGG, BOOLOR_AGG, BOOLXOR_AGG, SKEW
+
+    , GROUPING_ID, TO_VARCHAR, TO_BINARY, TRY_TO_BINARY, TO_DECIMAL, TO_NUMBER, TO_NUMERIC, TRY_TO_DECIMAL
+
+    , TRY_TO_NUMBER, TRY_TO_NUMERIC, TO_DOUBLE, TRY_TO_DOUBLE, TO_BOOLEAN, TRY_TO_BOOLEAN, TRY_TO_DATE, TRY_TO_TIME
+
+    , TRY_TO_TIMESTAMP, TRY_TO_TIMESTAMP_LTZ, TRY_TO_TIMESTAMP_NTZ, TRY_TO_TIMESTAMP_TZ
 
     , RANDOM, DIV0, DIV0NULL, ROUND, SQUARE
 

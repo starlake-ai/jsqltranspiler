@@ -17,6 +17,7 @@
 package ai.starlake.transpiler.redshift;
 
 import ai.starlake.transpiler.JSQLExpressionTranspiler;
+import ai.starlake.transpiler.JSQLSelectTranspiler;
 import ai.starlake.transpiler.JSQLTranspiler;
 import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.ArrayConstructor;
@@ -40,6 +41,7 @@ import net.sf.jsqlparser.expression.operators.relational.MinorThan;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
+import net.sf.jsqlparser.util.deparser.SelectDeParser;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -49,8 +51,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
   public static final Pattern NUMBER_FORMAT_PATTERN =
       Pattern.compile("((?<!(%))(?<!(%-))(?i:[09D.G,]+))");
 
-  public RedshiftExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
-    super(transpiler, buffer);
+  public RedshiftExpressionTranspiler(SelectDeParser deParser, StringBuilder buffer) {
+    super(deParser, buffer);
   }
 
   enum TranspiledFunction {
@@ -510,29 +512,24 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           }
           break;
         case TO_NUMBER:
-          // list_aggregate(regexp_extract_all('-1,000.00', '[\+|\-\d|\.]'),'string_agg', '')::NUMERIC
-          Function f1 = new Function(
-                  "List_Aggregate"
-                  , new Function("Regexp_Extract_All", parameters.get(0), new StringValue("[\\+|\\-\\d|\\.]"))
-                  , new StringValue("string_agg")
-                  , new StringValue("")
-          );
-          f1 = new Function("If"
-                  , new EqualsTo(new Function("TypeOf", parameters.get(0)), new StringValue("VARCHAR"))
-                  , f1
-                  , parameters.get(0)
-          );
+          // list_aggregate(regexp_extract_all('-1,000.00', '[\+|\-\d|\.]'),'string_agg',
+          // '')::NUMERIC
+          Function f1 = new Function("List_Aggregate",
+              new Function("Regexp_Extract_All", parameters.get(0),
+                  new StringValue("[\\+|\\-\\d|\\.]")),
+              new StringValue("string_agg"), new StringValue(""));
+          f1 = new Function("If",
+              new EqualsTo(new Function("TypeOf", parameters.get(0)), new StringValue("VARCHAR")),
+              f1, parameters.get(0));
           switch (paramCount) {
             case 2:
               warning("Format Parameter not supported.");
-              rewrittenExpression =
-                      new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                                         f1, "NUMERIC");
+              rewrittenExpression = new CastExpression(
+                  functionName.startsWith("TRY") ? "Try_Cast" : "Cast", f1, "NUMERIC");
               break;
             case 1:
-              rewrittenExpression =
-                      new CastExpression(functionName.startsWith("TRY") ? "Try_Cast" : "Cast",
-                                         f1, "NUMERIC");
+              rewrittenExpression = new CastExpression(
+                  functionName.startsWith("TRY") ? "Try_Cast" : "Cast", f1, "NUMERIC");
               break;
           }
           break;

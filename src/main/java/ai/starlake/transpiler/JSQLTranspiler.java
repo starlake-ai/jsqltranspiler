@@ -16,9 +16,13 @@
  */
 package ai.starlake.transpiler;
 
+import ai.starlake.transpiler.bigquery.BigQuerySelectTranspiler;
 import ai.starlake.transpiler.bigquery.BigQueryTranspiler;
+import ai.starlake.transpiler.databricks.DatabricksSelectTranspiler;
 import ai.starlake.transpiler.databricks.DatabricksTranspiler;
+import ai.starlake.transpiler.redshift.RedshiftSelectTranspiler;
 import ai.starlake.transpiler.redshift.RedshiftTranspiler;
+import ai.starlake.transpiler.snowflake.SnowflakeSelectTranspiler;
 import ai.starlake.transpiler.snowflake.SnowflakeTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParser;
@@ -30,8 +34,6 @@ import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.merge.Merge;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.update.Update;
-import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
-import net.sf.jsqlparser.util.deparser.SelectDeParser;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 import java.io.BufferedReader;
@@ -65,31 +67,37 @@ public class JSQLTranspiler extends StatementDeParser {
    */
   public static final int TIMEOUT = 6;
 
-  private final JSQLExpressionTranspiler expressionTranspiler;
-  private final JSQLSelectTranspiler selectTranspiler;
-  private final JSQLInsertTranspiler insertTranspiler;
-  private final JSQLUpdateTranspiler updateTranspiler;
-  private final JSQLDeleteTranspiler deleteTranspiler;
-  private final JSQLMergeTranspiler mergeTranspiler;
+  protected final JSQLExpressionTranspiler expressionTranspiler;
+  protected final JSQLSelectTranspiler selectTranspiler;
+  protected final JSQLInsertTranspiler insertTranspiler;
+  protected final JSQLUpdateTranspiler updateTranspiler;
+  protected final JSQLDeleteTranspiler deleteTranspiler;
+  protected final JSQLMergeTranspiler mergeTranspiler;
 
-  public JSQLTranspiler(Class<? extends JSQLExpressionTranspiler> expressionTranspilerClass, Class<? extends JSQLSelectTranspiler> selectTranspilerClass) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+  protected JSQLTranspiler(Class<? extends JSQLSelectTranspiler> selectTranspilerClass,
+      Class<? extends JSQLExpressionTranspiler> expressionTranspilerClass)
+      throws InvocationTargetException, NoSuchMethodException, InstantiationException,
+      IllegalAccessException {
     super(expressionTranspilerClass, selectTranspilerClass);
 
-    this.expressionTranspiler = expressionTranspilerClass.cast( this.getExpressionDeParser() );
+    this.expressionTranspiler = expressionTranspilerClass.cast(this.getExpressionDeParser());
     this.selectTranspiler = selectTranspilerClass.cast(this.getSelectDeParser());
 
-    this.insertTranspiler = new JSQLInsertTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
+    this.insertTranspiler =
+        new JSQLInsertTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
 
     this.updateTranspiler = new JSQLUpdateTranspiler(this.expressionTranspiler, buffer);
 
     this.deleteTranspiler = new JSQLDeleteTranspiler(this.expressionTranspiler, buffer);
 
-    this.mergeTranspiler = new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
+    this.mergeTranspiler =
+        new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
 
   }
 
-  public JSQLTranspiler() throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-      this(JSQLExpressionTranspiler.class, JSQLSelectTranspiler.class);
+  public JSQLTranspiler() throws InvocationTargetException, NoSuchMethodException,
+      InstantiationException, IllegalAccessException {
+    this(JSQLSelectTranspiler.class, JSQLExpressionTranspiler.class);
   }
 
 
@@ -175,8 +183,7 @@ public class JSQLTranspiler extends StatementDeParser {
           select.accept(transpiler);
 
           transpiler.getBuffer().append("\n;\n\n");
-        }
-        else {
+        } else {
           LOGGER.log(Level.SEVERE, st.getClass().getSimpleName() + " is not supported yet:\n" + st);
         }
       }
@@ -187,8 +194,7 @@ public class JSQLTranspiler extends StatementDeParser {
       // write to STDOUT when there is no OUTPUT File
       if (outputFile == null) {
         System.out.println(transpiledSqlStr);
-      }
-      else {
+      } else {
         if (!outputFile.exists() && outputFile.getParentFile() != null) {
           boolean mkdirs = outputFile.getParentFile().mkdirs();
           if (mkdirs) {
@@ -202,9 +208,10 @@ public class JSQLTranspiler extends StatementDeParser {
           LOGGER.log(Level.SEVERE, "Failed to write to " + outputFile.getAbsolutePath());
         }
       }
-    } catch (InvocationTargetException | NoSuchMethodException | InstantiationException | IllegalAccessException e) {
-        //  this should not really be possible
-        throw new RuntimeException("Failed to initiate the Transpiler Classes", e);
+    } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
+        | IllegalAccessException e) {
+      // this should not really be possible
+      throw new RuntimeException("Failed to initiate the Transpiler Classes", e);
     }
   }
 
@@ -356,10 +363,16 @@ public class JSQLTranspiler extends StatementDeParser {
    * @return the string
    */
   public static String transpile(Select select) {
-    JSQLTranspiler transpiler = new JSQLTranspiler();
-    select.accept(transpiler);
+    try {
+      JSQLTranspiler transpiler = new JSQLTranspiler();
+      select.accept(transpiler);
 
-    return transpiler.getBuffer().toString();
+      return transpiler.getBuffer().toString();
+    } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
+        | IllegalAccessException e) {
+      // this should really never happen
+      throw new RuntimeException("Failed to initiate the Transpiler Classes", e);
+    }
   }
 
   /**
@@ -369,10 +382,16 @@ public class JSQLTranspiler extends StatementDeParser {
    * @return the string
    */
   public static String transpileGoogleBigQuery(Select select) {
-    BigQueryTranspiler transpiler = new BigQueryTranspiler();
-    select.accept(transpiler);
+    try {
+      BigQueryTranspiler transpiler = new BigQueryTranspiler();
+      select.accept(transpiler);
 
-    return transpiler.getBuffer().toString();
+      return transpiler.getBuffer().toString();
+    } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
+        | IllegalAccessException e) {
+      // this should really never happen
+      throw new RuntimeException("Failed to initiate the Transpiler Classes", e);
+    }
   }
 
   /**
@@ -382,10 +401,16 @@ public class JSQLTranspiler extends StatementDeParser {
    * @return the string
    */
   public static String transpileDatabricksQuery(Select select) {
-    DatabricksTranspiler transpiler = new DatabricksTranspiler();
-    select.accept(transpiler);
+    try {
+      DatabricksTranspiler transpiler = new DatabricksTranspiler();
+      select.accept(transpiler);
 
-    return transpiler.getBuffer().toString();
+      return transpiler.getBuffer().toString();
+    } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
+        | IllegalAccessException e) {
+      // this should really never happen
+      throw new RuntimeException("Failed to initiate the Transpiler Classes", e);
+    }
   }
 
   /**
@@ -395,10 +420,16 @@ public class JSQLTranspiler extends StatementDeParser {
    * @return the string
    */
   public static String transpileSnowflakeQuery(Select select) {
-    SnowflakeTranspiler transpiler = new SnowflakeTranspiler();
-    select.accept(transpiler);
+    try {
+      SnowflakeTranspiler transpiler = new SnowflakeTranspiler();
+      select.accept(transpiler);
 
-    return transpiler.getBuffer().toString();
+      return transpiler.getBuffer().toString();
+    } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
+        | IllegalAccessException e) {
+      // this should really never happen
+      throw new RuntimeException("Failed to initiate the Transpiler Classes", e);
+    }
   }
 
   /**
@@ -408,10 +439,16 @@ public class JSQLTranspiler extends StatementDeParser {
    * @return the string
    */
   public static String transpileAmazonRedshiftQuery(Select select) {
-    RedshiftTranspiler transpiler = new RedshiftTranspiler();
-    select.accept(transpiler);
+    try {
+      RedshiftTranspiler transpiler = new RedshiftTranspiler();
+      select.accept(transpiler);
 
-    return transpiler.getBuffer().toString();
+      return transpiler.getBuffer().toString();
+    } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
+        | IllegalAccessException e) {
+      // this should really never happen
+      throw new RuntimeException("Failed to initiate the Transpiler Classes", e);
+    }
   }
 
   public void visit(Select select) {

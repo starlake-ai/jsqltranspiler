@@ -56,7 +56,10 @@ import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
+import net.sf.jsqlparser.util.deparser.OrderByDeParser;
+import net.sf.jsqlparser.util.deparser.SelectDeParser;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -75,6 +78,11 @@ import java.util.regex.Pattern;
  */
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class JSQLExpressionTranspiler extends ExpressionDeParser {
+
+  public JSQLExpressionTranspiler(SelectDeParser deParser, StringBuilder buffer) {
+    super(deParser, buffer);
+  }
+
   // select ', { "' || keyword_name || '", "' || keyword_category || '" }'
   // from duckdb_keywords() WHERE keyword_category = 'reserved';
   public final static String[][] KEYWORDS = {{"all", "reserved"}, {"analyse", "reserved"},
@@ -186,10 +194,6 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     public static UnsupportedFunction from(AnalyticExpression f) {
       return from(f.getName());
     }
-  }
-
-  public JSQLExpressionTranspiler(JSQLTranspiler transpiler, StringBuilder buffer) {
-    super(transpiler, buffer);
   }
 
   public static boolean isDatePart(Expression expression, JSQLTranspiler.Dialect dialect) {
@@ -2220,9 +2224,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (column.getArrayConstructor() != null) {
       ArrayConstructor arrayConstructor = column.getArrayConstructor();
 
-      ExpressionList<Expression> expressions = (ExpressionList<Expression>) arrayConstructor.getExpressions();
-      for (int i=0; i<expressions.size(); i++) {
-        expressions.set(i, BinaryExpression.add(expressions.get(i), new LongValue(1) ));
+      ExpressionList<Expression> expressions =
+          (ExpressionList<Expression>) arrayConstructor.getExpressions();
+      for (int i = 0; i < expressions.size(); i++) {
+        expressions.set(i, BinaryExpression.add(expressions.get(i), new LongValue(1)));
       }
       arrayConstructor.setExpressions(expressions);
 

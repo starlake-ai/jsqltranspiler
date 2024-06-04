@@ -14,14 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package ai.starlake.transpiler.bigquery;
+package ai.starlake.transpiler.databricks;
 
-import ai.starlake.transpiler.JSQLExpressionTranspiler;
-import net.sf.jsqlparser.util.deparser.SelectDeParser;
+import ai.starlake.transpiler.JSQLSelectTranspiler;
+import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
-public class BigQueryExpressionTranspiler extends JSQLExpressionTranspiler {
+import java.lang.reflect.InvocationTargetException;
 
-  public BigQueryExpressionTranspiler(SelectDeParser selectDeParser, StringBuilder buffer) {
-    super(selectDeParser, buffer);
+public class DatabricksSelectTranspiler extends JSQLSelectTranspiler {
+  public DatabricksSelectTranspiler(Class<? extends ExpressionDeParser> expressionDeparserClass,
+      StringBuilder builder) throws NoSuchMethodException, InvocationTargetException,
+      InstantiationException, IllegalAccessException {
+    super(expressionDeparserClass, builder);
   }
 }
