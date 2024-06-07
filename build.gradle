@@ -365,6 +365,7 @@ publishing {
 }
 
 signing {
+    required { !version.endsWith("SNAPSHOT") && gradle.taskGraph.hasTask("publish") }
     sign publishing.publications.mavenJava
 }
 
@@ -447,11 +448,6 @@ tasks.register('upload') {
             }
         }
     }
-}
-
-signing {
-    required { !version.endsWith("SNAPSHOT") && gradle.taskGraph.hasTask("publish") }
-    sign publishing.publications.mavenJava
 }
 
 
