@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package ai.starlake.transpiler.schemas;
+package ai.starlake.transpiler.schema;
 
 import java.util.Map;
 
