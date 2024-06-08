@@ -28,6 +28,7 @@ import net.sf.jsqlparser.schema.Database;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.PlainSelect;
@@ -68,7 +69,7 @@ public class JSQLColumResolver {
       if (joins != null) {
         for (Join join : joins) {
           if (join.getFromItem() instanceof Table) {
-            Alias alias = fromItem.getAlias();
+            Alias alias = join.getFromItem().getAlias();
             Table t = (Table) join.getFromItem();
 
             if (alias != null) {
@@ -161,6 +162,47 @@ public class JSQLColumResolver {
             } else {
               resultSetMetaData.add(jdbcColumn,
                   alias != null ? alias.withUseAs(false).toString() : null);
+            }
+          }
+        } else if (selectItem.getExpression() instanceof AllTableColumns) {
+          AllTableColumns allTableColumns = (AllTableColumns) selectItem.getExpression();
+
+          /*
+          -- invalid:
+          select JSQLTranspilerTest.main.listing.*
+          from  JSQLTranspilerTest.main.listing
+          
+          select main.listing.*
+          from  main.listing
+          
+          -- valid:
+          select listing.*
+          from  JSQLTranspilerTest.main.listing
+           */
+
+          Table table = allTableColumns.getTable();
+          String columnTablename = null;
+          if (table != null) {
+            columnTablename = table.getName();
+          }
+
+          if (columnTablename != null) {
+            // column has a table name prefix, which could be the actual table name or the table's
+            // alias
+
+            Table actualTable = fromTables.get(columnTablename);
+            if (actualTable == null) {
+              throw new RuntimeException("Table " + columnTablename + " not found in tables "
+                  + Arrays.deepToString(fromTables.keySet().toArray(new String[0])));
+            }
+            String tableSchemaName = actualTable.getSchemaName();
+            String tableCatalogName =
+                actualTable.getDatabase() != null ? actualTable.getDatabase().getDatabaseName()
+                    : null;
+
+            for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
+                actualTable.getName(), null)) {
+              resultSetMetaData.add(jdbcColumn, null);
             }
           }
         } else if (selectItem.getExpression() instanceof AllColumns) {
