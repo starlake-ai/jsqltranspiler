@@ -16,19 +16,56 @@
  */
 package ai.starlake.transpiler.schema;
 
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.logging.Logger;
 
 public final class JdbcMetaData {
+  public final static Logger LOGGER = Logger.getLogger(JdbcMetaData.class.getName());
 
-  private final TreeMap<String, JdbcCatalog> catalogs = new TreeMap<>();
+  private final CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs =
+      new CaseInsensitiveLinkedHashMap<>();
   private final DatabaseMetaData metaData;
+  private final String currentCatalogName;
+  private final String currentSchemaName;
+
+  private static final Map<Integer, String> SQL_TYPE_NAME_MAP = new HashMap<>();
+
+  static {
+    for (Field field : Types.class.getFields()) {
+      try {
+        if (field.getType() == int.class) {
+          SQL_TYPE_NAME_MAP.put(field.getInt(null), field.getName());
+        }
+      } catch (IllegalAccessException e) {
+        throw new RuntimeException("Failed to initialize SQL type map", e);
+      }
+    }
+  }
+
+  public static String getTypeName(int sqlType) {
+    return SQL_TYPE_NAME_MAP.getOrDefault(sqlType, "UNKNOWN");
+  }
 
   public JdbcMetaData(Connection con) throws SQLException {
+    // todo: customise this for various databases, e. g. Oracle would need a "FROM DUAL"
+    try (Statement statement = con.createStatement();
+        ResultSet rs = statement.executeQuery("SELECT current_database(), current_schema()");) {
+      rs.next();
+      currentCatalogName = rs.getString(1);
+      currentSchemaName = rs.getString(2);
+    }
     this.metaData = con.getMetaData();
   }
 
@@ -59,7 +96,7 @@ public final class JdbcMetaData {
     return catalogs.put(jdbcCatalog.tableCatalog.toUpperCase(), jdbcCatalog);
   }
 
-  public Map<String, JdbcCatalog> getCatalogs() {
+  public Map<String, JdbcCatalog> getCatalogMap() {
     return Collections.unmodifiableMap(catalogs);
   }
 
@@ -73,6 +110,103 @@ public final class JdbcMetaData {
     JdbcSchema jdbcSchema = jdbcCatalog.get(jdbcTable.tableSchema.toUpperCase());
 
     return jdbcSchema.put(jdbcTable);
+  }
+
+  // @todo: implement a GLOB based column name filter
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
+  public List<JdbcColumn> getTableColumns(String catalogName, String schemaName, String tableName,
+      String columnName) {
+    ArrayList<JdbcColumn> jdbcColumns = new ArrayList<>();
+    JdbcCatalog jdbcCatalog = catalogs
+        .get(catalogName == null || catalogName.isEmpty() ? currentCatalogName : catalogName);
+    if (jdbcCatalog == null) {
+      LOGGER.info(
+          "Available catalogues: " + Arrays.deepToString(catalogs.keySet().toArray(new String[0])));
+      throw new RuntimeException(
+          "Catalog " + catalogName + " does not exist in the DatabaseMetaData.");
+    }
+
+    JdbcSchema jdbcSchema = jdbcCatalog
+        .get(schemaName == null || schemaName.isEmpty() ? currentSchemaName : schemaName);
+    if (jdbcSchema == null) {
+      LOGGER.info("Available schema: "
+          + Arrays.deepToString(jdbcCatalog.schemas.keySet().toArray(new String[0])));
+      throw new RuntimeException(
+          "Schema " + schemaName + " does not exist in the given Catalog " + catalogName);
+    }
+
+    if (tableName != null && !tableName.isEmpty()) {
+      JdbcTable jdbcTable = jdbcSchema.get(tableName);
+      if (jdbcTable == null) {
+        LOGGER.info("Available tables: "
+            + Arrays.deepToString(jdbcSchema.tables.keySet().toArray(new String[0])));
+        throw new RuntimeException(
+            "Table " + tableName + " does not exist in the given Schema " + schemaName);
+      } else {
+        // @todo: implement a GLOB based column name filter
+        jdbcColumns.addAll(jdbcTable.columns.values());
+      }
+    } else {
+      for (JdbcTable jdbcTable : jdbcSchema.tables.values()) {
+        // @todo: implement a GLOB based column name filter
+        jdbcColumns.addAll(jdbcTable.columns.values());
+      }
+    }
+    return jdbcColumns;
+  }
+
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
+  public JdbcColumn getColumn(String catalogName, String schemaName, String tableName,
+      String columnName) {
+    JdbcColumn jdbcColumn = null;
+    JdbcCatalog jdbcCatalog = catalogs
+        .get(catalogName == null || catalogName.isEmpty() ? currentCatalogName : catalogName);
+    if (jdbcCatalog == null) {
+      LOGGER.info(
+          "Available catalogues: " + Arrays.deepToString(catalogs.keySet().toArray(new String[0])));
+      throw new RuntimeException(
+          "Catalog " + catalogName + " does not exist in the DatabaseMetaData.");
+    }
+
+    JdbcSchema jdbcSchema = jdbcCatalog
+        .get(schemaName == null || schemaName.isEmpty() ? currentSchemaName : schemaName);
+    if (jdbcSchema == null) {
+      LOGGER.info("Available schema: "
+          + Arrays.deepToString(jdbcCatalog.schemas.keySet().toArray(new String[0])));
+      throw new RuntimeException(
+          "Schema " + schemaName + " does not exist in the given Catalog " + catalogName);
+    }
+
+    if (tableName != null && !tableName.isEmpty()) {
+      JdbcTable jdbcTable = jdbcSchema.get(tableName);
+
+      if (jdbcTable == null) {
+        LOGGER.info("Available tables: "
+            + Arrays.deepToString(jdbcSchema.tables.keySet().toArray(new String[0])));
+        throw new RuntimeException(
+            "Table " + tableName + " does not exist in the given Schema " + schemaName);
+      } else {
+        jdbcColumn = jdbcTable.columns.get(columnName);
+        if (jdbcColumn == null) {
+          LOGGER.info("Available columns: "
+              + Arrays.deepToString(jdbcTable.columns.keySet().toArray(new String[0])));
+          throw new RuntimeException(
+              "Column " + columnName + " does not exist in the given Table " + tableName);
+        }
+      }
+    } else {
+      for (JdbcTable jdbcTable : jdbcSchema.tables.values()) {
+        jdbcColumn = jdbcTable.columns.get(columnName);
+        if (jdbcColumn != null) {
+          break;
+        }
+      }
+      if (jdbcColumn == null) {
+        throw new RuntimeException(
+            "Column " + columnName + " does not exist in the given Schema " + schemaName);
+      }
+    }
+    return jdbcColumn;
   }
 
 }

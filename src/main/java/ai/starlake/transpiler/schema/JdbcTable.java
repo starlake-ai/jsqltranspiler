@@ -40,8 +40,7 @@ public class JdbcTable implements Comparable<JdbcTable> {
   String selfReferenceColName;
   String referenceGeneration;
 
-  public CaseInsensitiveLinkedHashMap<JdbcColumn> jdbcColumns =
-      new CaseInsensitiveLinkedHashMap<>();
+  public CaseInsensitiveLinkedHashMap<JdbcColumn> columns = new CaseInsensitiveLinkedHashMap<>();
   public CaseInsensitiveLinkedHashMap<JdbcIndex> indices = new CaseInsensitiveLinkedHashMap<>();
   public JdbcPrimaryKey primaryKey = null;
 
@@ -195,7 +194,7 @@ public class JdbcTable implements Comparable<JdbcTable> {
             columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
             scopeSchema, scopeTable, sourceDataType, isAutoIncrement, isGeneratedColumn);
 
-        jdbcColumns.put(jdbcColumn.columnName, jdbcColumn);
+        columns.put(jdbcColumn.columnName, jdbcColumn);
       }
 
     }
@@ -327,15 +326,15 @@ public class JdbcTable implements Comparable<JdbcTable> {
   }
 
   public JdbcColumn add(JdbcColumn jdbcColumn) {
-    return jdbcColumns.put(jdbcColumn.columnName, jdbcColumn);
+    return columns.put(jdbcColumn.columnName, jdbcColumn);
   }
 
   public boolean containsKey(String columnName) {
-    return jdbcColumns.containsKey(columnName);
+    return columns.containsKey(columnName);
   }
 
   public boolean contains(JdbcColumn jdbcColumn) {
-    return jdbcColumns.containsKey(jdbcColumn.columnName);
+    return columns.containsKey(jdbcColumn.columnName);
   }
 
   public JdbcIndex put(JdbcIndex jdbcIndex) {
@@ -392,7 +391,7 @@ public class JdbcTable implements Comparable<JdbcTable> {
     if (!Objects.equals(referenceGeneration, jdbcTable.referenceGeneration)) {
       return false;
     }
-    if (!jdbcColumns.equals(jdbcTable.jdbcColumns)) {
+    if (!columns.equals(jdbcTable.columns)) {
       return false;
     }
     if (!Objects.equals(indices, jdbcTable.indices)) {
@@ -414,7 +413,7 @@ public class JdbcTable implements Comparable<JdbcTable> {
     result = 31 * result + (typeName != null ? typeName.hashCode() : 0);
     result = 31 * result + (selfReferenceColName != null ? selfReferenceColName.hashCode() : 0);
     result = 31 * result + (referenceGeneration != null ? referenceGeneration.hashCode() : 0);
-    result = 31 * result + jdbcColumns.hashCode();
+    result = 31 * result + columns.hashCode();
     result = 31 * result + (indices != null ? indices.hashCode() : 0);
     result = 31 * result + (primaryKey != null ? primaryKey.hashCode() : 0);
     return result;

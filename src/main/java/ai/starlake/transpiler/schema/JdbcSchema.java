@@ -22,7 +22,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
-import java.util.TreeMap;
 import java.util.logging.Logger;
 
 public class JdbcSchema implements Comparable<JdbcSchema> {
@@ -32,7 +31,7 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
   String tableSchema;
   String tableCatalog;
 
-  TreeMap<String, JdbcTable> tables = new TreeMap<>();
+  public CaseInsensitiveLinkedHashMap<JdbcTable> tables = new CaseInsensitiveLinkedHashMap<>();
 
   public JdbcSchema(String tableSchema, String tableCatalog) {
     this.tableSchema = tableSchema != null ? tableSchema : "";
@@ -45,11 +44,10 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
     try (ResultSet rs = metaData.getSchemas();) {
 
       while (rs.next()) {
-        String tableSchema = rs.getString("TABLE_SCHEM"); // TABLE_SCHEM String => schema
-        // name
-        String tableCatalog = rs.getString("TABLE_CATALOG"); // TABLE_CATALOG String => catalog name
-                                                             // (may
-        // be null)
+        // TABLE_SCHEM String => schema name
+        String tableSchema = rs.getString("TABLE_SCHEM");
+        // TABLE_CATALOG String => catalog name (may be null)
+        String tableCatalog = rs.getString("TABLE_CATALOG");
         JdbcSchema jdbcSchema = new JdbcSchema(tableSchema, tableCatalog);
 
         jdbcSchemas.add(jdbcSchema);

@@ -41,7 +41,7 @@ public class JdbcResultSetMetaData implements ResultSetMetaData {
 
   @Override
   public boolean isAutoIncrement(int column) throws SQLException {
-    return columns.get(column).isAutomaticIncrement.equalsIgnoreCase("YES");
+    return columns.get(column - 1).isAutomaticIncrement.equalsIgnoreCase("YES");
   }
 
   @Override
@@ -64,7 +64,8 @@ public class JdbcResultSetMetaData implements ResultSetMetaData {
 
   @Override
   public int isNullable(int column) throws SQLException {
-    return columns.get(column).isNullable.equalsIgnoreCase("YES") ? columnNullable : columnNoNulls;
+    return columns.get(column - 1).isNullable.equalsIgnoreCase("YES") ? columnNullable
+        : columnNoNulls;
   }
 
   @Override
@@ -75,58 +76,58 @@ public class JdbcResultSetMetaData implements ResultSetMetaData {
 
   @Override
   public int getColumnDisplaySize(int column) throws SQLException {
-    return columns.get(column).columnSize;
+    return columns.get(column - 1).columnSize;
   }
 
   @Override
   public String getColumnLabel(int column) throws SQLException {
     if (labels.size() > column) {
-      String label = labels.get(column);
+      String label = labels.get(column - 1);
 
-      return label != null && !label.isEmpty() ? label : columns.get(column).columnName;
+      return label != null && !label.isEmpty() ? label : columns.get(column - 1).columnName;
     } else {
-      return columns.get(column).columnName;
+      return columns.get(column - 1).columnName;
     }
   }
 
   @Override
   public String getColumnName(int column) throws SQLException {
-    return columns.get(column).columnName;
+    return columns.get(column - 1).columnName;
   }
 
   @Override
   public String getSchemaName(int column) throws SQLException {
-    return columns.get(column).scopeSchema;
+    return columns.get(column - 1).scopeSchema;
   }
 
   @Override
   public int getPrecision(int column) throws SQLException {
-    return columns.get(column).columnSize;
+    return columns.get(column - 1).columnSize;
   }
 
   @Override
   public int getScale(int column) throws SQLException {
-    return columns.get(column).decimalDigits;
+    return columns.get(column - 1).decimalDigits;
   }
 
   @Override
   public String getTableName(int column) throws SQLException {
-    return columns.get(column).tableName;
+    return columns.get(column - 1).tableName;
   }
 
   @Override
   public String getCatalogName(int column) throws SQLException {
-    return columns.get(column).tableCatalog;
+    return columns.get(column - 1).tableCatalog;
   }
 
   @Override
   public int getColumnType(int column) throws SQLException {
-    return columns.get(column).dataType;
+    return columns.get(column - 1).dataType;
   }
 
   @Override
   public String getColumnTypeName(int column) throws SQLException {
-    return columns.get(column).typeName;
+    return columns.get(column - 1).typeName;
   }
 
   @Override
@@ -149,7 +150,7 @@ public class JdbcResultSetMetaData implements ResultSetMetaData {
 
   @Override
   public String getColumnClassName(int column) throws SQLException {
-    return columns.get(column).typeName;
+    return columns.get(column - 1).typeName;
   }
 
   @Override

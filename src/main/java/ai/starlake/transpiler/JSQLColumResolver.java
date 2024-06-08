@@ -16,27 +16,30 @@
  */
 package ai.starlake.transpiler;
 
-import ai.starlake.transpiler.schema.JdbcCatalog;
+import ai.starlake.transpiler.schema.CaseInsensitiveLinkedHashMap;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
-import ai.starlake.transpiler.schema.JdbcSchema;
-import ai.starlake.transpiler.schema.JdbcTable;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Database;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectItem;
 
 import java.sql.ResultSetMetaData;
+import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class JSQLColumResolver {
+  public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
 
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public static ResultSetMetaData getResultSetMetaData(String sqlStr, JdbcMetaData metaData,
@@ -50,86 +53,127 @@ public class JSQLColumResolver {
       FromItem fromItem = select.getFromItem();
       List<Join> joins = select.getJoins();
 
+      CaseInsensitiveLinkedHashMap<Table> fromTables = new CaseInsensitiveLinkedHashMap<>();
+      if (fromItem instanceof Table) {
+        Alias alias = fromItem.getAlias();
+        Table t = (Table) fromItem;
+
+        if (alias != null) {
+          fromTables.put(alias.getName(), (Table) fromItem);
+        } else {
+          fromTables.put(t.getName(), (Table) fromItem);
+        }
+      }
+
+      if (joins != null) {
+        for (Join join : joins) {
+          if (join.getFromItem() instanceof Table) {
+            Alias alias = fromItem.getAlias();
+            Table t = (Table) join.getFromItem();
+
+            if (alias != null) {
+              fromTables.put(alias.getName(), t);
+            } else {
+              fromTables.put(t.getName(), t);
+            }
+          }
+        }
+      }
+
+      for (Table t : fromTables.values()) {
+        if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
+          t.setSchemaName(currentSchemaName);
+        }
+
+        if (t.getDatabase() == null) {
+          t.setDatabase(new Database(currentCatalogName));
+        } else if (t.getDatabase().getDatabaseName() == null
+            || t.getDatabase().getDatabaseName().isEmpty()) {
+          t.getDatabase().setDatabaseName(currentCatalogName);
+        }
+      }
+
+      /* this is valid SQL:
+      
+      SELECT
+          main.sales.salesid
+      FROM main.sales
+       */
+
       // column positions in MetaData start at 1
-      int position = 1;
       for (SelectItem<?> selectItem : select.getSelectItems()) {
 
         if (selectItem.getExpression() instanceof Column) {
+          JdbcColumn jdbcColumn = null;
+
           Column column = (Column) selectItem.getExpression();
           Alias alias = selectItem.getAlias();
 
-          String tablename = null;
-          String schemaName = currentSchemaName;
-          String catalogName = currentCatalogName;
+          String columnTablename = null;
+          String columnSchemaName = null;
+          String columnCatalogName = null;
 
           Table table = column.getTable();
           if (table != null) {
-            tablename = table.getName();
+            columnTablename = table.getName();
 
             if (table.getSchemaName() != null) {
-              schemaName = table.getSchemaName();
+              columnSchemaName = table.getSchemaName();
             }
 
             if (table.getDatabase() != null) {
-              catalogName = table.getDatabase().getDatabaseName();
+              columnCatalogName = table.getDatabase().getDatabaseName();
             }
           }
 
-          JdbcCatalog jdbcCatalog = metaData.getCatalogs().get(catalogName);
-          if (jdbcCatalog == null) {
-            throw new RuntimeException(
-                "Catalog " + catalogName + " does not exist in the DatabaseMetaData.");
-          }
+          if (columnTablename != null) {
+            // column has a table name prefix, which could be the actual table name or the table's
+            // alias
+            String actualColumnTableName =
+                fromTables.containsKey(columnTablename) ? fromTables.get(columnTablename).getName()
+                    : null;
+            jdbcColumn = metaData.getColumn(columnCatalogName, columnSchemaName,
+                actualColumnTableName, column.getColumnName());
 
-          JdbcSchema jdbcSchema = jdbcCatalog.get(schemaName);
-          if (jdbcSchema == null) {
-            throw new RuntimeException(
-                "Schema " + schemaName + " does not exist in the given Catalog " + catalogName);
-          }
-
-          if (tablename != null) {
-            JdbcTable jdbcTable = jdbcSchema.get(tablename);
-            if (jdbcTable == null) {
-              throw new RuntimeException(
-                  "Table " + tablename + " does not exist in the given Schema " + schemaName);
+            if (jdbcColumn == null) {
+              throw new RuntimeException("Column " + column + " not found in tables "
+                  + Arrays.deepToString(fromTables.values().toArray()));
             } else {
-              JdbcColumn jdbcColumn = jdbcTable.jdbcColumns.get(column.getColumnName());
               resultSetMetaData.add(jdbcColumn,
                   alias != null ? alias.withUseAs(false).toString() : null);
-              throw new RuntimeException(
-                  "Column " + column + " does not exist in the given Table " + tablename);
+            }
+          } else {
+            // column has no table name prefix and we have to lookup in all tables of the scope
+            for (Table t : fromTables.values()) {
+              String tableSchemaName = t.getSchemaName();
+              String tableCatalogName =
+                  t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
+
+              jdbcColumn = metaData.getColumn(tableCatalogName, tableSchemaName, t.getName(),
+                  column.getColumnName());
+              if (jdbcColumn != null) {
+                break;
+              }
+            }
+            if (jdbcColumn == null) {
+              throw new RuntimeException("Column " + column + " not found in tables "
+                  + Arrays.deepToString(fromTables.values().toArray()));
+            } else {
+              resultSetMetaData.add(jdbcColumn,
+                  alias != null ? alias.withUseAs(false).toString() : null);
             }
           }
+        } else if (selectItem.getExpression() instanceof AllColumns) {
+          for (Table t : fromTables.values()) {
+            String tableSchemaName = t.getSchemaName();
+            String tableCatalogName =
+                t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
 
-          String tableCatalog = "";
-          String tableSchema = "";
-          String tableName = "";
-          String columnName = "";
-          Integer dataType = 0;
-          String typeName = "";
-          Integer columnSize = 0;
-          Integer decimalDigits = 0;
-          Integer numericPrecisionRadix = 0;
-          Integer nullable = ResultSetMetaData.columnNullable;
-          String remarks = "";
-          String columnDefinition = "";
-          Integer characterOctetLength = 0;
-          Integer ordinalPosition = ++position;
-          String isNullable = "YES";
-          String scopeCatalog = "";
-          String scopeSchema = "";
-          String scopeTable = "";
-          Short sourceDataType = 0;
-          String isAutomaticIncrement = "NO";
-          String isGeneratedColumn = "NO";
-
-          JdbcColumn jdbcColumn =
-              new JdbcColumn(tableCatalog, tableSchema, tableName, columnName, dataType, typeName,
-                  columnSize, decimalDigits, numericPrecisionRadix, nullable, remarks,
-                  columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
-                  scopeSchema, scopeTable, sourceDataType, isAutomaticIncrement, isGeneratedColumn);
-
-          resultSetMetaData.add(jdbcColumn, alias != null ? alias.getName() : null);
+            for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
+                t.getName(), null)) {
+              resultSetMetaData.add(jdbcColumn, null);
+            }
+          }
         }
       }
 

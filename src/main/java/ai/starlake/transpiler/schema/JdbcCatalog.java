@@ -21,7 +21,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.TreeMap;
 import java.util.logging.Logger;
 
 public class JdbcCatalog implements Comparable<JdbcCatalog> {
@@ -31,7 +30,7 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
   String tableCatalog;
   String catalogSeparator;
 
-  TreeMap<String, JdbcSchema> schemas = new TreeMap<>();
+  public CaseInsensitiveLinkedHashMap<JdbcSchema> schemas = new CaseInsensitiveLinkedHashMap<>();
 
   public JdbcCatalog(String tableCatalog, String catalogSeparator) {
     this.tableCatalog = tableCatalog != null ? tableCatalog : "";
