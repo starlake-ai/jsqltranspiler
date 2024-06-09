@@ -78,3 +78,17 @@ Command Line Options (CLI)
         FROM sales
         ORDER BY qtysold DESC, sellerid;"
 
+
+***********************
+TimeKey substitution
+***********************
+
+The transpiler can substitute time key expressions such as `CURRENT_DATE`, `CURRENT_TIME` or `CURRENT_TIMESTAMP` with System's properties like
+
+.. code:: java
+
+    System.setProperty("CURRENT_TIMESTAMP", "2024-06-09 16:24:23.123");
+    String expected = "SELECT TIMESTAMP WITHOUT TIME ZONE '2024-06-09T16:24:23.123'";
+    String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_TIMESTAMP", JSQLTranspiler.Dialect.ANY);
+
+    Assertions.assertThat(actual).isEqualTo(expected);
