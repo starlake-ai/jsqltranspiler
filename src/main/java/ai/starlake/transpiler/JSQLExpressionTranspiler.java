@@ -2160,7 +2160,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   public void visit(TimeKeyExpression expression) {
     String value = expression.getStringValue().toUpperCase().replaceAll("[()]", "");
-    if (value.equals("CURRENT_TIMEZONE")) {
+
+    if (System.getProperties().containsKey(value)) {
+      castDateTime(System.getProperty(value)).accept(this);
+    } else if (value.equals("CURRENT_TIMEZONE")) {
       Function function = new Function("StrFTime", new TimeKeyExpression("CURRENT_TIMESTAMP"),
           new StringValue("%Z"));
       function.accept(this);
@@ -2168,6 +2171,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       expression.setStringValue(value);
       super.visit(expression);
     }
+
   }
 
   public void visit(LikeExpression likeExpression) {
