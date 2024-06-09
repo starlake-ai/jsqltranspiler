@@ -19,11 +19,17 @@ package ai.starlake.transpiler.schema;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 public class JdbcTable implements Comparable<JdbcTable> {
@@ -57,6 +63,15 @@ public class JdbcTable implements Comparable<JdbcTable> {
     this.typeName = typeName;
     this.selfReferenceColName = selfReferenceColName;
     this.referenceGeneration = referenceGeneration;
+  }
+
+  public JdbcTable(String tableCatalog, String tableSchema, String tableName) {
+    this(tableCatalog, tableSchema, tableName, "TABLE", "Virtually generated", tableCatalog,
+        tableSchema, "TABLE", "", "");
+  }
+
+  public JdbcTable(JdbcCatalog catalog, JdbcSchema schema, String tableName) {
+    this(catalog.tableCatalog, schema.tableSchema, tableName);
   }
 
   public static Collection<JdbcTable> getTables(DatabaseMetaData metaData) throws SQLException {
@@ -267,6 +282,8 @@ public class JdbcTable implements Comparable<JdbcTable> {
         jdbcIndex.put(ordinalPosition, columnName, ascOrDesc, cardinality, pages, filterCondition);
       }
 
+    } catch (SQLFeatureNotSupportedException ex1) {
+      LOGGER.warning("This database does not support Index Information yet.");
     }
   }
 
@@ -417,5 +434,94 @@ public class JdbcTable implements Comparable<JdbcTable> {
     result = 31 * result + (indices != null ? indices.hashCode() : 0);
     result = 31 * result + (primaryKey != null ? primaryKey.hashCode() : 0);
     return result;
+  }
+
+  public JdbcColumn put(String key, JdbcColumn value) {
+    return columns.put(key, value);
+  }
+
+  public boolean containsValue(JdbcColumn value) {
+    return columns.containsValue(value);
+  }
+
+  public int size() {
+    return columns.size();
+  }
+
+  public JdbcColumn replace(String key, JdbcColumn value) {
+    return columns.replace(key, value);
+  }
+
+  public boolean isEmpty() {
+    return columns.isEmpty();
+  }
+
+  public JdbcColumn compute(String key,
+      BiFunction<? super String, ? super JdbcColumn, ? extends JdbcColumn> remappingFunction) {
+    return columns.compute(key, remappingFunction);
+  }
+
+  public void putAll(Map<? extends String, ? extends JdbcColumn> m) {
+    columns.putAll(m);
+  }
+
+  public Collection<JdbcColumn> values() {
+    return columns.values();
+  }
+
+  public boolean replace(String key, JdbcColumn oldValue, JdbcColumn newValue) {
+    return columns.replace(key, oldValue, newValue);
+  }
+
+  public void forEach(BiConsumer<? super String, ? super JdbcColumn> action) {
+    columns.forEach(action);
+  }
+
+  public JdbcColumn getOrDefault(String key, JdbcColumn defaultValue) {
+    return columns.getOrDefault(key, defaultValue);
+  }
+
+  public boolean remove(String key, JdbcColumn value) {
+    return columns.remove(key, value);
+  }
+
+  public JdbcColumn computeIfPresent(String key,
+      BiFunction<? super String, ? super JdbcColumn, ? extends JdbcColumn> remappingFunction) {
+    return columns.computeIfPresent(key, remappingFunction);
+  }
+
+  public void replaceAll(
+      BiFunction<? super String, ? super JdbcColumn, ? extends JdbcColumn> function) {
+    columns.replaceAll(function);
+  }
+
+  public JdbcColumn computeIfAbsent(String key,
+      Function<? super String, ? extends JdbcColumn> mappingFunction) {
+    return columns.computeIfAbsent(key, mappingFunction);
+  }
+
+  public JdbcColumn putIfAbsent(String key, JdbcColumn value) {
+    return columns.putIfAbsent(key, value);
+  }
+
+  public JdbcColumn merge(String key, JdbcColumn value,
+      BiFunction<? super JdbcColumn, ? super JdbcColumn, ? extends JdbcColumn> remappingFunction) {
+    return columns.merge(key, value, remappingFunction);
+  }
+
+  public JdbcColumn remove(String key) {
+    return columns.remove(key);
+  }
+
+  public void clear() {
+    columns.clear();
+  }
+
+  public Set<Entry<String, JdbcColumn>> entrySet() {
+    return columns.entrySet();
+  }
+
+  public Set<String> keySet() {
+    return columns.keySet();
   }
 }

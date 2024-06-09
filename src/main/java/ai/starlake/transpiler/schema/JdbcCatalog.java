@@ -21,14 +21,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 public class JdbcCatalog implements Comparable<JdbcCatalog> {
 
   public static final Logger LOGGER = Logger.getLogger(JdbcCatalog.class.getName());
 
-  String tableCatalog;
-  String catalogSeparator;
+  public String tableCatalog;
+  public String catalogSeparator;
 
   public CaseInsensitiveLinkedHashMap<JdbcSchema> schemas = new CaseInsensitiveLinkedHashMap<>();
 
@@ -87,5 +92,99 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
   @Override
   public int hashCode() {
     return tableCatalog.hashCode();
+  }
+
+  public JdbcSchema put(String key, JdbcSchema value) {
+    return schemas.put(key, value);
+  }
+
+  public boolean containsValue(JdbcSchema value) {
+    return schemas.containsValue(value);
+  }
+
+  public int size() {
+    return schemas.size();
+  }
+
+  public JdbcSchema replace(String key, JdbcSchema value) {
+    return schemas.replace(key, value);
+  }
+
+  public boolean isEmpty() {
+    return schemas.isEmpty();
+  }
+
+  public JdbcSchema compute(String key,
+      BiFunction<? super String, ? super JdbcSchema, ? extends JdbcSchema> remappingFunction) {
+    return schemas.compute(key, remappingFunction);
+  }
+
+  public void putAll(Map<? extends String, ? extends JdbcSchema> m) {
+    schemas.putAll(m);
+  }
+
+  public Collection<JdbcSchema> values() {
+    return schemas.values();
+  }
+
+  public boolean replace(String key, JdbcSchema oldValue, JdbcSchema newValue) {
+    return schemas.replace(key, oldValue, newValue);
+  }
+
+  public void forEach(BiConsumer<? super String, ? super JdbcSchema> action) {
+    schemas.forEach(action);
+  }
+
+  public JdbcSchema getOrDefault(String key, JdbcSchema defaultValue) {
+    return schemas.getOrDefault(key, defaultValue);
+  }
+
+  public boolean remove(String key, Object value) {
+    return schemas.remove(key, value);
+  }
+
+  public JdbcSchema computeIfPresent(String key,
+      BiFunction<? super String, ? super JdbcSchema, ? extends JdbcSchema> remappingFunction) {
+    return schemas.computeIfPresent(key, remappingFunction);
+  }
+
+  public void replaceAll(
+      BiFunction<? super String, ? super JdbcSchema, ? extends JdbcSchema> function) {
+    schemas.replaceAll(function);
+  }
+
+  public JdbcSchema computeIfAbsent(String key,
+      Function<? super String, ? extends JdbcSchema> mappingFunction) {
+    return schemas.computeIfAbsent(key, mappingFunction);
+  }
+
+  public JdbcSchema putIfAbsent(JdbcSchema value) {
+    return schemas.putIfAbsent(value.tableSchema, value);
+  }
+
+  public JdbcSchema merge(String key, JdbcSchema value,
+      BiFunction<? super JdbcSchema, ? super JdbcSchema, ? extends JdbcSchema> remappingFunction) {
+    return schemas.merge(key, value, remappingFunction);
+  }
+
+
+  public boolean containsKey(String key) {
+    return schemas.containsKey(key);
+  }
+
+  public JdbcSchema remove(String key) {
+    return schemas.remove(key);
+  }
+
+  public void clear() {
+    schemas.clear();
+  }
+
+  public Set<Map.Entry<String, JdbcSchema>> entrySet() {
+    return schemas.entrySet();
+  }
+
+  public Set<String> keySet() {
+    return schemas.keySet();
   }
 }

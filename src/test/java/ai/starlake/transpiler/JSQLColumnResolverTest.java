@@ -1,10 +1,13 @@
 package ai.starlake.transpiler;
 
+import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import com.opencsv.CSVWriter;
+import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -12,6 +15,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.File;
 import java.io.StringWriter;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,7 +55,6 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
 
     // update the meta data after prologue has been executed
     JdbcMetaData metaData = new JdbcMetaData(connDuck);
-    metaData.build();
 
     ResultSetMetaData resultSetMetaData = JSQLColumResolver.getResultSetMetaData(t.providedSqlStr,
         metaData, "JSQLTranspilerTest", "main");
@@ -102,5 +105,47 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
 
     Assertions.assertThat(stringWriter.toString().trim()).isEqualToIgnoringCase(t.expectedResult);
 
+  }
+
+  @Test
+  void testSimpleSchemaProvider() throws JSQLParserException, SQLException {
+    JdbcMetaData metaData = new JdbcMetaData("", "")
+        .addTable("a", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"))
+        .addTable("b", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"));
+
+    ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData("SELECT * FROM a, b", metaData);
+
+    Assertions.assertThat(6).isEqualTo(res.getColumnCount());
+
+    Assertions.assertThat(new String[] {"a", "col1"})
+        .isEqualTo(new String[] {res.getTableName(1), res.getColumnName(1)});
+    Assertions.assertThat(new String[] {"a", "col2"})
+        .isEqualTo(new String[] {res.getTableName(2), res.getColumnName(2)});
+    Assertions.assertThat(new String[] {"a", "col3"})
+        .isEqualTo(new String[] {res.getTableName(3), res.getColumnName(3)});
+    Assertions.assertThat(new String[] {"b", "col1"})
+        .isEqualTo(new String[] {res.getTableName(4), res.getColumnName(4)});
+    Assertions.assertThat(new String[] {"b", "col2"})
+        .isEqualTo(new String[] {res.getTableName(5), res.getColumnName(5)});
+    Assertions.assertThat(new String[] {"b", "col3"})
+        .isEqualTo(new String[] {res.getTableName(6), res.getColumnName(6)});
+  }
+
+  @Test
+  void testSimplerSchemaProvider() throws JSQLParserException, SQLException {
+    JdbcMetaData metaData = new JdbcMetaData().addTable("a", "col1", "col2", "col3").addTable("b",
+        "col1", "col2", "col3");
+
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData("SELECT b.* FROM a, b", metaData);
+
+    Assertions.assertThat(3).isEqualTo(res.getColumnCount());
+
+    Assertions.assertThat(new String[] {"b", "col1"})
+        .isEqualTo(new String[] {res.getTableName(1), res.getColumnName(1)});
+    Assertions.assertThat(new String[] {"b", "col2"})
+        .isEqualTo(new String[] {res.getTableName(2), res.getColumnName(2)});
+    Assertions.assertThat(new String[] {"b", "col3"})
+        .isEqualTo(new String[] {res.getTableName(3), res.getColumnName(3)});
   }
 }

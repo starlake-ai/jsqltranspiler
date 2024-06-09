@@ -21,15 +21,20 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 public class JdbcSchema implements Comparable<JdbcSchema> {
 
   public static final Logger LOGGER = Logger.getLogger(JdbcSchema.class.getName());
 
-  String tableSchema;
-  String tableCatalog;
+  public String tableSchema;
+  public String tableCatalog;
 
   public CaseInsensitiveLinkedHashMap<JdbcTable> tables = new CaseInsensitiveLinkedHashMap<>();
 
@@ -105,5 +110,98 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
     result = 31 * result + (tableCatalog != null ? tableCatalog.hashCode() : 0);
     result = 31 * result + (tables != null ? tables.hashCode() : 0);
     return result;
+  }
+
+  public JdbcTable put(String key, JdbcTable value) {
+    return tables.put(key, value);
+  }
+
+  public boolean containsValue(JdbcTable value) {
+    return tables.containsValue(value);
+  }
+
+  public int size() {
+    return tables.size();
+  }
+
+  public JdbcTable replace(String key, JdbcTable value) {
+    return tables.replace(key, value);
+  }
+
+  public boolean isEmpty() {
+    return tables.isEmpty();
+  }
+
+  public JdbcTable compute(String key,
+      BiFunction<? super String, ? super JdbcTable, ? extends JdbcTable> remappingFunction) {
+    return tables.compute(key, remappingFunction);
+  }
+
+  public void putAll(Map<? extends String, ? extends JdbcTable> m) {
+    tables.putAll(m);
+  }
+
+  public Collection<JdbcTable> values() {
+    return tables.values();
+  }
+
+  public boolean replace(String key, JdbcTable oldValue, JdbcTable newValue) {
+    return tables.replace(key, oldValue, newValue);
+  }
+
+  public void forEach(BiConsumer<? super String, ? super JdbcTable> action) {
+    tables.forEach(action);
+  }
+
+  public JdbcTable getOrDefault(String key, JdbcTable defaultValue) {
+    return tables.getOrDefault(key, defaultValue);
+  }
+
+  public boolean remove(String key, JdbcTable value) {
+    return tables.remove(key, value);
+  }
+
+  public JdbcTable computeIfPresent(String key,
+      BiFunction<? super String, ? super JdbcTable, ? extends JdbcTable> remappingFunction) {
+    return tables.computeIfPresent(key, remappingFunction);
+  }
+
+  public void replaceAll(
+      BiFunction<? super String, ? super JdbcTable, ? extends JdbcTable> function) {
+    tables.replaceAll(function);
+  }
+
+  public JdbcTable computeIfAbsent(String key,
+      Function<? super String, ? extends JdbcTable> mappingFunction) {
+    return tables.computeIfAbsent(key, mappingFunction);
+  }
+
+  public JdbcTable putIfAbsent(JdbcTable value) {
+    return tables.putIfAbsent(value.tableName, value);
+  }
+
+  public JdbcTable merge(String key, JdbcTable value,
+      BiFunction<? super JdbcTable, ? super JdbcTable, ? extends JdbcTable> remappingFunction) {
+    return tables.merge(key, value, remappingFunction);
+  }
+
+  public boolean containsKey(String key) {
+    return tables.containsKey(key);
+  }
+
+  public JdbcTable remove(String key) {
+    return tables.remove(key);
+  }
+
+  public void clear() {
+    tables.clear();
+  }
+
+  public Set<Map.Entry<String, JdbcTable>> entrySet() {
+    return tables.entrySet();
+  }
+
+  public Set<String> keySet() {
+    return tables.keySet();
   }
 }

@@ -39,9 +39,27 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
+/**
+ * A class for resolving the actual columns returned by a SELECT statement. Depends on virtual or
+ * physical Database Metadata holding the schema and table information.
+ */
 public class JSQLColumResolver {
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
 
+  /**
+   * Resolves the actual columns returned by a SELECT statement for a given CURRENT_CATALOG and
+   * CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
+   *
+   * @param sqlStr the `SELECT` statement text
+   * @param metaData the Database Meta Data
+   * @param currentCatalogName the CURRENT_CATALOG name (which is the default catalog for accessing
+   *        the schemas)
+   * @param currentSchemaName the CURRENT_SCHEMA name (which is the default schema for accessing the
+   *        tables)
+   * @return the ResultSetMetaData representing the actual columns returned by the `SELECT`
+   *         statement
+   * @throws JSQLParserException when the `SELECT` statement text can not be parsed
+   */
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public static ResultSetMetaData getResultSetMetaData(String sqlStr, JdbcMetaData metaData,
       String currentCatalogName, String currentSchemaName) throws JSQLParserException {
@@ -225,5 +243,20 @@ public class JSQLColumResolver {
     }
 
     return resultSetMetaData;
+  }
+
+  /**
+   * Resolves the actual columns returned by a SELECT statement for an empty CURRENT_CATALOG and an
+   * empty CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
+   *
+   * @param sqlStr the `SELECT` statement text
+   * @param metaData the Database Meta Data
+   * @return the ResultSetMetaData representing the actual columns returned by the `SELECT`
+   *         statement
+   * @throws JSQLParserException when the `SELECT` statement text can not be parsed
+   */
+  public static ResultSetMetaData getResultSetMetaData(String sqlStr, JdbcMetaData metaData)
+      throws JSQLParserException {
+    return getResultSetMetaData(sqlStr, metaData, "", "");
   }
 }
