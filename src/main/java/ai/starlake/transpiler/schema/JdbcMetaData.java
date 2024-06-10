@@ -75,6 +75,23 @@ public final class JdbcMetaData implements DatabaseMetaData {
     }
   }
 
+  /**
+   * Instantiates a new virtual JDBC MetaData object for the given CURRENT_CATALOG and CURRENT_SCHEMA
+   * and creates tables from the provided definition.
+   *
+   * @param catalogName      the CURRENT_CATALOG
+   * @param schemaName       the CURRENT_SCHEMA
+   * @param schemaDefinition the schema definition of tables and columns
+   */
+  public JdbcMetaData(String catalogName, String schemaName, String[][] schemaDefinition) {
+    this(catalogName, schemaName);
+    for (String[] tableDefinition : schemaDefinition) {
+      for (String columnName: Arrays.copyOfRange(tableDefinition, 1, tableDefinition.length)) {
+        addTable(catalogName, schemaName, tableDefinition[0], new JdbcColumn(columnName) );
+      }
+    }
+  }
+
   public static String getTypeName(int sqlType) {
     return SQL_TYPE_NAME_MAP.getOrDefault(sqlType, "UNKNOWN");
   }
