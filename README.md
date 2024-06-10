@@ -7,6 +7,7 @@ Supports `SELECT` queries as well as `INSERT`, `UPDATE`, `DELETE` and `MERGE` st
 Internal Functions will be rewritten based on the actual meaning and purpose of the function (since DuckDB `Any()` function does not necessarily behave like the RDBMS specific `Any()`). Respecting different function arguments count, order and type.
 
 Rewrite of Window- and Aggregate-Functions with full coverage of the RDBMS specific published samples. 
+The [matrix of supported features and functions](https://docs.google.com/spreadsheets/d/1jK6E1s2c0CWcw9rFeDvALdZ5wCshztdtlAHuNDaKQt4/edit?usp=sharing) is shared on Google Sheets.
 
 ## Dialects
 
@@ -51,6 +52,26 @@ SELECT
 
 ### Java Library
 
+Maven Artifact with Snapshot support:
+```xml
+<repositories>
+    <repository>
+        <id>jsqltranspiler-snapshots</id>
+        <snapshots>
+            <enabled>true</enabled>
+        </snapshots>
+        <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+    </repository>
+</repositories>
+
+<dependency>
+    <groupId>com.starlake-ai.jsqltranspiler</groupId>
+    <artifactId>jsqltranspiler</artifactId>
+    <version>0.6-SNAPSHOT</version>
+</dependency>
+```
+
+Calling the Java class:
 ```java
 import ai.starlake.transpiler.JSQLTranspiler;
 
@@ -113,6 +134,14 @@ String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_TIMESTAMP", JSQLTr
 
 Assertions.assertThat(actual).isEqualTo(expected);
 ```
+
+### Unsupported features
+
+Please refer to the [Feature Matrix](https://docs.google.com/spreadsheets/d/1jK6E1s2c0CWcw9rFeDvALdZ5wCshztdtlAHuNDaKQt4/edit?usp=sharing):
+
+- DuckDB's Number and Currency formatting is very limited right now
+- `Geography`, `JSon` and `XML` functions have not been implemented yet, but are planned
+- `SELECT * REPLACE(...)` on DuckDB works very differently (replaces value instead of label)
 
 ## License
 
