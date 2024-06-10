@@ -53,9 +53,6 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
       }
     }
 
-    // update the meta data after prologue has been executed
-    JdbcMetaData metaData = new JdbcMetaData(connDuck);
-
     ResultSetMetaData resultSetMetaData = JSQLColumResolver.getResultSetMetaData(t.providedSqlStr,
         metaData, "JSQLTranspilerTest", "main");
 
@@ -67,7 +64,7 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
 
         /* we can skip these for now
         , "auto increment"
-        , "case sensitive"
+        , "case-sensitive"
         , "searchable"
         , "currency"
         , "nullable"
@@ -89,7 +86,7 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
 
           /* we can skip these for now
           , "auto increment"
-          , "case sensitive"
+          , "case-sensitive"
           , "searchable"
           , "currency"
           , "nullable"
@@ -147,5 +144,38 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
         .isEqualTo(new String[] {res.getTableName(2), res.getColumnName(2)});
     Assertions.assertThat(new String[] {"b", "col3"})
         .isEqualTo(new String[] {res.getTableName(3), res.getColumnName(3)});
+  }
+
+  @Test
+  void testSimplestSchemaProvider() throws JSQLParserException, SQLException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"}};
+
+    // allows for:
+    // JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
+
+    String sqlStr = "SELECT b.* FROM a, b";
+
+    String[][] expected = new String[][] {{"b", "col1"}, {"b", "col2"}, {"b", "col3"}};
+
+    assertThatResolvesInto(schemaDefinition, sqlStr, expected);
+  }
+
+  private ResultSetMetaData assertThatResolvesInto(String[][] schemaDefinition, String sqlStr,
+      String[][] expectedColumns) throws SQLException, JSQLParserException {
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData(sqlStr, new JdbcMetaData(schemaDefinition));
+
+    assertThatResolvesInto(res, expectedColumns);
+
+    return res;
+  }
+
+  private void assertThatResolvesInto(ResultSetMetaData res, String[][] expectedColumns)
+      throws SQLException {
+    Assertions.assertThat(res.getColumnCount()).isEqualTo(expectedColumns.length);
+    for (int i = 0; i < expectedColumns.length; i++) {
+      Assertions.assertThat(new String[] {res.getTableName(i + 1), res.getColumnName(i + 1)})
+          .isEqualTo(expectedColumns[i]);
+    }
   }
 }

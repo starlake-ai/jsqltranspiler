@@ -61,6 +61,20 @@ public final class JdbcMetaData implements DatabaseMetaData {
     }
   }
 
+
+  /**
+   * Instantiates a new virtual JDBC MetaData object with an empty CURRENT_CATALOG and an empty
+   * CURRENT_SCHEMA and creates tables from the provided definition.
+   *
+   * @param schemaDefinition the schema definition of tables and columns
+   */
+  public JdbcMetaData(String[][] schemaDefinition) {
+    this("", "");
+    for (String[] tableDefinition : schemaDefinition) {
+      addTable(tableDefinition[0], Arrays.copyOfRange(tableDefinition, 1, tableDefinition.length));
+    }
+  }
+
   public static String getTypeName(int sqlType) {
     return SQL_TYPE_NAME_MAP.getOrDefault(sqlType, "UNKNOWN");
   }
@@ -214,12 +228,6 @@ public final class JdbcMetaData implements DatabaseMetaData {
             "Table " + tableName + " does not exist in the given Schema " + schemaName);
       } else {
         jdbcColumn = jdbcTable.columns.get(columnName);
-        if (jdbcColumn == null) {
-          LOGGER.info("Available columns: "
-              + Arrays.deepToString(jdbcTable.columns.keySet().toArray(new String[0])));
-          throw new RuntimeException(
-              "Column " + columnName + " does not exist in the given Table " + tableName);
-        }
       }
     } else {
       for (JdbcTable jdbcTable : jdbcSchema.tables.values()) {
@@ -227,10 +235,6 @@ public final class JdbcMetaData implements DatabaseMetaData {
         if (jdbcColumn != null) {
           break;
         }
-      }
-      if (jdbcColumn == null) {
-        throw new RuntimeException(
-            "Column " + columnName + " does not exist in the given Schema " + schemaName);
       }
     }
     return jdbcColumn;

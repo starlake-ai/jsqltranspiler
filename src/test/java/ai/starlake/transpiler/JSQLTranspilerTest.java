@@ -16,6 +16,7 @@
  */
 package ai.starlake.transpiler;
 
+import ai.starlake.transpiler.schema.JdbcMetaData;
 import com.opencsv.CSVWriter;
 import com.opencsv.ResultSetHelperService;
 import net.sf.jsqlparser.JSQLParserException;
@@ -73,6 +74,7 @@ public class JSQLTranspilerTest {
   private final static String EXTRACTION_PATH =
       System.getProperty("java.io.tmpdir") + File.separator + UUID.randomUUID();
   public static Connection connDuck;
+  public static JdbcMetaData metaData;
   private static boolean isInitialised = false;
 
   private static final Pattern SQL_COMMENT_PATTERN =
@@ -342,6 +344,9 @@ public class JSQLTranspilerTest {
           st.execute(s);
         }
       }
+
+      LOGGER.info("Fetching the MetaData");
+      metaData = new JdbcMetaData(connDuck);
 
       LOGGER.info("Finished preparation.");
       isInitialised = true;
