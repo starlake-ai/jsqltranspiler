@@ -51,6 +51,7 @@ import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionLi
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
+import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
@@ -1000,6 +1001,17 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       rewrittenExpression.accept(this);
     }
+  }
+
+  public void visit(AllColumns allColumns) {
+    if (allColumns.getReplaceExpressions() != null) {
+      warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
+      allColumns.setReplaceExpressions(null);
+    }
+
+    // DuckDB uses "EXCLUDE" instead "EXCEPT", because why not?!
+    super.visit(allColumns.getExceptColumns() != null ? allColumns.setExceptKeyword("EXCLUDE")
+        : allColumns);
   }
 
   @SuppressWarnings({"PMD.ExcessiveMethodLength"})
