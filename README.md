@@ -6,7 +6,7 @@ Supports `SELECT` queries as well as `INSERT`, `UPDATE`, `DELETE` and `MERGE` st
 
 Internal Functions will be rewritten based on the actual meaning and purpose of the function (since DuckDB `Any()` function does not necessarily behave like the RDBMS specific `Any()`). Respecting different function arguments count, order and type.
 
-Rewrite of Window- and Aggregate-Functions.
+Rewrite of Window- and Aggregate-Functions with full coverage of the RDBMS specific published samples. 
 
 ## Dialects
 
