@@ -977,13 +977,22 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           break;
 
         case GENERATE_DATE_ARRAY:
-          function.setName("Generate_Series");
-          function.setParameters(new CastExpression(parameters.get(0), "DATE"),
-              new CastExpression(parameters.get(1), "DATE"),
-              new CastExpression(parameters.get(2), "INTERVAL"));
-          rewrittenExpression = new CastExpression(function, "DATE[]");
+          switch (paramCount) {
+            case 2:
+              function.setName("Generate_Series");
+              function.setParameters(new CastExpression(parameters.get(0), "DATE"),
+                  new CastExpression(parameters.get(1), "DATE"), new IntervalExpression(1, "DAY"));
+              rewrittenExpression = new CastExpression(function, "DATE[]");
+              break;
+            case 3:
+              function.setName("Generate_Series");
+              function.setParameters(new CastExpression(parameters.get(0), "DATE"),
+                  new CastExpression(parameters.get(1), "DATE"),
+                  new CastExpression(parameters.get(2), "INTERVAL"));
+              rewrittenExpression = new CastExpression(function, "DATE[]");
+              break;
+          }
           break;
-
         case GENERATE_TIMESTAMP_ARRAY:
           function.setName("Generate_Series");
           function.setParameters(new CastExpression(parameters.get(0), "TIMESTAMP"),
