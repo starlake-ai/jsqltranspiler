@@ -22,6 +22,7 @@ import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Database;
@@ -36,6 +37,8 @@ import net.sf.jsqlparser.statement.select.SelectItem;
 
 import java.sql.ResultSetMetaData;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -123,67 +126,51 @@ public class JSQLColumResolver {
       for (SelectItem<?> selectItem : select.getSelectItems()) {
 
         if (selectItem.getExpression() instanceof Column) {
-          JdbcColumn jdbcColumn = null;
-
           Column column = (Column) selectItem.getExpression();
           Alias alias = selectItem.getAlias();
+          JdbcColumn jdbcColumn = getJdbcColumn(metaData, column, fromTables);
 
-          String columnTablename = null;
-          String columnSchemaName = null;
-          String columnCatalogName = null;
-
-          Table table = column.getTable();
-          if (table != null) {
-            columnTablename = table.getName();
-
-            if (table.getSchemaName() != null) {
-              columnSchemaName = table.getSchemaName();
-            }
-
-            if (table.getDatabase() != null) {
-              columnCatalogName = table.getDatabase().getDatabaseName();
-            }
-          }
-
-          if (columnTablename != null) {
-            // column has a table name prefix, which could be the actual table name or the table's
-            // alias
-            String actualColumnTableName =
-                fromTables.containsKey(columnTablename) ? fromTables.get(columnTablename).getName()
-                    : null;
-            jdbcColumn = metaData.getColumn(columnCatalogName, columnSchemaName,
-                actualColumnTableName, column.getColumnName());
-
-            if (jdbcColumn == null) {
-              throw new RuntimeException("Column " + column + " not found in tables "
-                  + Arrays.deepToString(fromTables.values().toArray()));
-            } else {
-              resultSetMetaData.add(jdbcColumn,
-                  alias != null ? alias.withUseAs(false).toString() : null);
-            }
+          if (jdbcColumn == null) {
+            throw new RuntimeException("Column " + column + " not found in tables "
+                + Arrays.deepToString(fromTables.values().toArray()));
           } else {
-            // column has no table name prefix and we have to lookup in all tables of the scope
-            for (Table t : fromTables.values()) {
-              String tableSchemaName = t.getSchemaName();
-              String tableCatalogName =
-                  t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
-
-              jdbcColumn = metaData.getColumn(tableCatalogName, tableSchemaName, t.getName(),
-                  column.getColumnName());
-              if (jdbcColumn != null) {
-                break;
-              }
-            }
-            if (jdbcColumn == null) {
-              throw new RuntimeException("Column " + column + " not found in tables "
-                  + Arrays.deepToString(fromTables.values().toArray()));
-            } else {
-              resultSetMetaData.add(jdbcColumn,
-                  alias != null ? alias.withUseAs(false).toString() : null);
-            }
+            resultSetMetaData.add(jdbcColumn,
+                alias != null ? alias.withUseAs(false).toString() : null);
           }
         } else if (selectItem.getExpression() instanceof AllTableColumns) {
           AllTableColumns allTableColumns = (AllTableColumns) selectItem.getExpression();
+          Table table = allTableColumns.getTable();
+
+          HashSet<JdbcColumn> excepts = new HashSet<>();
+          ExpressionList<Column> exceptColumns = allTableColumns.getExceptColumns();
+          if (exceptColumns != null) {
+            for (Column c : exceptColumns) {
+              JdbcColumn jdbcColumn = getJdbcColumn(metaData,
+                  c.getTable() == null ? c.withTable(table) : c, fromTables);
+              if (jdbcColumn != null) {
+                excepts.add(jdbcColumn);
+              } else {
+                LOGGER.warning("Could not resolve EXCEPT Column " + c.getFullyQualifiedName());
+              }
+            }
+          }
+
+          HashMap<JdbcColumn, Alias> replaceMap = new HashMap<>();
+          List<SelectItem<Column>> replaceExpressions = allTableColumns.getReplaceExpressions();
+          if (replaceExpressions != null) {
+            for (SelectItem<Column> c : replaceExpressions) {
+              JdbcColumn jdbcColumn = getJdbcColumn(metaData,
+                  c.getExpression().getTable() == null ? c.getExpression().withTable(table)
+                      : c.getExpression(),
+                  fromTables);
+              if (jdbcColumn != null) {
+                replaceMap.put(jdbcColumn, c.getAlias());
+              } else {
+                LOGGER.warning("Could not resolve REPLACE Column "
+                    + c.getExpression().getFullyQualifiedName());
+              }
+            }
+          }
 
           /*
           -- invalid:
@@ -198,7 +185,7 @@ public class JSQLColumResolver {
           from  JSQLTranspilerTest.main.listing
            */
 
-          Table table = allTableColumns.getTable();
+
           String columnTablename = null;
           if (table != null) {
             columnTablename = table.getName();
@@ -220,10 +207,68 @@ public class JSQLColumResolver {
 
             for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
                 actualTable.getName(), null)) {
-              resultSetMetaData.add(jdbcColumn, null);
+
+              if (!excepts.contains(jdbcColumn)) {
+                Alias alias = replaceMap.get(jdbcColumn);
+                resultSetMetaData.add(jdbcColumn, alias != null ? alias.getName() : null);
+              }
             }
           }
         } else if (selectItem.getExpression() instanceof AllColumns) {
+          AllColumns allColumns = (AllColumns) selectItem.getExpression();
+
+          HashSet<JdbcColumn> excepts = new HashSet<>();
+          ExpressionList<Column> exceptColumns = allColumns.getExceptColumns();
+          if (exceptColumns != null) {
+            for (Column c : exceptColumns) {
+              if (c.getTable() != null) {
+                JdbcColumn jdbcColumn = getJdbcColumn(metaData, c, fromTables);
+                if (jdbcColumn != null) {
+                  excepts.add(jdbcColumn);
+                } else {
+                  LOGGER.warning("Could not resolve EXCEPT Column " + c.getFullyQualifiedName());
+                }
+              } else {
+                for (Table t : fromTables.values()) {
+                  JdbcColumn jdbcColumn = getJdbcColumn(metaData, c.withTable(t), fromTables);
+                  if (jdbcColumn != null) {
+                    excepts.add(jdbcColumn);
+                  } else {
+                    LOGGER.fine("Could not resolve EXCEPT Column " + c.getFullyQualifiedName());
+                  }
+                }
+              }
+            }
+          }
+
+          HashMap<JdbcColumn, Alias> replaceMap = new HashMap<>();
+          List<SelectItem<Column>> replaceExpressions = allColumns.getReplaceExpressions();
+          if (replaceExpressions != null) {
+            for (SelectItem<Column> c : replaceExpressions) {
+              if (c.getExpression().getTable() != null) {
+                JdbcColumn jdbcColumn = getJdbcColumn(metaData, c.getExpression(), fromTables);
+                if (jdbcColumn != null) {
+                  replaceMap.put(jdbcColumn, c.getAlias());
+                } else {
+                  LOGGER.warning("Could not resolve REPLACE Column "
+                      + c.getExpression().getFullyQualifiedName());
+                }
+              } else {
+                for (Table t : fromTables.values()) {
+                  JdbcColumn jdbcColumn =
+                      getJdbcColumn(metaData, c.getExpression().withTable(t), fromTables);
+                  if (jdbcColumn != null) {
+                    replaceMap.put(jdbcColumn, c.getAlias());
+                  } else {
+                    LOGGER.warning("Could not resolve REPLACE Column "
+                        + c.getExpression().getFullyQualifiedName());
+                  }
+                }
+              }
+            }
+          }
+
+
           for (Table t : fromTables.values()) {
             String tableSchemaName = t.getSchemaName();
             String tableCatalogName =
@@ -231,7 +276,12 @@ public class JSQLColumResolver {
 
             for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
                 t.getName(), null)) {
-              resultSetMetaData.add(jdbcColumn, null);
+
+              if (!excepts.contains(jdbcColumn)) {
+                Alias alias = replaceMap.get(jdbcColumn);
+                resultSetMetaData.add(jdbcColumn, alias != null ? alias.getName() : null);
+              }
+
             }
           }
         }
@@ -243,6 +293,52 @@ public class JSQLColumResolver {
     }
 
     return resultSetMetaData;
+  }
+
+  private static JdbcColumn getJdbcColumn(JdbcMetaData metaData, Column column,
+      CaseInsensitiveLinkedHashMap<Table> fromTables) {
+    JdbcColumn jdbcColumn = null;
+    String columnTablename = null;
+    String columnSchemaName = null;
+    String columnCatalogName = null;
+
+    Table table = column.getTable();
+    if (table != null) {
+      columnTablename = table.getName();
+
+      if (table.getSchemaName() != null) {
+        columnSchemaName = table.getSchemaName();
+      }
+
+      if (table.getDatabase() != null) {
+        columnCatalogName = table.getDatabase().getDatabaseName();
+      }
+    }
+
+    if (columnTablename != null) {
+      // column has a table name prefix, which could be the actual table name or the table's
+      // alias
+      String actualColumnTableName =
+          fromTables.containsKey(columnTablename) ? fromTables.get(columnTablename).getName()
+              : null;
+      jdbcColumn = metaData.getColumn(columnCatalogName, columnSchemaName, actualColumnTableName,
+          column.getColumnName());
+
+    } else {
+      // column has no table name prefix and we have to lookup in all tables of the scope
+      for (Table t : fromTables.values()) {
+        String tableSchemaName = t.getSchemaName();
+        String tableCatalogName =
+            t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
+
+        jdbcColumn = metaData.getColumn(tableCatalogName, tableSchemaName, t.getName(),
+            column.getColumnName());
+        if (jdbcColumn != null) {
+          break;
+        }
+      }
+    }
+    return jdbcColumn;
   }
 
   /**

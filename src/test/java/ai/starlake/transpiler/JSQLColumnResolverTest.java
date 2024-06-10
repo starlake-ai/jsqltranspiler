@@ -160,6 +160,81 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     assertThatResolvesInto(schemaDefinition, sqlStr, expected);
   }
 
+  @Test
+  void testExcludeAllColumns() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT * EXCEPT(col1, col2, colB) FROM a, b";
+    String[][] expected =
+        new String[][] {{"a", "col3"}, {"a", "colA"}, {"b", "col3"}, {"b", "colA"}};
+    assertThatResolvesInto(sqlStr, expected);
+
+
+    sqlStr = "SELECT * EXCEPT(b.col1, b.col2, b.colB) FROM a, b";
+    expected = new String[][] {{"a", "col1"}, {"a", "col2"}, {"a", "col3"}, {"a", "colA"},
+        {"a", "colB"}, {"b", "col3"}, {"b", "colA"}};
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testExcludeAllTableColumns() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT b.* EXCEPT(col1, col2, colB) FROM a, b";
+    String[][] expected = new String[][] {{"b", "col3"}, {"b", "colA"}};
+    assertThatResolvesInto(sqlStr, expected);
+
+
+    sqlStr = "SELECT b.* EXCEPT(b.col1, b.col2, b.colB) FROM a, b";
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testReplaceAllTableColumns() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT b.* REPLACE(col1 AS replacement1, col2 AS replacement2) FROM a, b";
+    String[][] expected = new String[][] {{"b", "col1", "replacement1"},
+        {"b", "col2", "replacement2"}, {"b", "col3"}, {"b", "colA"}, {"b", "colB"}};
+    assertThatResolvesInto(sqlStr, expected);
+
+
+    sqlStr = "SELECT b.* REPLACE(b.col1 AS replacement1, b.col2 AS replacement2) FROM a, b";
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testReplaceAllColumns() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT * REPLACE(col1 AS replacement1, col2 AS replacement2) FROM a, b";
+    String[][] expected =
+        new String[][] {{"a", "col1", "replacement1"}, {"a", "col2", "replacement2"}, {"a", "col3"},
+            {"a", "colA"}, {"a", "colB"}, {"b", "col1", "replacement1"},
+            {"b", "col2", "replacement2"}, {"b", "col3"}, {"b", "colA"}, {"b", "colB"}};
+    assertThatResolvesInto(sqlStr, expected);
+
+
+    sqlStr = "SELECT * REPLACE(b.col1 AS replacement1, b.col2 AS replacement2) FROM a, b";
+    expected = new String[][] {{"a", "col1"}, {"a", "col2"}, {"a", "col3"}, {"a", "colA"},
+        {"a", "colB"}, {"b", "col1", "replacement1"}, {"b", "col2", "replacement2"}, {"b", "col3"},
+        {"b", "colA"}, {"b", "colB"}};
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  @Test
+  @Disabled
+  void testColumns() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT COLUMNS('b\\.col\\d+') FROM a, b";
+    String[][] expected = new String[][] {{"b", "col1"}, {"b", "col2"}, {"b", "col3"}};
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  private ResultSetMetaData assertThatResolvesInto(String sqlStr, String[][] expectedColumns)
+      throws SQLException, JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3", "colA", "colB"},
+        {"b", "col1", "col2", "col3", "colA", "colB"}};
+
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData(sqlStr, new JdbcMetaData(schemaDefinition));
+
+    assertThatResolvesInto(res, expectedColumns);
+
+    return res;
+  }
+
   private ResultSetMetaData assertThatResolvesInto(String[][] schemaDefinition, String sqlStr,
       String[][] expectedColumns) throws SQLException, JSQLParserException {
     ResultSetMetaData res =
@@ -174,8 +249,16 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
       throws SQLException {
     Assertions.assertThat(res.getColumnCount()).isEqualTo(expectedColumns.length);
     for (int i = 0; i < expectedColumns.length; i++) {
-      Assertions.assertThat(new String[] {res.getTableName(i + 1), res.getColumnName(i + 1)})
-          .isEqualTo(expectedColumns[i]);
+      // No Label expected
+      if (expectedColumns[i].length == 2) {
+        Assertions.assertThat(new String[] {res.getTableName(i + 1), res.getColumnName(i + 1)})
+            .isEqualTo(expectedColumns[i]);
+
+        // Label is explicitly expected
+      } else {
+        Assertions.assertThat(new String[] {res.getTableName(i + 1), res.getColumnName(i + 1),
+            res.getColumnLabel(i + 1)}).isEqualTo(expectedColumns[i]);
+      }
     }
   }
 }
