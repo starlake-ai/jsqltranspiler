@@ -1,4 +1,4 @@
-# JSQLTranspiler [Website](https://starlake.ai/starlake/)
+# JSQLTranspiler [Try it](https://starlake.ai/starlake/index.html#sql-transpiler)
 
 A pure Java stand-alone SQL Transpiler for translating various large RDBMS SQL Dialects into a few smaller RDBMS Dialects for Unit Testing. Based on JSQLParser.
 
