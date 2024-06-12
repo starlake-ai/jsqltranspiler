@@ -85,7 +85,7 @@ assertEquals(expectedSQL, result);
 ### Web API
 ```shell
 curl -X 'POST'                                                                   \
-  'https://secure-api.starlake.ai/api/v1/transpiler/transpile?dialect=SNOWFLAKE' \
+  'https://starlake.ai/api/v1/transpiler/transpile?dialect=SNOWFLAKE'            \
   -H 'accept: text/plain'                                                        \
   -H 'Content-Type: text/plain'                                                  \
   -d 'SELECT Nvl(null, 1) a'
