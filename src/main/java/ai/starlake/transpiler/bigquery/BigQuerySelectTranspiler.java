@@ -23,7 +23,6 @@ import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.Collections;
 import java.util.List;
 
 public class BigQuerySelectTranspiler extends JSQLSelectTranspiler {
@@ -34,15 +33,16 @@ public class BigQuerySelectTranspiler extends JSQLSelectTranspiler {
   }
 
   public void visit(PlainSelect select) {
-    if (select.getBigQuerySelectQualifier()!=null) {
+    if (select.getBigQuerySelectQualifier() != null) {
       switch (select.getBigQuerySelectQualifier()) {
         case AS_VALUE:
           select.setBigQuerySelectQualifier(null);
           break;
         case AS_STRUCT:
           select.setBigQuerySelectQualifier(null);
-          StructType structType = new StructType(StructType.Dialect.DUCKDB, List.copyOf(select.getSelectItems()));
-          select.setSelectItems(List.of( new SelectItem<>( structType, "VALUE_TABLE" )));
+          StructType structType =
+              new StructType(StructType.Dialect.DUCKDB, List.copyOf(select.getSelectItems()));
+          select.setSelectItems(List.of(new SelectItem<>(structType, "VALUE_TABLE")));
           break;
       }
     }

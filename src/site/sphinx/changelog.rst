@@ -8,6 +8,12 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **fix: BigQuery `SELECT AS STRUCT ...` and `SELECT AS VALUE ...`**
+    
+    Andreas Reichel, 2024-06-13
+  * **API URL update**
+    
+    Hayssam Saleh, 2024-06-12
   * **Update readme & licence**
     
     Hayssam Saleh, 2024-06-11
@@ -17,6 +23,11 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
   * **fix: BigQuery `GENERATE_DATE_ARRAY` with only 2 parameters**
     
     Andreas Reichel, 2024-06-10
+
+Version 0.5
+=============================================================
+
+
   * **Update README.md**
     
     manticore-projects, 2024-06-10

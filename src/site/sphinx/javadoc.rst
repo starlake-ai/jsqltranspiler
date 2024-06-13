@@ -12,7 +12,7 @@
 
 
 #######################################################################
-JSQLTranspiler 0.5-SNAPSHOT API
+JSQLTranspiler 0.6-SNAPSHOT API
 #######################################################################
 
 Base Package: ai.starlake.jsqltranspiler
