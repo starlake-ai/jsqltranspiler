@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com> on behalf of Starlake.AI
+ * Copyright (C) 2024 Starlake.AI
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package ai.starlake.transpiler.bigquery;
 
 import ai.starlake.transpiler.JSQLTranspiler;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -24,5 +25,9 @@ public class BigQueryTranspiler extends JSQLTranspiler {
   public BigQueryTranspiler() throws InvocationTargetException, NoSuchMethodException,
       InstantiationException, IllegalAccessException {
     super(BigQuerySelectTranspiler.class, BigQueryExpressionTranspiler.class);
+  }
+
+  void visit(PlainSelect select) {
+
   }
 }

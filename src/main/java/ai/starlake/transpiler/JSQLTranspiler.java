@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com> on behalf of Starlake.AI
+ * Copyright (C) 2024 Starlake.AI
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The type JSQLTranspiler.
@@ -69,6 +71,8 @@ public class JSQLTranspiler extends StatementDeParser {
   protected final JSQLUpdateTranspiler updateTranspiler;
   protected final JSQLDeleteTranspiler deleteTranspiler;
   protected final JSQLMergeTranspiler mergeTranspiler;
+
+  private final static Pattern DOUBLE_QUOTES_PATTERN = Pattern.compile("(?<=^|[^\"'])(\"(?!.*\").*?\"|\".*?(?<![\"'])(\"))(?![\"'])");
 
   protected JSQLTranspiler(Class<? extends JSQLSelectTranspiler> selectTranspilerClass,
       Class<? extends JSQLExpressionTranspiler> expressionTranspilerClass)
@@ -110,17 +114,30 @@ public class JSQLTranspiler extends StatementDeParser {
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public static String transpileQuery(String qryStr, Dialect dialect,
       ExecutorService executorService, Consumer<CCJSqlParser> consumer) throws JSQLParserException {
-    Statement st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
+    Statement st;
+
     switch (dialect) {
       case GOOGLE_BIG_QUERY:
+        // Replace Double quoted string literals with single quoted string literals
+        Matcher matcher = DOUBLE_QUOTES_PATTERN.matcher(qryStr);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+          matcher.appendReplacement(sb, matcher.group().replaceAll("^\"|\"$", "'"));
+        }
+        matcher.appendTail(sb);
+        st = CCJSqlParserUtil.parse(sb.toString(), executorService, consumer);
         return transpileBigQuery(st);
       case DATABRICKS:
+        st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
         return transpileDatabricks(st);
       case SNOWFLAKE:
+        st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
         return transpileSnowflake(st);
       case AMAZON_REDSHIFT:
+        st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
         return transpileAmazonRedshift(st);
       default:
+        st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
         return transpile(st);
     }
   }

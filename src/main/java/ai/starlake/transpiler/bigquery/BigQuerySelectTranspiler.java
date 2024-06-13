@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com> on behalf of Starlake.AI
+ * Copyright (C) 2024 Starlake.AI
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,35 @@
 package ai.starlake.transpiler.bigquery;
 
 import ai.starlake.transpiler.JSQLSelectTranspiler;
+import net.sf.jsqlparser.expression.StructType;
+import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collections;
+import java.util.List;
 
 public class BigQuerySelectTranspiler extends JSQLSelectTranspiler {
   public BigQuerySelectTranspiler(Class<? extends ExpressionDeParser> expressionDeparserClass,
       StringBuilder builder) throws NoSuchMethodException, InvocationTargetException,
       InstantiationException, IllegalAccessException {
     super(expressionDeparserClass, builder);
+  }
+
+  public void visit(PlainSelect select) {
+    if (select.getBigQuerySelectQualifier()!=null) {
+      switch (select.getBigQuerySelectQualifier()) {
+        case AS_VALUE:
+          select.setBigQuerySelectQualifier(null);
+          break;
+        case AS_STRUCT:
+          select.setBigQuerySelectQualifier(null);
+          StructType structType = new StructType(StructType.Dialect.DUCKDB, List.copyOf(select.getSelectItems()));
+          select.setSelectItems(List.of( new SelectItem<>( structType, "VALUE_TABLE" )));
+          break;
+      }
+    }
+    super.visit(select);
   }
 }

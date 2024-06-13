@@ -109,6 +109,10 @@ JSQLExpressionTranspiler
 |          Function function
 
 
+| **visit** (allColumns)
+|          AllColumns allColumns
+
+
 | *@SuppressWarnings*
 | **visit** (function)
 |          AnalyticExpression function
@@ -533,6 +537,10 @@ BigQuerySelectTranspiler
 | **BigQuerySelectTranspiler** (expressionDeparserClass, builder)
 |          :ref:`Class<java.lang.Class>` expressionDeparserClass
 |          :ref:`StringBuilder<java.lang.StringBuilder>` builder
+
+
+| **visit** (select)
+|          PlainSelect select
 
 
 
