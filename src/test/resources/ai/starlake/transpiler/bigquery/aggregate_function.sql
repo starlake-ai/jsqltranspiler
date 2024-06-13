@@ -119,12 +119,12 @@ FROM (select UNNEST([0, 2, NULL, 4, 4, 5]) AS x) as x;
 
 -- result
 "x","avg"
+"",""
 "0","0.0"
 "2","1.0"
 "4","3.0"
 "4","4.0"
 "5","4.5"
-"","5.0"
 
 
 -- provided
@@ -230,7 +230,7 @@ order by 1 NULLS FIRST;
 
 -- result
 "x","num_negative"
-"","1"
+"","0"
 "-10","2"
 "-7","2"
 "-2","1"
@@ -261,12 +261,12 @@ ORDER BY product_name, product_type;
 
 -- result
 "product_type","product_name","product_sum","product_type_agg","product_name_agg"
+"","","42","1","1"
+"pants","","6","0","1"
+"shirt","","36","0","1"
 "","jeans","6","1","0"
 "","polo","25","1","0"
 "","t-shirt","11","1","0"
-"pants","","6","0","1"
-"shirt","","36","0","1"
-"","","42","1","1"
 
 
 -- provided
@@ -394,11 +394,11 @@ FROM( SELECT UNNEST( ['apple',NULL,'pear','banana','pear'] )AS FRUIT ) AS FRUIT
 
 -- result
 "fruit","string_agg"
+"",""
 "pear","pear & pear"
 "pear","pear & pear"
 "apple","pear & pear & apple"
 "banana","pear & pear & apple & banana"
-"","pear & pear & apple & banana"
 
 
 -- provided

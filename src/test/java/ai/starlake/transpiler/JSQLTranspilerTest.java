@@ -254,6 +254,8 @@ public class JSQLTranspilerTest {
         new File(EXTRACTION_PATH, JSQLTranspilerTest.class.getSimpleName() + ".duckdb");
     Properties info = new Properties();
     info.put("old_implicit_casting", "true");
+    // info.put("default_null_order", "NULLS FIRST");
+    // info.put("default_order", "ASC");
     connDuck = DriverManager.getConnection("jdbc:duckdb:" + fileDuckDB.getAbsolutePath(), info);
 
     if (!isInitialised) {
@@ -481,6 +483,11 @@ public class JSQLTranspilerTest {
       int i = 0;
       try (Statement st = connDuck.createStatement()) {
         st.executeUpdate("set timezone='Asia/Bangkok'");
+
+        if (t.inputDialect == JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY) {
+          st.executeUpdate("set default_null_order='NULLS FIRST'");
+          st.executeUpdate("set default_order='ASC'");
+        }
 
         try (ResultSet rs = st.executeQuery(transpiledSqlStr);) {
           while (rs.next()) {
