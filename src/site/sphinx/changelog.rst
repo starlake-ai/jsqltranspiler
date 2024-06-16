@@ -4,6 +4,64 @@ Changelog
 ************************
 
 
+Latest Changes since |JSQLTRANSPILER_VERSION|
+=============================================================
+
+
+  * **fix: BigQuery `SELECT AS STRUCT ...` and `SELECT AS VALUE ...`**
+    
+    Andreas Reichel, 2024-06-13
+  * **API URL update**
+    
+    Hayssam Saleh, 2024-06-12
+  * **Update readme & licence**
+    
+    Hayssam Saleh, 2024-06-11
+  * **docs: Move feature matrix to Google Sheets**
+    
+    Andreas Reichel, 2024-06-10
+  * **fix: BigQuery `GENERATE_DATE_ARRAY` with only 2 parameters**
+    
+    Andreas Reichel, 2024-06-10
+
+Version 0.5
+=============================================================
+
+
+  * **Update README.md**
+    
+    manticore-projects, 2024-06-10
+  * **feat: Transpile `EXCEPT` and `REPLACE` clauses**
+    
+    Andreas Reichel, 2024-06-10
+  * **feat: Time Key substitutions**
+    
+    Andreas Reichel, 2024-06-09
+  * **feat: Time Key substitutions**
+    
+    Andreas Reichel, 2024-06-09
+  * **style: apply license headers**
+    
+    Andreas Reichel, 2024-06-07
+  * **build: small gradle fixes**
+    
+    Andreas Reichel, 2024-06-06
+  * **Update project root name**
+    
+    Hayssam Saleh, 2024-06-04
+  * **test publication by updating secrets**
+    
+    Hayssam Saleh, 2024-06-04
+  * **Sonatype credentials passed through gradle.properties**
+    
+    Hayssam Saleh, 2024-06-04
+  * **Do not sign snapshots**
+    
+    Hayssam Saleh, 2024-06-04
+  * **build: fix gradle upload task**
+    
+    Andreas Reichel, 2024-06-04
+
 Version 0.4
 =============================================================
 

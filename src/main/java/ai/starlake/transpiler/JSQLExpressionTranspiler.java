@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com> on behalf of Starlake.AI
+ * Copyright (C) 2024 Starlake.AI
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,6 +77,7 @@ import java.util.regex.Pattern;
  */
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class JSQLExpressionTranspiler extends ExpressionDeParser {
+  final private Pattern ARRAY_COLUMN_TYPE_PATTERN = Pattern.compile("ARRAY<(.+)>");
 
   public JSQLExpressionTranspiler(SelectDeParser deParser, StringBuilder buffer) {
     super(deParser, buffer);
@@ -977,13 +978,22 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           break;
 
         case GENERATE_DATE_ARRAY:
-          function.setName("Generate_Series");
-          function.setParameters(new CastExpression(parameters.get(0), "DATE"),
-              new CastExpression(parameters.get(1), "DATE"),
-              new CastExpression(parameters.get(2), "INTERVAL"));
-          rewrittenExpression = new CastExpression(function, "DATE[]");
+          switch (paramCount) {
+            case 2:
+              function.setName("Generate_Series");
+              function.setParameters(new CastExpression(parameters.get(0), "DATE"),
+                  new CastExpression(parameters.get(1), "DATE"), new IntervalExpression(1, "DAY"));
+              rewrittenExpression = new CastExpression(function, "DATE[]");
+              break;
+            case 3:
+              function.setName("Generate_Series");
+              function.setParameters(new CastExpression(parameters.get(0), "DATE"),
+                  new CastExpression(parameters.get(1), "DATE"),
+                  new CastExpression(parameters.get(2), "INTERVAL"));
+              rewrittenExpression = new CastExpression(function, "DATE[]");
+              break;
+          }
           break;
-
         case GENERATE_TIMESTAMP_ARRAY:
           function.setName("Generate_Series");
           function.setParameters(new CastExpression(parameters.get(0), "TIMESTAMP"),
@@ -1918,12 +1928,25 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   // @todo: complete the data type mapping
   // implement an Enum on Big Query allowed data types
   public ColDataType rewriteType(ColDataType colDataType) {
+    String dataTypeStr = colDataType.getDataType();
+
+
+
     if (CastExpression.isOf(colDataType, CastExpression.DataType.BYTES,
         CastExpression.DataType.VARBYTE)) {
       colDataType.setDataType("BLOB");
-    } else if (colDataType.getDataType().equalsIgnoreCase("FLOAT64")) {
+    } else if (dataTypeStr.equalsIgnoreCase("FLOAT64")) {
       colDataType.setDataType("FLOAT8");
+//    } else if (dataTypeStr.equalsIgnoreCase("INT64")) {
+//      colDataType.setDataType("INT8");
+    } else {
+      Matcher matcher = ARRAY_COLUMN_TYPE_PATTERN.matcher(dataTypeStr);
+      if (matcher.find()) {
+        dataTypeStr = matcher.group(1);
+        return new ColDataType( dataTypeStr + "[]");
+      }
     }
+
     return colDataType;
   }
 

@@ -18,11 +18,15 @@ package ai.starlake.transpiler.bigquery;
 
 import ai.starlake.transpiler.JSQLTranspiler;
 import ai.starlake.transpiler.JSQLTranspilerTest;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.File;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class BigQueryTranspilerTest extends JSQLTranspilerTest {
@@ -40,4 +44,26 @@ public class BigQueryTranspilerTest extends JSQLTranspilerTest {
     super.transpile(f, idx, t);
   }
 
+
+  @Test
+  void testRegex() {
+    String input = "\"Replace\" and \"Repl\"\"\"ace\"";
+    String expected = "'Replace' and 'Repl\"\"\"ace'";
+
+    // Pattern to match starting and ending double quotes unless enclosed in double or single quotes
+    Pattern pattern = Pattern.compile("(?<=^|[^\"'])(\"(?!.*\").*?\"|\".*?(?<![\"'])(\"))(?![\"'])");
+    Matcher matcher = pattern.matcher(input);
+
+    StringBuilder sb = new StringBuilder();
+    while (matcher.find()) {
+      String match = matcher.group();
+      String replaced = match.replaceAll("^\"|\"$", "'");
+      matcher.appendReplacement(sb, replaced);
+    }
+    matcher.appendTail(sb);
+
+
+    Assertions.assertEquals(expected, sb.toString());
+
+  }
 }

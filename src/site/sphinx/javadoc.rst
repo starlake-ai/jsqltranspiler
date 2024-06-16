@@ -12,7 +12,7 @@
 
 
 #######################################################################
-JSQLTranspiler 0.5-SNAPSHOT API
+JSQLTranspiler 0.6-SNAPSHOT API
 #######################################################################
 
 Base Package: ai.starlake.jsqltranspiler
@@ -107,6 +107,10 @@ JSQLExpressionTranspiler
 | *@SuppressWarnings*
 | **visit** (function)
 |          Function function
+
+
+| **visit** (allColumns)
+|          AllColumns allColumns
 
 
 | *@SuppressWarnings*
@@ -533,6 +537,10 @@ BigQuerySelectTranspiler
 | **BigQuerySelectTranspiler** (expressionDeparserClass, builder)
 |          :ref:`Class<java.lang.Class>` expressionDeparserClass
 |          :ref:`StringBuilder<java.lang.StringBuilder>` builder
+
+
+| **visit** (select)
+|          PlainSelect select
 
 
 
