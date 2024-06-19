@@ -39,7 +39,7 @@ import java.util.function.Function;
 import java.util.logging.Logger;
 
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
-public final class JdbcMetaData implements DatabaseMetaData {
+public final class JdbcMetaData implements DatabaseMetaData, Cloneable {
   public final static Logger LOGGER = Logger.getLogger(JdbcMetaData.class.getName());
   public static final Map<Integer, String> SQL_TYPE_NAME_MAP = new HashMap<>();
 
@@ -1346,5 +1346,40 @@ public final class JdbcMetaData implements DatabaseMetaData {
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
     return false;
+  }
+
+  public static JdbcMetaData copyOf(JdbcMetaData metaData) {
+    JdbcMetaData metaData1 =
+        new JdbcMetaData(metaData.currentCatalogName, metaData.currentSchemaName);
+
+    for (JdbcCatalog catalog : metaData.catalogs.values()) {
+      JdbcCatalog catalog1 = new JdbcCatalog(catalog.tableCatalog, metaData.catalogSeparator);
+      for (JdbcSchema schema : catalog.schemas.values()) {
+        JdbcSchema schema1 = new JdbcSchema(schema.tableSchema, schema.tableCatalog);
+        for (JdbcTable table : schema.tables.values()) {
+          JdbcTable table1 = getJdbcTable(table);
+          // @todo: add indices and reference
+          schema1.put(table1);
+        }
+        catalog1.put(schema1);
+      }
+    }
+    return metaData1;
+  }
+
+  private static JdbcTable getJdbcTable(JdbcTable table) {
+    JdbcTable table1 = new JdbcTable(table.tableCatalog, table.tableSchema, table.tableName,
+        table.tableType, table.remarks, table.typeCatalog, table.typeSchema, table.typeName,
+        table.selfReferenceColName, table.referenceGeneration);
+    for (JdbcColumn column : table.columns.values()) {
+      JdbcColumn column1 = new JdbcColumn(column.tableCatalog, column.tableSchema, column.tableName,
+          column.columnName, column.dataType, column.typeName, column.columnSize,
+          column.decimalDigits, column.numericPrecisionRadix, column.nullable, column.remarks,
+          column.columnDefinition, column.characterOctetLength, column.ordinalPosition,
+          column.isNullable, column.scopeCatalog, column.scopeSchema, column.scopeTable,
+          column.sourceDataType, column.isAutomaticIncrement, column.isGeneratedColumn);
+      table1.add(column1);
+    }
+    return table1;
   }
 }

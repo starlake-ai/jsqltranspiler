@@ -35,16 +35,16 @@ import java.util.logging.Logger;
 public class JdbcTable implements Comparable<JdbcTable> {
   public static final Logger LOGGER = Logger.getLogger(JdbcTable.class.getName());
 
-  String tableCatalog;
-  String tableSchema;
-  String tableName;
-  String tableType;
-  String remarks;
-  String typeCatalog;
-  String typeSchema;
-  String typeName;
-  String selfReferenceColName;
-  String referenceGeneration;
+  public String tableCatalog;
+  public String tableSchema;
+  public String tableName;
+  public String tableType;
+  public String remarks;
+  public String typeCatalog;
+  public String typeSchema;
+  public String typeName;
+  public String selfReferenceColName;
+  public String referenceGeneration;
 
   public CaseInsensitiveLinkedHashMap<JdbcColumn> columns = new CaseInsensitiveLinkedHashMap<>();
   public CaseInsensitiveLinkedHashMap<JdbcIndex> indices = new CaseInsensitiveLinkedHashMap<>();
@@ -343,6 +343,19 @@ public class JdbcTable implements Comparable<JdbcTable> {
   }
 
   public JdbcColumn add(JdbcColumn jdbcColumn) {
+    return columns.put(jdbcColumn.columnName, jdbcColumn);
+  }
+
+  public JdbcColumn add(String tableCatalog, String tableSchema, String tableName,
+      String columnName, Integer dataType, String typeName, Integer columnSize,
+      Integer decimalDigits, Integer numericPrecisionRadix, Integer nullable, String remarks,
+      String columnDefinition, Integer characterOctetLength, Integer ordinalPosition,
+      String isNullable, String scopeCatalog, String scopeSchema, String scopeTable,
+      Short sourceDataType, String isAutomaticIncrement, String isGeneratedColumn) {
+    JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
+        dataType, typeName, columnSize, decimalDigits, numericPrecisionRadix, nullable, remarks,
+        columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
+        scopeSchema, scopeTable, sourceDataType, isAutomaticIncrement, isGeneratedColumn);
     return columns.put(jdbcColumn.columnName, jdbcColumn);
   }
 

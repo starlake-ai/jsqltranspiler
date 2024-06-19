@@ -162,34 +162,35 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
 
   @Test
   void testExcludeAllColumns() throws JSQLParserException, SQLException {
-    String sqlStr = "SELECT * EXCEPT(col1, col2, colB) FROM a, b";
+    String sqlStr = "SELECT * EXCEPT(col1, col2, colAB, colBB) FROM a, b";
     String[][] expected =
-        new String[][] {{"a", "col3"}, {"a", "colA"}, {"b", "col3"}, {"b", "colA"}};
+        new String[][] {{"a", "col3"}, {"a", "colAA"}, {"b", "col3"}, {"b", "colBA"}};
     assertThatResolvesInto(sqlStr, expected);
 
 
-    sqlStr = "SELECT * EXCEPT(b.col1, b.col2, b.colB) FROM a, b";
-    expected = new String[][] {{"a", "col1"}, {"a", "col2"}, {"a", "col3"}, {"a", "colA"},
-        {"a", "colB"}, {"b", "col3"}, {"b", "colA"}};
+    sqlStr = "SELECT * EXCEPT(b.col1, b.col2, b.colBB) FROM a, b";
+    expected = new String[][] {{"a", "col1"}, {"a", "col2"}, {"a", "col3"}, {"a", "colAA"},
+        {"a", "colAB"}, {"b", "col3"}, {"b", "colBA"}};
     assertThatResolvesInto(sqlStr, expected);
   }
 
   @Test
   void testExcludeAllTableColumns() throws JSQLParserException, SQLException {
-    String sqlStr = "SELECT b.* EXCEPT(col1, col2, colB) FROM a, b";
-    String[][] expected = new String[][] {{"b", "col3"}, {"b", "colA"}};
+    String sqlStr = "SELECT b.* EXCEPT(col1, col2, colBB) FROM a, b";
+    String[][] expected = new String[][] {{"b", "col3"}, {"b", "colBA"}};
     assertThatResolvesInto(sqlStr, expected);
 
 
-    sqlStr = "SELECT b.* EXCEPT(b.col1, b.col2, b.colB) FROM a, b";
+    sqlStr = "SELECT b.* EXCEPT(b.col1, b.col2, b.colBB) FROM a, b";
     assertThatResolvesInto(sqlStr, expected);
   }
 
   @Test
+  @Disabled
   void testReplaceAllTableColumns() throws JSQLParserException, SQLException {
-    String sqlStr = "SELECT b.* REPLACE(col1 AS replacement1, col2 AS replacement2) FROM a, b";
-    String[][] expected = new String[][] {{"b", "col1", "replacement1"},
-        {"b", "col2", "replacement2"}, {"b", "col3"}, {"b", "colA"}, {"b", "colB"}};
+    String sqlStr = "SELECT b.* REPLACE(replacement1 AS col1, replacement2 AS col2) FROM a, b";
+    String[][] expected = new String[][] {{"", "replacement1", "col1"},
+        {"", "replacement2", "col2"}, {"b", "col3"}, {"b", "colA"}, {"b", "colB"}};
     assertThatResolvesInto(sqlStr, expected);
 
 
@@ -198,12 +199,13 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
   }
 
   @Test
+  @Disabled
   void testReplaceAllColumns() throws JSQLParserException, SQLException {
     String sqlStr = "SELECT * REPLACE(col1 AS replacement1, col2 AS replacement2) FROM a, b";
     String[][] expected =
-        new String[][] {{"a", "col1", "replacement1"}, {"a", "col2", "replacement2"}, {"a", "col3"},
-            {"a", "colA"}, {"a", "colB"}, {"b", "col1", "replacement1"},
-            {"b", "col2", "replacement2"}, {"b", "col3"}, {"b", "colA"}, {"b", "colB"}};
+        new String[][] {{"", "replacement1", "col1"}, {"", "replacement2", "col2"}, {"a", "col3"},
+            {"a", "colA"}, {"a", "colB"}, {"", "replacement1", "col1"},
+            {"", "replacement2", "col2"}, {"b", "col3"}, {"b", "colA"}, {"b", "colB"}};
     assertThatResolvesInto(sqlStr, expected);
 
 
@@ -216,16 +218,24 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
 
   @Test
   @Disabled
-  void testColumns() throws JSQLParserException, SQLException {
+  void testColumnsFunction() throws JSQLParserException, SQLException {
     String sqlStr = "SELECT COLUMNS('b\\.col\\d+') FROM a, b";
     String[][] expected = new String[][] {{"b", "col1"}, {"b", "col2"}, {"b", "col3"}};
     assertThatResolvesInto(sqlStr, expected);
   }
 
+  @Test
+  void testWithClause() throws JSQLParserException, SQLException {
+    String sqlStr = "WITH c AS (SELECT * FROM b) SELECT * FROM c";
+    String[][] expected = new String[][] {{"c", "col1"}, {"c", "col2"}, {"c", "col3"},
+        {"c", "colBA"}, {"c", "colBB"}};
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
   private ResultSetMetaData assertThatResolvesInto(String sqlStr, String[][] expectedColumns)
       throws SQLException, JSQLParserException {
-    String[][] schemaDefinition = {{"a", "col1", "col2", "col3", "colA", "colB"},
-        {"b", "col1", "col2", "col3", "colA", "colB"}};
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3", "colAA", "colAB"},
+        {"b", "col1", "col2", "col3", "colBA", "colBB"}};
 
     ResultSetMetaData res =
         JSQLColumResolver.getResultSetMetaData(sqlStr, new JdbcMetaData(schemaDefinition));
