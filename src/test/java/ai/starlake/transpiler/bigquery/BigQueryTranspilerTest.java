@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Andreas Reichel <andreas@manticore-projects.com> on behalf of Starlake.AI
+ * Copyright (C) 2024 Starlake.AI
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,8 @@ public class BigQueryTranspilerTest extends JSQLTranspilerTest {
     String expected = "'Replace' and 'Repl\"\"\"ace'";
 
     // Pattern to match starting and ending double quotes unless enclosed in double or single quotes
-    Pattern pattern = Pattern.compile("(?<=^|[^\"'])(\"(?!.*\").*?\"|\".*?(?<![\"'])(\"))(?![\"'])");
+    Pattern pattern =
+        Pattern.compile("(?<=^|[^\"'])(\"(?!.*\").*?\"|\".*?(?<![\"'])(\"))(?![\"'])");
     Matcher matcher = pattern.matcher(input);
 
     StringBuilder sb = new StringBuilder();

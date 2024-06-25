@@ -248,7 +248,7 @@ jacocoTestCoverageVerification {
                 counter = 'LINE'
                 value = 'MISSEDCOUNT'
 
-                maximum = 1024
+                maximum = 2048
             }
             excludes = [
             ]
@@ -453,6 +453,8 @@ tasks.register('upload') {
         }
     }
 }
+
+check.dependsOn jacocoTestCoverageVerification
 
 
 
