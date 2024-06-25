@@ -72,7 +72,8 @@ public class JSQLTranspiler extends StatementDeParser {
   protected final JSQLDeleteTranspiler deleteTranspiler;
   protected final JSQLMergeTranspiler mergeTranspiler;
 
-  private final static Pattern DOUBLE_QUOTES_PATTERN = Pattern.compile("(?<=^|[^\"'])(\"(?!.*\").*?\"|\".*?(?<![\"'])(\"))(?![\"'])");
+  private final static Pattern DOUBLE_QUOTES_PATTERN =
+      Pattern.compile("(?<=^|[^\"'])(\"(?!.*\").*?\"|\".*?(?<![\"'])(\"))(?![\"'])");
 
   protected JSQLTranspiler(Class<? extends JSQLSelectTranspiler> selectTranspilerClass,
       Class<? extends JSQLExpressionTranspiler> expressionTranspilerClass)
@@ -452,26 +453,31 @@ public class JSQLTranspiler extends StatementDeParser {
     }
   }
 
-  public void visit(Select select) {
-    select.accept(selectTranspiler);
+  public StringBuilder visit(Select select) {
+    select.accept(selectTranspiler, null);
+    return buffer;
   }
 
-  public void visit(Insert insert) {
+  public StringBuilder visit(Insert insert) {
     insertTranspiler.deParse(insert);
+    return buffer;
   }
 
-  public void visit(Update update) {
+  public StringBuilder visit(Update update) {
     updateTranspiler.deParse(update);
 
+    return buffer;
   }
 
-  public void visit(Delete delete) {
+  public StringBuilder visit(Delete delete) {
     deleteTranspiler.deParse(delete);
+    return buffer;
   }
 
 
-  public void visit(Merge merge) {
+  public StringBuilder visit(Merge merge) {
     mergeTranspiler.deParse(merge);
+    return buffer;
   }
 
   /**

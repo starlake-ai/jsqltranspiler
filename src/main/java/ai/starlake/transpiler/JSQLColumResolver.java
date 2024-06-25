@@ -32,10 +32,19 @@ import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
+import net.sf.jsqlparser.statement.select.FromItemVisitor;
 import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.LateralSubSelect;
+import net.sf.jsqlparser.statement.select.ParenthesedFromItem;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.SelectVisitor;
+import net.sf.jsqlparser.statement.select.SetOperationList;
+import net.sf.jsqlparser.statement.select.TableFunction;
+import net.sf.jsqlparser.statement.select.TableStatement;
+import net.sf.jsqlparser.statement.select.Values;
 import net.sf.jsqlparser.statement.select.WithItem;
 
 import java.sql.ResultSetMetaData;
@@ -50,8 +59,37 @@ import java.util.logging.Logger;
  * A class for resolving the actual columns returned by a SELECT statement. Depends on virtual or
  * physical Database Metadata holding the schema and table information.
  */
-public class JSQLColumResolver {
+@SuppressWarnings({"PMD.CyclomaticComplexity"})
+public class JSQLColumResolver
+    implements SelectVisitor<JdbcResultSetMetaData>, FromItemVisitor<JdbcResultSetMetaData> {
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
+
+  private final String currentCatalogName;
+  private final String currentSchemaName;
+
+  private final JdbcMetaData metaData;
+
+  public JSQLColumResolver(String currentCatalogName, String currentSchemaName,
+      JdbcMetaData metaData) {
+    this.currentCatalogName = currentCatalogName;
+    this.currentSchemaName = currentSchemaName;
+    this.metaData = metaData;
+
+  }
+
+  public JSQLColumResolver(JdbcMetaData metaData) {
+    this("", "", metaData);
+  }
+
+  public JSQLColumResolver(String currentCatalogName, String currentSchemaName,
+      String[][] metaDataDefinition) {
+    this(currentCatalogName, currentSchemaName, new JdbcMetaData(metaDataDefinition));
+  }
+
+  public JSQLColumResolver(String[][] metaDataDefinition) {
+    this("", "", metaDataDefinition);
+  }
+
 
   /**
    * Resolves the actual columns returned by a SELECT statement for a given CURRENT_CATALOG and
@@ -70,25 +108,22 @@ public class JSQLColumResolver {
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public static ResultSetMetaData getResultSetMetaData(String sqlStr, JdbcMetaData metaData,
       String currentCatalogName, String currentSchemaName) throws JSQLParserException {
-    JdbcResultSetMetaData resultSetMetaData;
-
     if (sqlStr == null || sqlStr.trim().isEmpty()) {
       throw new JSQLParserException("The provided Statement must not be empty.");
     }
 
-    Statement st = CCJSqlParserUtil.parse(sqlStr);
+    JSQLColumResolver resolver =
+        new JSQLColumResolver(currentCatalogName, currentSchemaName, metaData);
 
-    if (st instanceof PlainSelect) {
+    Statement st = CCJSqlParserUtil.parse(sqlStr);
+    if (st instanceof Select) {
       PlainSelect select = (PlainSelect) st;
-      resultSetMetaData =
-          getResultSetMetaData(metaData, currentCatalogName, currentSchemaName, select);
+      return select.accept(resolver, metaData);
 
     } else {
       throw new RuntimeException(
           st.getClass().getSimpleName() + " Statements are not supported yet.");
     }
-
-    return resultSetMetaData;
   }
 
   /**
@@ -110,7 +145,7 @@ public class JSQLColumResolver {
       String currentCatalogName, String currentSchemaName) throws JSQLParserException {
     JdbcMetaData metaData =
         new JdbcMetaData(currentCatalogName, currentSchemaName, metaDataDefinition);
-    return getResultSetMetaData(sqlStr, metaData);
+    return getResultSetMetaData(sqlStr, metaData, currentCatalogName, currentSchemaName);
   }
 
   /**
@@ -124,16 +159,143 @@ public class JSQLColumResolver {
    *         statement
    * @throws JSQLParserException when the `SELECT` statement text can not be parsed
    */
-  public static ResultSetMetaData getResultSetMetaData(String sqlStr, String[][] metaDataDefinition)
+  public ResultSetMetaData getResultSetMetaData(String sqlStr, String[][] metaDataDefinition)
       throws JSQLParserException {
-    JdbcMetaData metaData = new JdbcMetaData(metaDataDefinition);
-    return getResultSetMetaData(sqlStr, metaData);
+    JdbcMetaData metaData =
+        new JdbcMetaData(currentCatalogName, currentSchemaName, metaDataDefinition);
+    return getResultSetMetaData(sqlStr, metaData, "", "");
   }
 
-  @SuppressWarnings({"PMD.ExcessiveMethodLength", "PMD.CyclomaticComplexity"})
-  private static JdbcResultSetMetaData getResultSetMetaData(JdbcMetaData metaData,
-      String currentCatalogName, String currentSchemaName, PlainSelect select) {
+  private static JdbcColumn getJdbcColumn(JdbcMetaData metaData, Column column,
+      CaseInsensitiveLinkedHashMap<Table> fromTables) {
+    JdbcColumn jdbcColumn = null;
+    String columnTableName = null;
+    String columnSchemaName = null;
+    String columnCatalogName = null;
+
+    Table table = column.getTable();
+    if (table != null) {
+      columnTableName = table.getName();
+
+      if (table.getSchemaName() != null) {
+        columnSchemaName = table.getSchemaName();
+      }
+
+      if (table.getDatabase() != null) {
+        columnCatalogName = table.getDatabase().getDatabaseName();
+      }
+    }
+
+    if (columnTableName != null) {
+      // column has a table name prefix, which could be the actual table name or the table's
+      // alias
+      String actualColumnTableName =
+          fromTables.containsKey(columnTableName) ? fromTables.get(columnTableName).getName()
+              : null;
+      jdbcColumn = metaData.getColumn(columnCatalogName, columnSchemaName, actualColumnTableName,
+          column.getColumnName());
+
+    } else {
+      // column has no table name prefix and we have to lookup in all tables of the scope
+      for (Table t : fromTables.values()) {
+        String tableSchemaName = t.getSchemaName();
+        String tableCatalogName =
+            t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
+
+        jdbcColumn = metaData.getColumn(tableCatalogName, tableSchemaName, t.getName(),
+            column.getColumnName());
+        if (jdbcColumn != null) {
+          break;
+        }
+      }
+    }
+    return jdbcColumn;
+  }
+
+  /**
+   * Resolves the actual columns returned by a SELECT statement for an empty CURRENT_CATALOG and an
+   * empty CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
+   *
+   * @param sqlStr the `SELECT` statement text
+   * @return the ResultSetMetaData representing the actual columns returned by the `SELECT`
+   *         statement
+   * @throws JSQLParserException when the `SELECT` statement text can not be parsed
+   */
+  public ResultSetMetaData getResultSetMetaData(String sqlStr) throws JSQLParserException {
+
+    Statement st = CCJSqlParserUtil.parse(sqlStr);
+    if (st instanceof Select) {
+      Select select = (Select) st;
+      return select.accept(this, metaData);
+    } else {
+      throw new RuntimeException("Unsupported Statement");
+    }
+  }
+
+
+  @Override
+  public <S> JdbcResultSetMetaData visit(Table table, S s) {
+    JdbcResultSetMetaData rsMetaData = new JdbcResultSetMetaData();
+
+    if (table.getSchemaName() == null || table.getSchemaName().isEmpty()) {
+      table.setSchemaName(currentSchemaName);
+    }
+
+    if (table.getDatabase() == null) {
+      table.setDatabase(new Database(currentCatalogName));
+    } else if (table.getDatabase().getDatabaseName() == null
+        || table.getDatabase().getDatabaseName().isEmpty()) {
+      table.getDatabase().setDatabaseName(currentCatalogName);
+    }
+
+    for (JdbcColumn jdbcColumn : metaData.getTableColumns(table.getDatabase().getDatabaseName(),
+        table.getSchemaName(), table.getName(), null)) {
+
+      rsMetaData.add(jdbcColumn, null);
+    }
+
+    return rsMetaData;
+  }
+
+  public JdbcResultSetMetaData visit(ParenthesedSelect parenthesedSelect, JdbcMetaData parameters) {
+    JdbcResultSetMetaData rsMetaData = null;
+    Alias alias = parenthesedSelect.getAlias();
+    JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName,
+        alias != null ? parenthesedSelect.getAlias().getName() : "");
+
+    rsMetaData = parenthesedSelect.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this,
+        JdbcMetaData.copyOf(parameters));
+    try {
+      int columnCount = rsMetaData.getColumnCount();
+      for (int i = 1; i <= columnCount; i++) {
+        t.add(t.tableCatalog, t.tableSchema, t.tableName, rsMetaData.getColumnName(i),
+            rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
+            rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
+            "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getCatalogName(i),
+            rsMetaData.getSchemaName(i), rsMetaData.getTableName(i), null, "", "");
+      }
+      metaData.put(t);
+    } catch (SQLException ex) {
+      throw new RuntimeException("Error in WITH clause " + parenthesedSelect.toString(), ex);
+    }
+    return rsMetaData;
+  }
+
+  @Override
+  public <S> JdbcResultSetMetaData visit(ParenthesedSelect parenthesedSelect, S parameters) {
+    if (parameters instanceof JdbcMetaData) {
+      JdbcMetaData metaData1 = (JdbcMetaData) parameters;
+      return visit(parenthesedSelect, JdbcMetaData.copyOf(metaData1));
+    }
+    return null;
+  }
+
+
+
+  @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
+  public JdbcResultSetMetaData visit(PlainSelect select, JdbcMetaData metaData) {
     JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
+
     FromItem fromItem = select.getFromItem();
     List<Join> joins = select.getJoins();
 
@@ -141,24 +303,7 @@ public class JSQLColumResolver {
 
     if (select.getWithItemsList() != null) {
       for (WithItem withItem : select.getWithItemsList()) {
-        JdbcTable t =
-            new JdbcTable(currentCatalogName, currentSchemaName, withItem.getAlias().getName());
-        if (withItem.getSelect() instanceof ParenthesedSelect) {
-          JdbcResultSetMetaData md = getResultSetMetaData(metaData, currentCatalogName,
-              currentSchemaName, withItem.getSelect().getPlainSelect());
-          try {
-            int columnCount = md.getColumnCount();
-            for (int i = 1; i <= columnCount; i++) {
-              t.add(t.tableCatalog, t.tableSchema, t.tableName, md.getColumnName(i),
-                  md.getColumnType(i), md.getColumnClassName(i), md.getPrecision(i), md.getScale(i),
-                  10, md.isNullable(i), "", "", md.getColumnDisplaySize(i), i, "",
-                  md.getCatalogName(i), md.getSchemaName(i), md.getTableName(i), null, "", "");
-            }
-            metaData.put(t);
-          } catch (SQLException ex) {
-            throw new RuntimeException("Error in WITH clause " + withItem.toString(), ex);
-          }
-        }
+        withItem.accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
       }
     }
 
@@ -170,6 +315,27 @@ public class JSQLColumResolver {
         fromTables.put(alias.getName(), (Table) fromItem);
       } else {
         fromTables.put(t.getName(), (Table) fromItem);
+      }
+    } else if (fromItem != null) {
+      Alias alias = fromItem.getAlias();
+      JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName,
+          alias != null ? alias.getName() : "");
+
+      JdbcResultSetMetaData rsMetaData = fromItem.accept(this, JdbcMetaData.copyOf(metaData));
+      try {
+        int columnCount = rsMetaData.getColumnCount();
+        for (int i = 1; i <= columnCount; i++) {
+          t.add(t.tableCatalog, t.tableSchema, t.tableName, rsMetaData.getColumnName(i),
+              rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
+              rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
+              "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getCatalogName(i),
+              rsMetaData.getSchemaName(i), rsMetaData.getTableName(i), null, "", "");
+        }
+        metaData.put(t);
+        fromTables.put(alias != null ? alias.getName() : t.tableName,
+            new Table(alias != null ? alias.getName() : t.tableName));
+      } catch (SQLException e) {
+        throw new RuntimeException(e);
       }
     }
 
@@ -183,6 +349,28 @@ public class JSQLColumResolver {
             fromTables.put(alias.getName(), t);
           } else {
             fromTables.put(t.getName(), t);
+          }
+        } else {
+          Alias alias = join.getFromItem().getAlias();
+          JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName,
+              alias != null ? alias.getName() : "");
+
+          JdbcResultSetMetaData rsMetaData =
+              join.getFromItem().accept(this, JdbcMetaData.copyOf(metaData));
+          try {
+            int columnCount = rsMetaData.getColumnCount();
+            for (int i = 1; i <= columnCount; i++) {
+              t.add(t.tableCatalog, t.tableSchema, t.tableName, rsMetaData.getColumnName(i),
+                  rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
+                  rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i),
+                  "", "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getCatalogName(i),
+                  rsMetaData.getSchemaName(i), rsMetaData.getTableName(i), null, "", "");
+            }
+            metaData.put(t);
+            fromTables.put(alias != null ? alias.getName() : t.tableName,
+                new Table(alias != null ? alias.getName() : t.tableName));
+          } catch (SQLException e) {
+            throw new RuntimeException(e);
           }
         }
       }
@@ -375,64 +563,92 @@ public class JSQLColumResolver {
     return resultSetMetaData;
   }
 
-  private static JdbcColumn getJdbcColumn(JdbcMetaData metaData, Column column,
-      CaseInsensitiveLinkedHashMap<Table> fromTables) {
-    JdbcColumn jdbcColumn = null;
-    String columnTablename = null;
-    String columnSchemaName = null;
-    String columnCatalogName = null;
+  @Override
+  public <S> JdbcResultSetMetaData visit(PlainSelect select, S parameters) {
+    if (parameters instanceof JdbcMetaData) {
+      return visit(select, (JdbcMetaData) parameters);
+    } else {
+      return null;
+    }
+  }
 
-    Table table = column.getTable();
-    if (table != null) {
-      columnTablename = table.getName();
+  @Override
+  public <S> JdbcResultSetMetaData visit(SetOperationList setOperationList, S parameters) {
+    return null;
+  }
 
-      if (table.getSchemaName() != null) {
-        columnSchemaName = table.getSchemaName();
-      }
 
-      if (table.getDatabase() != null) {
-        columnCatalogName = table.getDatabase().getDatabaseName();
+  @Override
+  public <S> JdbcResultSetMetaData visit(WithItem withItem, S parameters) {
+    if (parameters instanceof JdbcMetaData) {
+      JdbcMetaData metaData = (JdbcMetaData) parameters;
+
+      JdbcTable t =
+          new JdbcTable(currentCatalogName, currentSchemaName, withItem.getAlias().getName());
+
+      JdbcResultSetMetaData md = withItem.getSelect()
+          .accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
+      try {
+        int columnCount = md.getColumnCount();
+        for (int i = 1; i <= columnCount; i++) {
+          t.add(t.tableCatalog, t.tableSchema, t.tableName, md.getColumnName(i),
+              md.getColumnType(i), md.getColumnClassName(i), md.getPrecision(i), md.getScale(i), 10,
+              md.isNullable(i), "", "", md.getColumnDisplaySize(i), i, "", md.getCatalogName(i),
+              md.getSchemaName(i), md.getTableName(i), null, "", "");
+        }
+        metaData.put(t);
+      } catch (SQLException ex) {
+        throw new RuntimeException("Error in WITH clause " + withItem.toString(), ex);
       }
     }
 
-    if (columnTablename != null) {
-      // column has a table name prefix, which could be the actual table name or the table's
-      // alias
-      String actualColumnTableName =
-          fromTables.containsKey(columnTablename) ? fromTables.get(columnTablename).getName()
-              : null;
-      jdbcColumn = metaData.getColumn(columnCatalogName, columnSchemaName, actualColumnTableName,
-          column.getColumnName());
+    return withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
+  }
 
-    } else {
-      // column has no table name prefix and we have to lookup in all tables of the scope
-      for (Table t : fromTables.values()) {
-        String tableSchemaName = t.getSchemaName();
-        String tableCatalogName =
-            t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
 
-        jdbcColumn = metaData.getColumn(tableCatalogName, tableSchemaName, t.getName(),
-            column.getColumnName());
-        if (jdbcColumn != null) {
-          break;
+
+  @Override
+  public <S> JdbcResultSetMetaData visit(Values values, S parameters) {
+    return null;
+  }
+
+  @Override
+  public <S> JdbcResultSetMetaData visit(LateralSubSelect lateralSubSelect, S parameters) {
+    return null;
+  }
+
+  @Override
+  public <S> JdbcResultSetMetaData visit(TableFunction tableFunction, S parameters) {
+    return null;
+  }
+
+  @Override
+  public <S> JdbcResultSetMetaData visit(ParenthesedFromItem parenthesedFromItem, S parameters) {
+    JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
+
+    FromItem fromItem = parenthesedFromItem.getFromItem();
+    try {
+      resultSetMetaData.add(fromItem.accept(this, parameters));
+    } catch (SQLException ex) {
+      throw new RuntimeException("Failed on ParenthesedFromItem " + fromItem.toString(), ex);
+    }
+
+    List<Join> joins = parenthesedFromItem.getJoins();
+    if (joins != null && !joins.isEmpty()) {
+      for (Join join : joins) {
+        try {
+          resultSetMetaData.add(join.getFromItem().accept(this, parameters));
+        } catch (SQLException ex) {
+          throw new RuntimeException("Failed on Join " + join.getFromItem().toString(), ex);
         }
       }
     }
-    return jdbcColumn;
+    return resultSetMetaData;
   }
 
-  /**
-   * Resolves the actual columns returned by a SELECT statement for an empty CURRENT_CATALOG and an
-   * empty CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
-   *
-   * @param sqlStr the `SELECT` statement text
-   * @param metaData the Database Meta Data
-   * @return the ResultSetMetaData representing the actual columns returned by the `SELECT`
-   *         statement
-   * @throws JSQLParserException when the `SELECT` statement text can not be parsed
-   */
-  public static ResultSetMetaData getResultSetMetaData(String sqlStr, JdbcMetaData metaData)
-      throws JSQLParserException {
-    return getResultSetMetaData(sqlStr, metaData, "", "");
+  @Override
+  public <S> JdbcResultSetMetaData visit(TableStatement tableStatement, S parameters) {
+    return null;
   }
+
 }

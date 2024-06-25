@@ -64,6 +64,7 @@ public class JSQLSelectTranspiler extends SelectDeParser {
     return getBuffer();
   }
 
+  @Override
   public void visit(Top top) {
     // get the parent SELECT
     SimpleNode node = (SimpleNode) top.getASTNode().jjtGetParent();
@@ -77,7 +78,8 @@ public class JSQLSelectTranspiler extends SelectDeParser {
     select.setLimit(new Limit().withRowCount(top.getExpression()));
   }
 
-  public void visit(TableFunction tableFunction) {
+  @Override
+  public <S> StringBuilder visit(TableFunction tableFunction, S params) {
     String name = tableFunction.getFunction().getName();
     if (name.equalsIgnoreCase("unnest")) {
       PlainSelect select = new PlainSelect()
@@ -86,13 +88,14 @@ public class JSQLSelectTranspiler extends SelectDeParser {
       ParenthesedSelect parenthesedSelect =
           new ParenthesedSelect().withSelect(select).withAlias(tableFunction.getAlias());
 
-      visit(parenthesedSelect);
+      visit(parenthesedSelect, params);
     } else {
-      super.visit(tableFunction);
+      super.visit(tableFunction, params);
     }
+    return buffer;
   }
 
-  public void visit(PlainSelect plainSelect) {
+  public <S> StringBuilder visit(PlainSelect plainSelect, S params) {
     // remove any DUAL pseudo tables
     FromItem fromItem = plainSelect.getFromItem();
     if (fromItem instanceof Table) {
@@ -101,10 +104,12 @@ public class JSQLSelectTranspiler extends SelectDeParser {
         plainSelect.setFromItem(null);
       }
     }
-    super.visit(plainSelect);
+    super.visit(plainSelect, params);
+    return buffer;
   }
 
-  public void visit(Table table) {
+  @Override
+  public <S> StringBuilder visit(Table table, S params) {
     String name = table.getName().toLowerCase();
     String aliasName = table.getAlias() != null ? table.getAlias().getName() : null;
 
@@ -126,10 +131,12 @@ public class JSQLSelectTranspiler extends SelectDeParser {
       }
     }
 
-    super.visit(table);
+    super.visit(table, params);
+    return buffer;
   }
 
-  public void visit(SelectItem selectItem) {
+  @Override
+  public <S> StringBuilder visit(SelectItem<?> selectItem, S params) {
     if (selectItem.getAlias() != null) {
       String aliasName = selectItem.getAlias().getName().toLowerCase();
       for (String[] keyword : JSQLExpressionTranspiler.KEYWORDS) {
@@ -139,6 +146,7 @@ public class JSQLSelectTranspiler extends SelectDeParser {
         }
       }
     }
-    super.visit(selectItem);
+    super.visit(selectItem, params);
+    return buffer;
   }
 }

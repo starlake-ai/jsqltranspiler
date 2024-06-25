@@ -47,7 +47,8 @@ public class SnowflakeSelectTranspiler extends JSQLSelectTranspiler {
     super(expressionDeparserClass, builder);
   }
 
-  public void visit(Values values) {
+  @Override
+  public <S> StringBuilder visit(Values values, S params) {
     boolean wrapped = true;
     for (Expression expression : values.getExpressions()) {
       wrapped &= expression instanceof ExpressionList;
@@ -71,14 +72,16 @@ public class SnowflakeSelectTranspiler extends JSQLSelectTranspiler {
 
       ParenthesedSelect select =
           new ParenthesedSelect().withSelect(new PlainSelect().addSelectItem(f));
-      select.accept((FromItemVisitor) this);
+      select.accept((FromItemVisitor<?>) this, params);
     } else {
-      super.visit(values);
+      super.visit(values, params);
     }
+    return buffer;
   }
 
+  @Override
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
-  public void visit(TableFunction tableFunction) {
+  public <S> StringBuilder visit(TableFunction tableFunction, S params) {
     String prefix = tableFunction.getPrefix();
     String name = tableFunction.getFunction().getName();
 
@@ -114,7 +117,7 @@ public class SnowflakeSelectTranspiler extends JSQLSelectTranspiler {
       ParenthesedSelect parenthesedSelect =
           new ParenthesedSelect().withSelect(select).withAlias(tableFunction.getAlias());
 
-      visit(parenthesedSelect);
+      visit(parenthesedSelect, null);
     } else if ("lateral".equalsIgnoreCase(prefix)) {
       PlainSelect select = new PlainSelect();
       if (name.equalsIgnoreCase("SPLIT_TO_TABLE")
@@ -127,9 +130,10 @@ public class SnowflakeSelectTranspiler extends JSQLSelectTranspiler {
         select.addSelectItem(tableFunction.getFunction());
       }
       LateralSubSelect s = new LateralSubSelect(select, tableFunction.getAlias());
-      visit(s);
+      visit(s, params);
     } else {
-      super.visit(tableFunction);
+      super.visit(tableFunction, params);
     }
+    return null;
   }
 }

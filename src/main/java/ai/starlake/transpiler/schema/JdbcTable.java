@@ -343,6 +343,15 @@ public class JdbcTable implements Comparable<JdbcTable> {
   }
 
   public JdbcColumn add(JdbcColumn jdbcColumn) {
+    int i = 0;
+    while (columns.containsKey(jdbcColumn.columnName + (i > 0 ? "_" + i : ""))) {
+      i++;
+    }
+
+    if (i > 0) {
+      jdbcColumn.columnName = jdbcColumn.columnName + "_" + i;
+
+    }
     return columns.put(jdbcColumn.columnName, jdbcColumn);
   }
 
@@ -356,7 +365,7 @@ public class JdbcTable implements Comparable<JdbcTable> {
         dataType, typeName, columnSize, decimalDigits, numericPrecisionRadix, nullable, remarks,
         columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
         scopeSchema, scopeTable, sourceDataType, isAutomaticIncrement, isGeneratedColumn);
-    return columns.put(jdbcColumn.columnName, jdbcColumn);
+    return add(jdbcColumn);
   }
 
   public boolean containsKey(String columnName) {

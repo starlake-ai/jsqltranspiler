@@ -121,8 +121,9 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
   }
 
 
+  @Override
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
-  public void visit(Function function) {
+  public <S> StringBuilder visit(Function function, S params) {
     String functionName = function.getName();
     boolean hasParameters = hasParameters(function);
     int paramCount = hasParameters ? function.getParameters().size() : 0;
@@ -137,8 +138,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
       // careful: we must not strip the $$ PREFIX here since SUPER will call
       // JSQLExpressionTranspiler
       // function.setName(functionName.substring(0, functionName.length() - 2));
-      super.visit(function);
-      return;
+      super.visit(function, null);
+      return null;
     }
 
     if (function.getMultipartName().size() > 1
@@ -571,13 +572,15 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
       }
     }
     if (rewrittenExpression == null) {
-      super.visit(function);
+      super.visit(function, null);
     } else {
-      rewrittenExpression.accept(this);
+      rewrittenExpression.accept(this, null);
     }
+    return null;
   }
 
-  public void visit(AnalyticExpression function) {
+  @Override
+  public <S> StringBuilder visit(AnalyticExpression function, S params) {
     String functionName = function.getName();
 
     if (UnsupportedFunction.from(function) != null) {
@@ -587,8 +590,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
       function.setName(functionName.substring(0, functionName.length() - 2));
-      super.visit(function);
-      return;
+      super.visit(function, params);
+      return null;
     }
 
     if (function.getNullHandling() != null && function.isIgnoreNullsOutside()) {
@@ -609,10 +612,11 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
       }
     }
     if (rewrittenExpression == null) {
-      super.visit(function);
+      super.visit(function, params);
     } else {
-      rewrittenExpression.accept(this);
+      rewrittenExpression.accept(this, null);
     }
+    return null;
   }
 
   private static CaseExpression cmp(Expression expr1, String type1, Expression expr2,
@@ -624,11 +628,12 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
             new CastExpression(castDateTime(expr2), type2)), new LongValue(1)));
   }
 
-  public void visit(Column column) {
+  public <S> StringBuilder visit(Column column, S params) {
     if (column.getColumnName().equalsIgnoreCase("SYSDATE")) {
       column.setColumnName("CURRENT_DATE");
     }
-    super.visit(column);
+    super.visit(column, params);
+    return null;
   }
 
   final static String[][] REPLACEMENT =

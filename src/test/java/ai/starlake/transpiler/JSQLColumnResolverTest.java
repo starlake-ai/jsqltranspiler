@@ -110,7 +110,8 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
         .addTable("a", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"))
         .addTable("b", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"));
 
-    ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData("SELECT * FROM a, b", metaData);
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData("SELECT * FROM a, b", metaData, "", "");
 
     Assertions.assertThat(6).isEqualTo(res.getColumnCount());
 
@@ -134,7 +135,7 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
         "col1", "col2", "col3");
 
     ResultSetMetaData res =
-        JSQLColumResolver.getResultSetMetaData("SELECT b.* FROM a, b", metaData);
+        JSQLColumResolver.getResultSetMetaData("SELECT b.* FROM a, b", metaData, "", "");
 
     Assertions.assertThat(3).isEqualTo(res.getColumnCount());
 
@@ -230,6 +231,42 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     String[][] expected = new String[][] {{"c", "col1"}, {"c", "col2"}, {"c", "col3"},
         {"c", "colBA"}, {"c", "colBB"}};
     assertThatResolvesInto(sqlStr, expected);
+
+
+    // Nested With Statements
+    sqlStr = "WITH d AS (\n" + "        WITH c AS (\n" + "                SELECT *\n"
+        + "                FROM b )\n" + "        SELECT *\n" + "        FROM c )\n" + "SELECT *\n"
+        + "FROM d\n" + ";";
+    expected = new String[][] {{"d", "col1"}, {"d", "col2"}, {"d", "col3"}, {"d", "colBA"},
+        {"d", "colBB"}};
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testParenthesedSubSelect() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT * FROM (SELECT * FROM b) c ";
+    String[][] expected = new String[][] {{"c", "col1"}, {"c", "col2"}, {"c", "col3"},
+        {"c", "colBA"}, {"c", "colBB"}};
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testParenthesedFromIten() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT * FROM ( (SELECT * FROM b) c inner join a on c.col1 = a.col1 ) d ";
+    String[][] expected = new String[][] {
+        // from physical table b
+        {"d", "col1"}, {"d", "col2"}, {"d", "col3"}, {"d", "colBA"}, {"d", "colBB"},
+
+        // from physical table a
+        {"d", "col1_1"}, {"d", "col2_1"}, {"d", "col3_1"}, {"d", "colAA"}, {"d", "colAB"}};
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testSubSelectJoin() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT colBA, colBB FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
+    String[][] expected = new String[][] {{"c", "colBA"}, {"c", "colBB"}};
+    assertThatResolvesInto(sqlStr, expected);
   }
 
   private ResultSetMetaData assertThatResolvesInto(String sqlStr, String[][] expectedColumns)
@@ -237,8 +274,9 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     String[][] schemaDefinition = {{"a", "col1", "col2", "col3", "colAA", "colAB"},
         {"b", "col1", "col2", "col3", "colBA", "colBB"}};
 
-    ResultSetMetaData res =
-        JSQLColumResolver.getResultSetMetaData(sqlStr, new JdbcMetaData(schemaDefinition));
+    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
+
+    ResultSetMetaData res = resolver.getResultSetMetaData(sqlStr);
 
     assertThatResolvesInto(res, expectedColumns);
 
@@ -247,8 +285,9 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
 
   private ResultSetMetaData assertThatResolvesInto(String[][] schemaDefinition, String sqlStr,
       String[][] expectedColumns) throws SQLException, JSQLParserException {
-    ResultSetMetaData res =
-        JSQLColumResolver.getResultSetMetaData(sqlStr, new JdbcMetaData(schemaDefinition));
+    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
+
+    ResultSetMetaData res = resolver.getResultSetMetaData(sqlStr);
 
     assertThatResolvesInto(res, expectedColumns);
 

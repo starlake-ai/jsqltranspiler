@@ -486,7 +486,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
-  public void visit(Function function) {
+  @Override
+  public <S> StringBuilder visit(Function function, S params) {
     String functionName = function.getName();
     boolean hasParameters = hasParameters(function);
     int paramCount = hasParameters ? function.getParameters().size() : 0;
@@ -498,8 +499,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
       function.setName(functionName.substring(0, functionName.length() - 2));
-      super.visit(function);
-      return;
+      super.visit(function, null);
+      return null;
     }
 
     if (function.getMultipartName().size() > 1
@@ -926,11 +927,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           // COUNT(IF(x < 0, x, NULL))
 
           final Set<Column> expressionColumns = new HashSet<>();
-          parameters.get(0).accept(new ExpressionVisitorAdapter() {
-            public void visit(Column column) {
+          parameters.get(0).accept(new ExpressionVisitorAdapter<Void>() {
+            @Override
+            public <K> Void visit(Column column, K params) {
               expressionColumns.add(column);
+              return null;
             }
-          });
+          }, null);
           // @todo: clarify if there can be only exactly 1 column
           // else, what do to on None or many?
           assert expressionColumns.size() == 1;
@@ -1007,25 +1010,30 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       }
     }
     if (rewrittenExpression == null) {
-      super.visit(function);
+      super.visit(function, null);
     } else {
-      rewrittenExpression.accept(this);
+      rewrittenExpression.accept(this, null);
     }
+    return buffer;
   }
 
-  public void visit(AllColumns allColumns) {
+  @Override
+  public <S> StringBuilder visit(AllColumns allColumns, S parameters) {
     if (allColumns.getReplaceExpressions() != null) {
       warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
       allColumns.setReplaceExpressions(null);
     }
 
     // DuckDB uses "EXCLUDE" instead "EXCEPT", because why not?!
-    super.visit(allColumns.getExceptColumns() != null ? allColumns.setExceptKeyword("EXCLUDE")
-        : allColumns);
+    super.visit(
+        allColumns.getExceptColumns() != null ? allColumns.setExceptKeyword("EXCLUDE") : allColumns,
+        null);
+    return buffer;
   }
 
   @SuppressWarnings({"PMD.ExcessiveMethodLength"})
-  public void visit(AnalyticExpression function) {
+  @Override
+  public <S> StringBuilder visit(AnalyticExpression function, S parameters) {
     String functionName = function.getName();
 
     if (UnsupportedFunction.from(function) != null) {
@@ -1035,8 +1043,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
       function.setName(functionName.substring(0, functionName.length() - 2));
-      super.visit(function);
-      return;
+      super.visit(function, null);
+      return null;
     }
 
     /* Rewrite DISTINCT WindowDefinition OrderBy into Function OrderBy
@@ -1141,11 +1149,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           // COUNT(IF(x < 0, x, NULL))
 
           final Set<Column> expressionColumns = new HashSet<>();
-          function.getExpression().accept(new ExpressionVisitorAdapter() {
-            public void visit(Column column) {
+          function.getExpression().accept(new ExpressionVisitorAdapter<Void>() {
+            @Override
+            public <K> Void visit(Column column, K params) {
               expressionColumns.add(column);
+              return null;
             }
-          });
+          }, null);
           // @todo: clarify if there can be only exactly 1 column
           // else, what do to on None or many?
           assert expressionColumns.size() == 1;
@@ -1178,10 +1188,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       }
     }
     if (rewrittenExpression == null) {
-      super.visit(function);
+      super.visit(function, null);
     } else {
-      rewrittenExpression.accept(this);
+      rewrittenExpression.accept(this, null);
     }
+    return buffer;
   }
 
   private Expression rewriteLength(ExpressionList<?> parameters) {
@@ -1738,7 +1749,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return null;
   }
 
-  public void visit(ExtractExpression extractExpression) {
+  @Override
+  public <S> StringBuilder visit(ExtractExpression extractExpression, S parameters) {
     // @todo: JSQLParser Extract Expression must support `WEEK(MONDAY) .. WEEK(SUNDAY)`
 
     if (extractExpression.getName().equalsIgnoreCase("WEEK")) {
@@ -1754,26 +1766,29 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (Set.of("microseconds", "microsecond", "us", "usec", "usecs", "usecond", "useconds")
         .contains(extractExpression.getName().toLowerCase())) {
       BinaryExpression.modulo(extractExpression.withName("us$$"), new LongValue(1000000))
-          .accept(this);
+          .accept(this, null);
     } else if (Set.of("milliseconds", "millisecond", "ms", "msec", "msecs", "msecond", "mseconds")
         .contains(extractExpression.getName().toLowerCase())) {
-      BinaryExpression.modulo(extractExpression.withName("ms$$"), new LongValue(1000)).accept(this);
+      BinaryExpression.modulo(extractExpression.withName("ms$$"), new LongValue(1000)).accept(this,
+          null);
     } else if (extractExpression.getName().endsWith("$$")) {
       String name = extractExpression.getName();
-      super.visit(extractExpression.withName(name.substring(0, name.length() - 2)));
+      super.visit(extractExpression.withName(name.substring(0, name.length() - 2)), null);
     } else {
-      super.visit(extractExpression);
+      super.visit(extractExpression, null);
     }
+    return buffer;
   }
 
-  public void visit(StringValue stringValue) {
+  @Override
+  public <S> StringBuilder visit(StringValue stringValue, S parameters) {
     String prefix = stringValue.getPrefix();
     if ("b".equalsIgnoreCase(prefix)) {
       stringValue.setValue(convertByteStringToUnicode(stringValue.getValue()));
 
       Function encode = new Function("encode", stringValue.withPrefix(""));
-      visit(encode);
-      return;
+      visit(encode, null);
+      return null;
     }
 
     if (!"r".equalsIgnoreCase(stringValue.getPrefix())) {
@@ -1789,11 +1804,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       stringValue.setValue("-Infinity");
     }
 
-    super.visit(stringValue.withPrefix(null));
+    super.visit(stringValue.withPrefix(null), null);
+    return buffer;
   }
 
-  public void visit(HexValue hexValue) {
-    super.visit(hexValue.getLongValue());
+  @Override
+  public <S> StringBuilder visit(HexValue hexValue, S parameters) {
+    super.visit(hexValue.getLongValue(), null);
+    return buffer;
   }
 
   public static String convertUnicode(String input) {
@@ -1823,7 +1841,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return builder.toString();
   }
 
-  public void visit(CastExpression castExpression) {
+  @Override
+  public <S> StringBuilder visit(CastExpression castExpression, S parameters) {
     // same cast
     if (castExpression.getLeftExpression() instanceof CastExpression) {
       CastExpression leftExpression = (CastExpression) castExpression.getLeftExpression();
@@ -1841,8 +1860,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               && leftExpression.isOf(CastExpression.DataType.TIME,
                   CastExpression.DataType.TIME_WITHOUT_TIME_ZONE)) {
 
-        castExpression.getLeftExpression().accept(this);
-        return;
+        castExpression.getLeftExpression().accept(this, null);
+        return buffer;
       }
     }
 
@@ -1859,9 +1878,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
             || castExpression.getLeftExpression() instanceof Function && !castExpression
                 .getLeftExpression(Function.class).getName().equalsIgnoreCase("encode"))) {
       Function f = new Function("Encode$$", castExpression.getLeftExpression());
-      f.accept(this);
+      f.accept(this, null);
 
-      return;
+      return buffer;
     }
 
     if (castExpression.keyword != null && castExpression.keyword.endsWith("$$")) {
@@ -1872,23 +1891,25 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (castExpression.isImplicitCast()) {
       this.buffer.append(rewriteType(castExpression.getColDataType()));
       this.buffer.append(" ");
-      castExpression.getLeftExpression().accept(this);
+      castExpression.getLeftExpression().accept(this, null);
     } else if (castExpression.isUseCastKeyword()) {
       this.buffer.append(castExpression.keyword).append("(");
-      castExpression.getLeftExpression().accept(this);
+      castExpression.getLeftExpression().accept(this, null);
       this.buffer.append(" AS ");
       this.buffer.append(castExpression.getColumnDefinitions().size() > 1
           ? "ROW(" + Select.getStringList(castExpression.getColumnDefinitions()) + ")"
           : rewriteType(castExpression.getColDataType()).toString());
       this.buffer.append(")");
     } else {
-      castExpression.getLeftExpression().accept(this);
+      castExpression.getLeftExpression().accept(this, null);
       this.buffer.append("::");
       this.buffer.append(rewriteType(castExpression.getColDataType()));
     }
+    return buffer;
   }
 
-  public void visit(StructType structType) {
+  @Override
+  public <S> StringBuilder visit(StructType structType, S parameters) {
     if (structType.getArguments() != null && !structType.getArguments().isEmpty()) {
       buffer.append("{ ");
       int i = 0;
@@ -1903,7 +1924,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         }
 
         buffer.append(":");
-        e.getExpression().accept(this);
+        e.getExpression().accept(this, null);
 
         i++;
       }
@@ -1922,6 +1943,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       }
       buffer.append(")");
     }
+    return buffer;
   }
 
 
@@ -1937,13 +1959,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       colDataType.setDataType("BLOB");
     } else if (dataTypeStr.equalsIgnoreCase("FLOAT64")) {
       colDataType.setDataType("FLOAT8");
-//    } else if (dataTypeStr.equalsIgnoreCase("INT64")) {
-//      colDataType.setDataType("INT8");
+      // } else if (dataTypeStr.equalsIgnoreCase("INT64")) {
+      // colDataType.setDataType("INT8");
     } else {
       Matcher matcher = ARRAY_COLUMN_TYPE_PATTERN.matcher(dataTypeStr);
       if (matcher.find()) {
         dataTypeStr = matcher.group(1);
-        return new ColDataType( dataTypeStr + "[]");
+        return new ColDataType(dataTypeStr + "[]");
       }
     }
 
@@ -2193,36 +2215,42 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return expression;
   }
 
-  public void visit(TimeKeyExpression expression) {
+  @Override
+  public <S> StringBuilder visit(TimeKeyExpression expression, S parameters) {
     String value = expression.getStringValue().toUpperCase().replaceAll("[()]", "");
 
     if (System.getProperties().containsKey(value)) {
-      castDateTime(System.getProperty(value)).accept(this);
+      castDateTime(System.getProperty(value)).accept(this, null);
     } else if (value.equals("CURRENT_TIMEZONE")) {
       Function function = new Function("StrFTime", new TimeKeyExpression("CURRENT_TIMESTAMP"),
           new StringValue("%Z"));
-      function.accept(this);
+      function.accept(this, null);
     } else {
       expression.setStringValue(value);
-      super.visit(expression);
+      super.visit(expression, null);
     }
 
+    return buffer;
   }
 
-  public void visit(LikeExpression likeExpression) {
+  @Override
+  public <S> StringBuilder visit(LikeExpression likeExpression, S parameters) {
     LikeExpression.KeyWord keyword = likeExpression.getLikeKeyWord();
     switch (keyword) {
       case REGEXP:
       case RLIKE:
         likeExpression.setLikeKeyWord("SIMILAR TO");
     }
-    super.visit(likeExpression);
+    super.visit(likeExpression, null);
+    return buffer;
   }
 
-  public void visit(TranscodingFunction function) {
+  @Override
+  public <S> StringBuilder visit(TranscodingFunction function, S parameters) {
     CastExpression castExpression =
         new CastExpression("Cast", function.getExpression(), function.getColDataType().toString());
-    castExpression.accept(this);
+    castExpression.accept(this, null);
+    return buffer;
   }
 
   public static boolean isEmpty(Collection<?> collection) {
@@ -2233,7 +2261,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return !isEmpty(function.getParameters());
   }
 
-  public void visit(Column column) {
+  @Override
+  public <S> StringBuilder visit(Column column, S parameters) {
     String name = column.getColumnName().toLowerCase();
     for (String[] keyword : KEYWORDS) {
       if (keyword[0].equals(name)) {
@@ -2263,23 +2292,24 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
       ExpressionList<Expression> expressions =
           (ExpressionList<Expression>) arrayConstructor.getExpressions();
-      for (int i = 0; i < expressions.size(); i++) {
-        expressions.set(i, BinaryExpression.add(expressions.get(i), new LongValue(1)));
-      }
+      expressions.replaceAll(expression -> BinaryExpression.add(expression, new LongValue(1)));
       arrayConstructor.setExpressions(expressions);
 
-      column.getArrayConstructor().accept(this);
+      column.getArrayConstructor().accept(this, null);
     }
+    return buffer;
   }
 
-  public void visit(ExpressionList expressionList) {
+  @Override
+  public <S> StringBuilder visit(ExpressionList<?> expressionList, S parameters) {
     // reduce obsolete parentheses like in:
     // VALUES (('a', 10)), (('b', 50)), (('c', 20)) AS tab(x, y)
     if (expressionList.size() == 1 && expressionList.get(0) instanceof ParenthesedExpressionList) {
-      ParenthesedExpressionList subList = (ParenthesedExpressionList) expressionList.get(0);
-      super.visit(subList);
+      ParenthesedExpressionList<?> subList = (ParenthesedExpressionList<?>) expressionList.get(0);
+      super.visit(subList, null);
     } else {
-      super.visit(expressionList);
+      super.visit(expressionList, null);
     }
+    return buffer;
   }
 }

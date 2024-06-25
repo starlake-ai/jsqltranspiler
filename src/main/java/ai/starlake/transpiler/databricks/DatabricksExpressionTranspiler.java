@@ -126,8 +126,9 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
     return castInterval(e1, e2, JSQLTranspiler.Dialect.DATABRICKS);
   }
 
+  @Override
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
-  public void visit(Function function) {
+  public <S> StringBuilder visit(Function function, S params) {
     String functionName = function.getName();
     boolean hasParameters = hasParameters(function);
     int paramCount = hasParameters ? function.getParameters().size() : 0;
@@ -142,8 +143,8 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
       // careful: we must not strip the $$ PREFIX here since SUPER will call
       // JSQLExpressionTranspiler
       // function.setName(functionName.substring(0, functionName.length() - 2));
-      super.visit(function);
-      return;
+      super.visit(function, params);
+      return null;
     }
 
     if (function.getMultipartName().size() > 1
@@ -560,13 +561,15 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
       }
     }
     if (rewrittenExpression == null) {
-      super.visit(function);
+      super.visit(function, params);
     } else {
-      rewrittenExpression.accept(this);
+      rewrittenExpression.accept(this, null);
     }
+    return null;
   }
 
-  public void visit(AnalyticExpression function) {
+  @Override
+  public <S> StringBuilder visit(AnalyticExpression function, S params) {
     String functionName = function.getName();
 
     if (UnsupportedFunction.from(function) != null) {
@@ -576,8 +579,8 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
       // work around for transpiling already transpiled functions twice
       // @todo: figure out a better way to achieve that
       function.setName(functionName.substring(0, functionName.length() - 2));
-      super.visit(function);
-      return;
+      super.visit(function, params);
+      return null;
     }
 
     if (function.getNullHandling() != null && function.isIgnoreNullsOutside()) {
@@ -652,17 +655,20 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
       }
     }
     if (rewrittenExpression == null) {
-      super.visit(function);
+      super.visit(function, params);
     } else {
-      rewrittenExpression.accept(this);
+      rewrittenExpression.accept(this, null);
     }
+    return null;
   }
 
-  public void visit(Column column) {
+  @Override
+  public <S> StringBuilder visit(Column column, S params) {
     if (column.getColumnName().equalsIgnoreCase("SYSDATE")) {
       column.setColumnName("CURRENT_DATE");
     }
-    super.visit(column);
+    super.visit(column, params);
+    return null;
   }
 
   public ColDataType rewriteType(ColDataType colDataType) {

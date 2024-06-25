@@ -34,6 +34,12 @@ public class JdbcResultSetMetaData implements ResultSetMetaData {
     labels.clear();
   }
 
+  public void add(JdbcResultSetMetaData resultSetMetaData) throws SQLException {
+    for (int i = 0; i < resultSetMetaData.getColumnCount(); i++) {
+      add(resultSetMetaData.columns.get(i), null);
+    }
+  }
+
   @Override
   public int getColumnCount() throws SQLException {
     return columns.size();

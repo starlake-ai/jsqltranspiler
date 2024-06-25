@@ -43,16 +43,20 @@ configurations {
 }
 
 dependencies {
-    implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
+    // temporarily use a pre-compiled binary
+    // until the extended visitor pattern has been published
+    // implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
+    
+    implementation fileTree(dir: "lib", include: ['*.jar'])
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.+'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.+'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:+'
 
     // we do need better matchers
     testImplementation("org.assertj:assertj-core:+")
 
-    testImplementation 'org.duckdb:duckdb_jdbc:0.10.+'
+    testImplementation 'org.duckdb:duckdb_jdbc:+'
     testImplementation 'org.apache.commons:commons-compress:+'
     testImplementation 'com.opencsv:opencsv:+'
 

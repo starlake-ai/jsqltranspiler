@@ -32,7 +32,8 @@ public class BigQuerySelectTranspiler extends JSQLSelectTranspiler {
     super(expressionDeparserClass, builder);
   }
 
-  public void visit(PlainSelect select) {
+  @Override
+  public <S> StringBuilder visit(PlainSelect select, S params) {
     if (select.getBigQuerySelectQualifier() != null) {
       switch (select.getBigQuerySelectQualifier()) {
         case AS_VALUE:
@@ -46,6 +47,7 @@ public class BigQuerySelectTranspiler extends JSQLSelectTranspiler {
           break;
       }
     }
-    super.visit(select);
+    super.visit(select, params);
+    return null;
   }
 }
