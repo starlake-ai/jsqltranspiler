@@ -135,7 +135,7 @@ String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_TIMESTAMP", JSQLTr
 Assertions.assertThat(actual).isEqualTo(expected);
 ```
 
-Alternatively parameters can be provided as `Map<String,Object` (which would take precedence over any System's properties):
+Alternatively parameters can be provided as `Map<String,Object>` (which would take precedence over any System's properties):
 
 ```java
 String expected = "SELECT TIME WITHOUT TIME ZONE '17:24:23.123'";
