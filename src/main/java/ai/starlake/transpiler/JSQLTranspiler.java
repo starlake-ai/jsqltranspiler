@@ -45,6 +45,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +75,8 @@ public class JSQLTranspiler extends StatementDeParser {
   protected final JSQLDeleteTranspiler deleteTranspiler;
   protected final JSQLMergeTranspiler mergeTranspiler;
 
+  protected final HashMap<String, Object> parameters = new LinkedHashMap<>();
+
   private final static Pattern DOUBLE_QUOTES_PATTERN =
       Pattern.compile("(?<=^|[^\"'])(\"(?!.*\").*?\"|\".*?(?<![\"'])(\"))(?![\"'])");
 
@@ -96,6 +101,13 @@ public class JSQLTranspiler extends StatementDeParser {
 
   }
 
+  public JSQLTranspiler(Map<String, Object> parameters) throws InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
+    this(JSQLSelectTranspiler.class, JSQLExpressionTranspiler.class);
+    this.parameters.putAll(parameters);
+    this.expressionTranspiler.parameters.putAll(parameters);
+  }
+
   public JSQLTranspiler() throws InvocationTargetException, NoSuchMethodException,
       InstantiationException, IllegalAccessException {
     this(JSQLSelectTranspiler.class, JSQLExpressionTranspiler.class);
@@ -114,7 +126,8 @@ public class JSQLTranspiler extends StatementDeParser {
    */
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public static String transpileQuery(String qryStr, Dialect dialect,
-      ExecutorService executorService, Consumer<CCJSqlParser> consumer) throws JSQLParserException {
+      Map<String, Object> parameters, ExecutorService executorService,
+      Consumer<CCJSqlParser> consumer) throws JSQLParserException {
     Statement st;
 
     switch (dialect) {
@@ -127,19 +140,19 @@ public class JSQLTranspiler extends StatementDeParser {
         }
         matcher.appendTail(sb);
         st = CCJSqlParserUtil.parse(sb.toString(), executorService, consumer);
-        return transpileBigQuery(st);
+        return transpileBigQuery(st, parameters);
       case DATABRICKS:
         st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
-        return transpileDatabricks(st);
+        return transpileDatabricks(st, parameters);
       case SNOWFLAKE:
         st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
-        return transpileSnowflake(st);
+        return transpileSnowflake(st, parameters);
       case AMAZON_REDSHIFT:
         st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
-        return transpileAmazonRedshift(st);
+        return transpileAmazonRedshift(st, parameters);
       default:
         st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
-        return transpile(st);
+        return transpile(st, parameters);
     }
   }
 
@@ -153,11 +166,11 @@ public class JSQLTranspiler extends StatementDeParser {
    * @throws InterruptedException a time-out exception, when the statement can't be parsed within 6
    *         seconds (hanging parser)
    */
-  public static String transpileQuery(String qryStr, Dialect dialect)
-      throws JSQLParserException, InterruptedException {
+  public static String transpileQuery(String qryStr, Dialect dialect,
+      Map<String, Object> parameters) throws JSQLParserException, InterruptedException {
     ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
-    String result = transpileQuery(qryStr, dialect, executorService, parser -> {
+    String result = transpileQuery(qryStr, dialect, parameters, executorService, parser -> {
     });
 
     executorService.shutdown();
@@ -178,10 +191,10 @@ public class JSQLTranspiler extends StatementDeParser {
    * @throws JSQLParserException a parser exception when the statement can't be parsed
    */
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
-  public static void transpile(String sqlStr, File outputFile, ExecutorService executorService,
-      Consumer<CCJSqlParser> consumer) throws JSQLParserException {
+  public static void transpile(String sqlStr, Map<String, Object> parameters, File outputFile,
+      ExecutorService executorService, Consumer<CCJSqlParser> consumer) throws JSQLParserException {
     try {
-      JSQLTranspiler transpiler = new JSQLTranspiler();
+      JSQLTranspiler transpiler = new JSQLTranspiler(parameters);
 
       // @todo: we may need to split this manually to salvage any not parseable statements
       Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
@@ -228,10 +241,10 @@ public class JSQLTranspiler extends StatementDeParser {
    * @throws InterruptedException a time-out exception, when the statement can't be parsed within 6
    *         seconds (hanging parser)
    */
-  public static boolean transpile(String sqlStr, File outputFile)
+  public static boolean transpile(String sqlStr, Map<String, Object> parameters, File outputFile)
       throws JSQLParserException, InterruptedException {
     ExecutorService executorService = Executors.newSingleThreadExecutor();
-    transpile(sqlStr, outputFile, executorService, parser -> {
+    transpile(sqlStr, parameters, outputFile, executorService, parser -> {
       parser.withErrorRecovery().withTimeOut(6000).withAllowComplexParsing(true)
           .withUnsupportedStatements();
     });
@@ -364,9 +377,9 @@ public class JSQLTranspiler extends StatementDeParser {
    * @param statement the statement
    * @return the string
    */
-  public static String transpile(Statement statement) {
+  public static String transpile(Statement statement, Map<String, Object> parameters) {
     try {
-      JSQLTranspiler transpiler = new JSQLTranspiler();
+      JSQLTranspiler transpiler = new JSQLTranspiler(parameters);
       statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
@@ -383,9 +396,9 @@ public class JSQLTranspiler extends StatementDeParser {
    * @param statement the statement
    * @return the string
    */
-  public static String transpileBigQuery(Statement statement) {
+  public static String transpileBigQuery(Statement statement, Map<String, Object> parameters) {
     try {
-      BigQueryTranspiler transpiler = new BigQueryTranspiler();
+      BigQueryTranspiler transpiler = new BigQueryTranspiler(parameters);
       statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
@@ -402,9 +415,9 @@ public class JSQLTranspiler extends StatementDeParser {
    * @param statement the statement
    * @return the string
    */
-  public static String transpileDatabricks(Statement statement) {
+  public static String transpileDatabricks(Statement statement, Map<String, Object> parameters) {
     try {
-      DatabricksTranspiler transpiler = new DatabricksTranspiler();
+      DatabricksTranspiler transpiler = new DatabricksTranspiler(parameters);
       statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
@@ -421,9 +434,9 @@ public class JSQLTranspiler extends StatementDeParser {
    * @param statement the statement
    * @return the string
    */
-  public static String transpileSnowflake(Statement statement) {
+  public static String transpileSnowflake(Statement statement, Map<String, Object> parameters) {
     try {
-      SnowflakeTranspiler transpiler = new SnowflakeTranspiler();
+      SnowflakeTranspiler transpiler = new SnowflakeTranspiler(parameters);
       statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
@@ -440,9 +453,10 @@ public class JSQLTranspiler extends StatementDeParser {
    * @param statement the statement
    * @return the string
    */
-  public static String transpileAmazonRedshift(Statement statement) {
+  public static String transpileAmazonRedshift(Statement statement,
+      Map<String, Object> parameters) {
     try {
-      RedshiftTranspiler transpiler = new RedshiftTranspiler();
+      RedshiftTranspiler transpiler = new RedshiftTranspiler(parameters);
       statement.accept(transpiler);
 
       return transpiler.getBuffer().toString();
@@ -453,29 +467,29 @@ public class JSQLTranspiler extends StatementDeParser {
     }
   }
 
-  public StringBuilder visit(Select select) {
-    select.accept(selectTranspiler, null);
+  public <S> StringBuilder visit(Select select, S context) {
+    select.accept(selectTranspiler, context);
     return buffer;
   }
 
-  public StringBuilder visit(Insert insert) {
+  public <S> StringBuilder visit(Insert insert, S context) {
     insertTranspiler.deParse(insert);
     return buffer;
   }
 
-  public StringBuilder visit(Update update) {
+  public <S> StringBuilder visit(Update update, S context) {
     updateTranspiler.deParse(update);
 
     return buffer;
   }
 
-  public StringBuilder visit(Delete delete) {
+  public <S> StringBuilder visit(Delete delete, S context) {
     deleteTranspiler.deParse(delete);
     return buffer;
   }
 
 
-  public StringBuilder visit(Merge merge) {
+  public <S> StringBuilder visit(Merge merge, S context) {
     mergeTranspiler.deParse(merge);
     return buffer;
   }

@@ -19,11 +19,14 @@ package ai.starlake.transpiler.databricks;
 import ai.starlake.transpiler.JSQLTranspiler;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 
 public class DatabricksTranspiler extends JSQLTranspiler {
 
-  public DatabricksTranspiler() throws InvocationTargetException, NoSuchMethodException,
-      InstantiationException, IllegalAccessException {
+  public DatabricksTranspiler(Map<String, Object> parameters) throws InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
     super(DatabricksSelectTranspiler.class, DatabricksExpressionTranspiler.class);
+    this.parameters.putAll(parameters);
+    this.expressionTranspiler.parameters.putAll(parameters);
   }
 }

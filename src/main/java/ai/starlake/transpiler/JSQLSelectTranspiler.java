@@ -136,7 +136,7 @@ public class JSQLSelectTranspiler extends SelectDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(SelectItem<?> selectItem, S params) {
+  public <S> StringBuilder visit(SelectItem<?> selectItem, S context) {
     if (selectItem.getAlias() != null) {
       String aliasName = selectItem.getAlias().getName().toLowerCase();
       for (String[] keyword : JSQLExpressionTranspiler.KEYWORDS) {
@@ -146,7 +146,12 @@ public class JSQLSelectTranspiler extends SelectDeParser {
         }
       }
     }
-    super.visit(selectItem, params);
+
+    selectItem.getExpression().accept(this.getExpressionVisitor(), context);
+    if (selectItem.getAlias() != null) {
+      buffer.append(selectItem.getAlias().toString());
+    }
+
     return buffer;
   }
 }

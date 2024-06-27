@@ -22,6 +22,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
+import java.util.Map;
+
 public class TimeKeySubstitutionTest {
 
   @BeforeEach
@@ -41,8 +44,8 @@ public class TimeKeySubstitutionTest {
   @Test
   void testCurrentDate() throws JSQLParserException, InterruptedException {
     String expected = "SELECT DATE '2024-06-09'";
-    String actual =
-        JSQLTranspiler.transpileQuery("SELECT CURRENT_DATE", JSQLTranspiler.Dialect.ANY);
+    String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_DATE", JSQLTranspiler.Dialect.ANY,
+        Collections.emptyMap());
 
     Assertions.assertThat(actual).isEqualTo(expected);
   }
@@ -50,8 +53,8 @@ public class TimeKeySubstitutionTest {
   @Test
   void testCurrentTime() throws JSQLParserException, InterruptedException {
     String expected = "SELECT TIME WITHOUT TIME ZONE '16:24:23.123'";
-    String actual =
-        JSQLTranspiler.transpileQuery("SELECT CURRENT_TIME", JSQLTranspiler.Dialect.ANY);
+    String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_TIME", JSQLTranspiler.Dialect.ANY,
+        Collections.emptyMap());
 
     Assertions.assertThat(actual).isEqualTo(expected);
   }
@@ -59,8 +62,35 @@ public class TimeKeySubstitutionTest {
   @Test
   void testCurrentTimestamp() throws JSQLParserException, InterruptedException {
     String expected = "SELECT TIMESTAMP WITHOUT TIME ZONE '2024-06-09T16:24:23.123'";
-    String actual =
-        JSQLTranspiler.transpileQuery("SELECT CURRENT_TIMESTAMP", JSQLTranspiler.Dialect.ANY);
+    String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_TIMESTAMP",
+        JSQLTranspiler.Dialect.ANY, Collections.emptyMap());
+
+    Assertions.assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  void testCurrentDateParameter() throws JSQLParserException, InterruptedException {
+    String expected = "SELECT DATE '2024-06-10'";
+    String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_DATE", JSQLTranspiler.Dialect.ANY,
+        Map.of("CURRENT_DATE", "2024-06-10"));
+
+    Assertions.assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  void testCurrentTimeParameter() throws JSQLParserException, InterruptedException {
+    String expected = "SELECT TIME WITHOUT TIME ZONE '17:24:23.123'";
+    String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_TIME", JSQLTranspiler.Dialect.ANY,
+        Map.of("CURRENT_TIME", "17:24:23.123"));
+
+    Assertions.assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  void testCurrentTimestampParameter() throws JSQLParserException, InterruptedException {
+    String expected = "SELECT TIMESTAMP WITHOUT TIME ZONE '2024-06-10T17:24:23.123'";
+    String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_TIMESTAMP",
+        JSQLTranspiler.Dialect.ANY, Map.of("CURRENT_TIMESTAMP", "2024-06-10T17:24:23.123"));
 
     Assertions.assertThat(actual).isEqualTo(expected);
   }

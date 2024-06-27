@@ -64,7 +64,9 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,6 +80,8 @@ import java.util.regex.Pattern;
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class JSQLExpressionTranspiler extends ExpressionDeParser {
   final private Pattern ARRAY_COLUMN_TYPE_PATTERN = Pattern.compile("ARRAY<(.+)>");
+
+  public final HashMap<String, Object> parameters = new LinkedHashMap<>();
 
   public JSQLExpressionTranspiler(SelectDeParser deParser, StringBuilder buffer) {
     super(deParser, buffer);
@@ -1018,7 +1022,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(AllColumns allColumns, S parameters) {
+  public <S> StringBuilder visit(AllColumns allColumns, S context) {
     if (allColumns.getReplaceExpressions() != null) {
       warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
       allColumns.setReplaceExpressions(null);
@@ -1033,7 +1037,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   @SuppressWarnings({"PMD.ExcessiveMethodLength"})
   @Override
-  public <S> StringBuilder visit(AnalyticExpression function, S parameters) {
+  public <S> StringBuilder visit(AnalyticExpression function, S context) {
     String functionName = function.getName();
 
     if (UnsupportedFunction.from(function) != null) {
@@ -1750,7 +1754,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(ExtractExpression extractExpression, S parameters) {
+  public <S> StringBuilder visit(ExtractExpression extractExpression, S context) {
     // @todo: JSQLParser Extract Expression must support `WEEK(MONDAY) .. WEEK(SUNDAY)`
 
     if (extractExpression.getName().equalsIgnoreCase("WEEK")) {
@@ -1781,7 +1785,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(StringValue stringValue, S parameters) {
+  public <S> StringBuilder visit(StringValue stringValue, S context) {
     String prefix = stringValue.getPrefix();
     if ("b".equalsIgnoreCase(prefix)) {
       stringValue.setValue(convertByteStringToUnicode(stringValue.getValue()));
@@ -1809,7 +1813,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(HexValue hexValue, S parameters) {
+  public <S> StringBuilder visit(HexValue hexValue, S context) {
     super.visit(hexValue.getLongValue(), null);
     return buffer;
   }
@@ -1842,7 +1846,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(CastExpression castExpression, S parameters) {
+  public <S> StringBuilder visit(CastExpression castExpression, S context) {
     // same cast
     if (castExpression.getLeftExpression() instanceof CastExpression) {
       CastExpression leftExpression = (CastExpression) castExpression.getLeftExpression();
@@ -1909,7 +1913,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(StructType structType, S parameters) {
+  public <S> StringBuilder visit(StructType structType, S context) {
     if (structType.getArguments() != null && !structType.getArguments().isEmpty()) {
       buffer.append("{ ");
       int i = 0;
@@ -2216,10 +2220,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(TimeKeyExpression expression, S parameters) {
+  public <S> StringBuilder visit(TimeKeyExpression expression, S context) {
     String value = expression.getStringValue().toUpperCase().replaceAll("[()]", "");
 
-    if (System.getProperties().containsKey(value)) {
+    if (parameters.containsKey(value)) {
+      // @todo: Cast Date/Time types
+      castDateTime(parameters.get(value).toString()).accept(this, null);
+    } else if (System.getProperties().containsKey(value)) {
       castDateTime(System.getProperty(value)).accept(this, null);
     } else if (value.equals("CURRENT_TIMEZONE")) {
       Function function = new Function("StrFTime", new TimeKeyExpression("CURRENT_TIMESTAMP"),
@@ -2234,7 +2241,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(LikeExpression likeExpression, S parameters) {
+  public <S> StringBuilder visit(LikeExpression likeExpression, S context) {
     LikeExpression.KeyWord keyword = likeExpression.getLikeKeyWord();
     switch (keyword) {
       case REGEXP:
@@ -2246,7 +2253,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(TranscodingFunction function, S parameters) {
+  public <S> StringBuilder visit(TranscodingFunction function, S context) {
     CastExpression castExpression =
         new CastExpression("Cast", function.getExpression(), function.getColDataType().toString());
     castExpression.accept(this, null);
@@ -2262,7 +2269,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(Column column, S parameters) {
+  public <S> StringBuilder visit(Column column, S context) {
     String name = column.getColumnName().toLowerCase();
     for (String[] keyword : KEYWORDS) {
       if (keyword[0].equals(name)) {
@@ -2301,7 +2308,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   @Override
-  public <S> StringBuilder visit(ExpressionList<?> expressionList, S parameters) {
+  public <S> StringBuilder visit(ExpressionList<?> expressionList, S context) {
     // reduce obsolete parentheses like in:
     // VALUES (('a', 10)), (('b', 50)), (('c', 20)) AS tab(x, y)
     if (expressionList.size() == 1 && expressionList.get(0) instanceof ParenthesedExpressionList) {

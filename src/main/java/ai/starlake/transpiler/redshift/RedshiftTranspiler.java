@@ -19,10 +19,13 @@ package ai.starlake.transpiler.redshift;
 import ai.starlake.transpiler.JSQLTranspiler;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 
 public class RedshiftTranspiler extends JSQLTranspiler {
-  public RedshiftTranspiler() throws InvocationTargetException, NoSuchMethodException,
-      InstantiationException, IllegalAccessException {
+  public RedshiftTranspiler(Map<String, Object> parameters) throws InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
     super(RedshiftSelectTranspiler.class, RedshiftExpressionTranspiler.class);
+    this.parameters.putAll(parameters);
+    this.expressionTranspiler.parameters.putAll(parameters);
   }
 }

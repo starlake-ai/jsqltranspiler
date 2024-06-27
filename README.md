@@ -6,7 +6,7 @@ Supports `SELECT` queries as well as `INSERT`, `UPDATE`, `DELETE` and `MERGE` st
 
 Internal Functions will be rewritten based on the actual meaning and purpose of the function (since DuckDB `Any()` function does not necessarily behave like the RDBMS specific `Any()`). Respecting different function arguments count, order and type.
 
-Rewrite of Window- and Aggregate-Functions with full coverage of the RDBMS specific published samples. 
+Rewrite of Window- and Aggregate-Functions with full coverage of the RDBMS specific published samples.
 The [matrix of supported features and functions](https://docs.google.com/spreadsheets/d/1jK6E1s2c0CWcw9rFeDvALdZ5wCshztdtlAHuNDaKQt4/edit?usp=sharing) is shared on Google Sheets.
 
 ## Dialects
@@ -131,6 +131,20 @@ The transpiler can substitute time key expressions such as `CURRENT_DATE` or `CU
 System.setProperty("CURRENT_TIMESTAMP", "2024-06-09 16:24:23.123");
 String expected = "SELECT TIMESTAMP WITHOUT TIME ZONE '2024-06-09T16:24:23.123'";
 String actual = JSQLTranspiler.transpileQuery("SELECT CURRENT_TIMESTAMP", JSQLTranspiler.Dialect.ANY);
+
+Assertions.assertThat(actual).isEqualTo(expected);
+```
+
+Alternatively parameters can be provided as `Map<String,Object` (which would take precedence over any System's properties):
+
+```java
+String expected = "SELECT TIME WITHOUT TIME ZONE '17:24:23.123'";
+String actual =
+        JSQLTranspiler.transpileQuery(
+                "SELECT CURRENT_TIME"
+                , JSQLTranspiler.Dialect.ANY
+                , Map.of("CURRENT_TIME", "17:24:23.123")
+        );
 
 Assertions.assertThat(actual).isEqualTo(expected);
 ```

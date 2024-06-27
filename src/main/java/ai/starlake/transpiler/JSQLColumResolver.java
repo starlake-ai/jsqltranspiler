@@ -257,6 +257,11 @@ public class JSQLColumResolver
     return rsMetaData;
   }
 
+  @Override
+  public void visit(Table tableName) {
+    FromItemVisitor.super.visit(tableName);
+  }
+
   public JdbcResultSetMetaData visit(ParenthesedSelect parenthesedSelect, JdbcMetaData parameters) {
     JdbcResultSetMetaData rsMetaData = null;
     Alias alias = parenthesedSelect.getAlias();
@@ -290,6 +295,10 @@ public class JSQLColumResolver
     return null;
   }
 
+  @Override
+  public void visit(ParenthesedSelect parenthesedSelect) {
+    SelectVisitor.super.visit(parenthesedSelect);
+  }
 
 
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
@@ -573,8 +582,18 @@ public class JSQLColumResolver
   }
 
   @Override
+  public void visit(PlainSelect plainSelect) {
+    SelectVisitor.super.visit(plainSelect);
+  }
+
+  @Override
   public <S> JdbcResultSetMetaData visit(SetOperationList setOperationList, S parameters) {
     return null;
+  }
+
+  @Override
+  public void visit(SetOperationList setOpList) {
+    SelectVisitor.super.visit(setOpList);
   }
 
 
@@ -605,6 +624,10 @@ public class JSQLColumResolver
     return withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
   }
 
+  @Override
+  public void visit(WithItem withItem) {
+    SelectVisitor.super.visit(withItem);
+  }
 
 
   @Override
@@ -613,13 +636,28 @@ public class JSQLColumResolver
   }
 
   @Override
+  public void visit(Values values) {
+    SelectVisitor.super.visit(values);
+  }
+
+  @Override
   public <S> JdbcResultSetMetaData visit(LateralSubSelect lateralSubSelect, S parameters) {
     return null;
   }
 
   @Override
+  public void visit(LateralSubSelect lateralSubSelect) {
+    SelectVisitor.super.visit(lateralSubSelect);
+  }
+
+  @Override
   public <S> JdbcResultSetMetaData visit(TableFunction tableFunction, S parameters) {
     return null;
+  }
+
+  @Override
+  public void visit(TableFunction tableFunction) {
+    FromItemVisitor.super.visit(tableFunction);
   }
 
   @Override
@@ -647,8 +685,18 @@ public class JSQLColumResolver
   }
 
   @Override
+  public void visit(ParenthesedFromItem parenthesedFromItem) {
+    FromItemVisitor.super.visit(parenthesedFromItem);
+  }
+
+  @Override
   public <S> JdbcResultSetMetaData visit(TableStatement tableStatement, S parameters) {
     return null;
+  }
+
+  @Override
+  public void visit(TableStatement tableStatement) {
+    SelectVisitor.super.visit(tableStatement);
   }
 
 }

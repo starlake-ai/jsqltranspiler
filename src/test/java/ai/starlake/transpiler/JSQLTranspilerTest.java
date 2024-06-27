@@ -53,6 +53,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -471,8 +472,8 @@ public class JSQLTranspilerTest {
     }
 
     // Assertions.assertNotNull(t.expectedSqlStr);
-    String transpiledSqlStr =
-        JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect, executorService, parser -> {
+    String transpiledSqlStr = JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect,
+        Collections.emptyMap(), executorService, parser -> {
         });
     Assertions.assertThat(transpiledSqlStr).isNotNull();
     Assertions.assertThat(sanitize(transpiledSqlStr, true))

@@ -19,10 +19,13 @@ package ai.starlake.transpiler.snowflake;
 import ai.starlake.transpiler.JSQLTranspiler;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 
 public class SnowflakeTranspiler extends JSQLTranspiler {
-  public SnowflakeTranspiler() throws InvocationTargetException, NoSuchMethodException,
-      InstantiationException, IllegalAccessException {
+  public SnowflakeTranspiler(Map<String, Object> parameters) throws InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
     super(SnowflakeSelectTranspiler.class, SnowflakeExpressionTranspiler.class);
+    this.parameters.putAll(parameters);
+    this.expressionTranspiler.parameters.putAll(parameters);
   }
 }

@@ -8,6 +8,29 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **build: reduce coverage temporarily**
+    
+    Andreas Reichel, 2024-06-25
+  * **build: reduce coverage temporarily**
+    
+    Andreas Reichel, 2024-06-25
+
+Version 0.6
+=============================================================
+
+
+  * **feat: JSQLColumnResolver with deeply nested `SelectVisitor` and `FromItemVisitor`**
+    
+    Andreas Reichel, 2024-06-25
+  * **feat: Resolve columns for `WITH ... ` clauses**
+    
+    Andreas Reichel, 2024-06-19
+  * **fix: BigQuery default sort order**
+    
+    Andreas Reichel, 2024-06-13
+  * **style: fix Q/A exceptions**
+    
+    Andreas Reichel, 2024-06-13
   * **fix: BigQuery `SELECT AS STRUCT ...` and `SELECT AS VALUE ...`**
     
     Andreas Reichel, 2024-06-13
@@ -23,6 +46,27 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
   * **fix: BigQuery `GENERATE_DATE_ARRAY` with only 2 parameters**
     
     Andreas Reichel, 2024-06-10
+  * **feat: support `EXCEPT` and `REPLACE` clauses**
+    
+    Andreas Reichel, 2024-06-10
+  * **feat: add syntax sugar**
+    
+    Andreas Reichel, 2024-06-10
+  * **feat: further Schema Provider and Test simplifications**
+    
+    Andreas Reichel, 2024-06-10
+  * **feat: STAR column resolver, wip**
+    
+    Andreas Reichel, 2024-06-09
+  * **feat: STAR column resolver, wip**
+    
+    Andreas Reichel, 2024-06-08
+  * **feat: STAR column resolver, wip**
+    
+    Andreas Reichel, 2024-06-08
+  * **feat: STAR column resolver, wip**
+    
+    Andreas Reichel, 2024-06-07
 
 Version 0.5
 =============================================================

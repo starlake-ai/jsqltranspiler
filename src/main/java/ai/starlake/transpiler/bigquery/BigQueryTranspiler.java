@@ -19,10 +19,13 @@ package ai.starlake.transpiler.bigquery;
 import ai.starlake.transpiler.JSQLTranspiler;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 
 public class BigQueryTranspiler extends JSQLTranspiler {
-  public BigQueryTranspiler() throws InvocationTargetException, NoSuchMethodException,
-      InstantiationException, IllegalAccessException {
+  public BigQueryTranspiler(Map<String, Object> parameters) throws InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
     super(BigQuerySelectTranspiler.class, BigQueryExpressionTranspiler.class);
+    this.parameters.putAll(parameters);
+    this.expressionTranspiler.parameters.putAll(parameters);
   }
 }
