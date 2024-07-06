@@ -23,6 +23,8 @@ import com.opencsv.CSVWriter;
 import hu.webarticum.treeprinter.SimpleTreeNode;
 import hu.webarticum.treeprinter.printer.listing.ListingTreePrinter;
 import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -38,6 +40,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -331,6 +334,67 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
   }
 
   @Test
+  void testFunctionVerbose() throws JSQLParserException, SQLException {
+    String[][] schemaDefinition = {
+        // Table A with Columns col1, col2, col3, colAA, colAB
+        {"a", "col1", "col2", "col3", "colAA", "colAB"},
+
+        // Table B with Columns col1, col2, col3, colBA, colBB
+        {"b", "col1", "col2", "col3", "colBA", "colBB"}};
+
+    String sqlStr =
+        "SELECT Sum(colBA + colBB) AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
+    String[][] expected = new String[][] {{"", "Sum", "total"}};
+
+    /*
+    SELECT
+     └─total AS Function: Sum(colBA + colBB)
+        └─Addition: colBA + colBB
+           ├─c.colBA → b.colBA : Other
+           └─c.colBB → b.colBB : Other
+     */
+
+    // resolve statement against schema and return the column information as ResultSetMetaData
+    JdbcResultSetMetaData resultSetMetaData =
+        new JSQLColumResolver(schemaDefinition).getResultSetMetaData(sqlStr);
+
+    // Column Index starts with 1
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      // generic column properties of the ResultSetMetaData interface
+      Assertions.assertThat(resultSetMetaData.getColumnName(i)).isEqualToIgnoringCase("Sum");
+      Assertions.assertThat(resultSetMetaData.getColumnTypeName(i)).isEqualToIgnoringCase("Other");
+
+
+      // specific column object can be accessed in a list
+      JdbcColumn column = resultSetMetaData.getColumns().get(i - 1);
+
+      // Optional Alias is stored in a list, can be NULL/empty
+      String alias = resultSetMetaData.getLabels().get(i - 1);
+      Assertions.assertThat(alias).isEqualToIgnoringCase("total");
+
+
+      // JdbcColum implements the TreeNode interface which can be used to traverse through the
+      // lineage
+      Assertions.assertThat(column).isInstanceOf(TreeNode.class);
+
+      // JdbcColumn points on its Expression
+      Assertions.assertThat(column.getExpression()).isInstanceOf(Function.class);
+
+      Iterator<JdbcColumn> iterator = column.children().asIterator();
+      if (iterator.hasNext()) {
+        JdbcColumn child = iterator.next();
+
+        // JdbcColum implements the TreeNode interface which can be used to traverse through the
+        // lineage
+        Assertions.assertThat(child).isInstanceOf(TreeNode.class);
+
+        // JdbcColumn points on its Expression
+        Assertions.assertThat(child.getExpression()).isInstanceOf(Addition.class);
+      }
+    }
+  }
+
+  @Test
   void testFunction2() throws JSQLParserException, SQLException {
     String sqlStr =
         "SELECT Case when Sum(colBA + colBB)=0 then c.col1 else a.col2 end AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
@@ -442,7 +506,11 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
 
   private JdbcResultSetMetaData assertThatResolvesInto(String sqlStr, String[][] expectedColumns)
       throws SQLException, JSQLParserException {
-    String[][] schemaDefinition = {{"a", "col1", "col2", "col3", "colAA", "colAB"},
+    String[][] schemaDefinition = {
+        // Table A with Columns col1, col2, col3, colAA, colAB
+        {"a", "col1", "col2", "col3", "colAA", "colAB"},
+
+        // Table B with Columns col1, col2, col3, colBA, colBB
         {"b", "col1", "col2", "col3", "colBA", "colBB"}};
 
     JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);

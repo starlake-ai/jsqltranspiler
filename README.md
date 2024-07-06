@@ -1,6 +1,6 @@
-# JSQLTranspiler [Try it](https://starlake.ai/starlake/index.html#sql-transpiler)
+# [JSQLTranspiler](https://starlake.ai/starlake/index.html#sql-transpiler) - Transpile Dialect, Resolve Columns, Show Lineage
 
-A pure Java stand-alone SQL Transpiler for translating various large RDBMS SQL Dialects into a few smaller RDBMS Dialects for Unit Testing. Based on JSQLParser.
+A pure Java stand-alone SQL Transpiler, Column- and Lineage Resolver for translating various large RDBMS SQL Dialects into a few smaller RDBMS Dialects for Unit Testing. Based on JSQLParser.
 
 Supports `SELECT` queries as well as `INSERT`, `UPDATE`, `DELETE` and `MERGE` statements.
 
@@ -15,7 +15,7 @@ The [matrix of supported features and functions](https://docs.google.com/spreads
 
 **Output**: DuckDB
 
-## Example
+## Transpile Example
 
 Google BigQuery specific SQL
 
@@ -47,6 +47,98 @@ SELECT
 */
 ```
 
+## Column Lineage Example
+For the simplified schema definition and the given query
+```java
+String[][] schemaDefinition = {
+        // Table A with Columns col1, col2, col3, colAA, colAB
+        {"a", "col1", "col2", "col3", "colAA", "colAB"},
+
+        // Table B with Columns col1, col2, col3, colBA, colBB
+        {"b", "col1", "col2", "col3", "colBA", "colBB"}
+};
+
+String sqlStr =
+        "SELECT Case when Sum(colBA + colBB)=0 then c.col1 else a.col2 end AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
+
+JdbcResultSetMetaData resultSetMetaData = new JSQLColumResolver(databaseMetaData).getResultSetMetaData(sqlStr);
+```
+
+the ResultSetMetaData return a list of JdbcColumns, each traversable using the `TreeNode` interface. The resulting Column Lineage can be illustrated as:
+```
+SELECT
+ └─total AS CaseExpression: CASE WHEN Sum(colBA + colBB) = 0 THEN c.col1 ELSE a.col2 END
+    ├─WhenClause: WHEN Sum(colBA + colBB) = 0 THEN c.col1
+    │  ├─EqualsTo: Sum(colBA + colBB) = 0
+    │  │  └─Function: Sum(colBA + colBB)
+    │  │     └─Addition: colBA + colBB
+    │  │        ├─c.colBA → b.colBA : Other
+    │  │        └─c.colBB → b.colBB : Other
+    │  └─c.col1 → b.col1 : Other
+    └─a.col2 : Other
+```
+
+
+## Resolve ``*`` Star Operator Example
+
+For the simplified schema definition and the given query with Star Operators
+```java
+String[][] schemaDefinition = {
+    // Table A with Columns col1, col2, col3, colAA, colAB
+    {"a", "col1", "col2", "col3", "colAA", "colAB"},
+
+    // Table B with Columns col1, col2, col3, colBA, colBB
+    {"b", "col1", "col2", "col3", "colBA", "colBB"}
+};
+
+String sqlStr = "SELECT * FROM ( (SELECT * FROM b) c inner join a on c.col1 = a.col1 ) d;";
+String resolved =  new JSQLColumResolver(schemaDefinition).getResolvedStatementText(sqlStr);
+```
+
+the query will be resolved and (optionally rewritten into):
+```sql
+SELECT  d.col1                 /* Resolved Column*/
+        , d.col2               /* Resolved Column*/
+        , d.col3               /* Resolved Column*/
+        , d.colBA              /* Resolved Column*/
+        , d.colBB              /* Resolved Column*/
+        , d.col1_1             /* Resolved Column*/
+        , d.col2_1             /* Resolved Column*/
+        , d.col3_1             /* Resolved Column*/
+        , d.colAA              /* Resolved Column*/
+        , d.colAB              /* Resolved Column*/
+FROM (  (   SELECT  b.col1     /* Resolved Column*/
+                    , b.col2   /* Resolved Column*/
+                    , b.col3   /* Resolved Column*/
+                    , b.colba  /* Resolved Column*/
+                    , b.colbb  /* Resolved Column*/
+            FROM b ) c
+            INNER JOIN a
+                ON c.col1 = a.col1 ) d
+;
+```
+
+Alternatively, the information about returned columns can be fetched as JDBC `ResultsetMetaData` (without actually executing this query):
+
+```java
+import java.sql.DatabaseMetaData;
+
+String sqlStr = "SELECT * FROM (  (  SELECT * FROM sales ) c INNER JOIN listing a ON c.listid = a.listid ) d;";
+// the meta data of catalgogs, schemas, tables, columns, either virtually and physically
+DatabaseMetaData databaseMetaData = ...;
+ResultSetMetaData resultSetMetaData = new JSQLColumResolver(databaseMetaData).getResultSetMetaData(sqlStr);
+System.out.println(resultSetMetaData.toString());
+
+/*
+"#","label","name","table","schema","catalog","type","type name","precision","scale","display size"
+"1","salesid","salesid","d",,"JSQLTranspilerTest","INTEGER","INTEGER","0","32","0"
+"2","listid","listid","d",,"JSQLTranspilerTest","INTEGER","INTEGER","0","32","0"
+... (shortened) ...
+"17","totalprice","totalprice","d",,"JSQLTranspilerTest","DECIMAL","DECIMAL(8,2)","0","8","0"
+"18","listtime","listtime","d",,"JSQLTranspilerTest","TIMESTAMP","TIMESTAMP","0","0","0"
+ */
+
+```
 
 ## How to use
 

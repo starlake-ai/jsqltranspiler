@@ -303,8 +303,12 @@ public class JdbcColumn implements Comparable<JdbcColumn>, TreeNode {
   }
 
   @Override
-  public Enumeration<? extends TreeNode> children() {
+  public Enumeration<JdbcColumn> children() {
     return Collections.enumeration(childNodes);
+  }
+
+  public Collection<JdbcColumn> getChildNodes() {
+    return childNodes;
   }
 
   public JdbcColumn add(Collection<JdbcColumn> children) {
