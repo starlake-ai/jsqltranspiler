@@ -16,34 +16,50 @@
  */
 package ai.starlake.transpiler.schema;
 
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.schema.Column;
+
+import javax.swing.tree.TreeNode;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Objects;
 
 import static java.sql.DatabaseMetaData.columnNullableUnknown;
 
-public class JdbcColumn implements Comparable<JdbcColumn> {
+public class JdbcColumn implements Comparable<JdbcColumn>, TreeNode {
 
-  String tableCatalog;
-  String tableSchema;
-  String tableName;
-  String columnName;
-  Integer dataType;
-  String typeName;
-  Integer columnSize;
-  Integer decimalDigits;
-  Integer numericPrecisionRadix;
-  Integer nullable;
-  String remarks;
-  String columnDefinition;
-  Integer characterOctetLength;
-  Integer ordinalPosition;
-  String isNullable;
-  String scopeCatalog;
-  String scopeSchema;
-  String scopeTable;
-  Short sourceDataType;
-  String isAutomaticIncrement;
-  String isGeneratedColumn;
+  public String tableCatalog;
+  public String tableSchema;
+  public String tableName;
+  public String columnName;
+  public Integer dataType;
+  public String typeName;
+  public Integer columnSize;
+  public Integer decimalDigits;
+  public Integer numericPrecisionRadix;
+  public Integer nullable;
+  public String remarks;
+  public String columnDefinition;
+  public Integer characterOctetLength;
+  public Integer ordinalPosition;
+  public String isNullable;
+  public String scopeCatalog;
+  public String scopeSchema;
+  public String scopeTable;
+  public Short sourceDataType;
+  public String isAutomaticIncrement;
+  public String isGeneratedColumn;
+
+  JdbcColumn parent = null;
+  List<JdbcColumn> childNodes = new ArrayList<>();
+
+  private final Expression expression;
 
   /* Each column description has the following columns:
   
@@ -90,7 +106,7 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
       Integer numericPrecisionRadix, Integer nullable, String remarks, String columnDefinition,
       Integer characterOctetLength, Integer ordinalPosition, String isNullable, String scopeCatalog,
       String scopeSchema, String scopeTable, Short sourceDataType, String isAutomaticIncrement,
-      String isGeneratedColumn) {
+      String isGeneratedColumn, Expression expression) {
     this.tableCatalog = tableCatalog;
     this.tableSchema = tableSchema;
     this.tableName = tableName;
@@ -112,29 +128,36 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     this.sourceDataType = sourceDataType;
     this.isAutomaticIncrement = isAutomaticIncrement;
     this.isGeneratedColumn = isGeneratedColumn;
+    this.expression = expression;
   }
 
   public JdbcColumn(String tableCatalog, String tableSchema, String tableName, String columnName,
       Integer dataType, String typeName, Integer columnSize, Integer decimalDigits,
-      Integer nullable, String remarks) {
+      Integer nullable, String remarks, Expression expression) {
     this(tableCatalog, tableSchema, tableName, columnName, dataType, typeName, columnSize,
-        decimalDigits, 10, nullable, remarks, "", 0, 0, "", "", "", "", (short) 0, "", "");
+        decimalDigits, 10, nullable, remarks, "", 0, 0, "", "", "", "", (short) 0, "", "",
+        expression);
   }
 
   public JdbcColumn(String columnName, Integer dataType, String typeName, Integer columnSize,
-      Integer decimalDigits, Integer nullable, String remarks) {
+      Integer decimalDigits, Integer nullable, String remarks, Expression expression) {
     this("", "", "", columnName, dataType, typeName, columnSize, decimalDigits, 10, nullable,
-        remarks, "", 0, 0, "", "", "", "", (short) 0, "", "");
+        remarks, "", 0, 0, "", "", "", "", (short) 0, "", "", expression);
   }
 
-  public JdbcColumn(String tableCatalog, String tableSchema, String tableName, String columnName) {
+  public JdbcColumn(String tableCatalog, String tableSchema, String tableName, String columnName,
+      Expression expression) {
     this(tableCatalog, tableSchema, tableName, columnName, Types.OTHER, "Other", 0, 0, 10,
-        columnNullableUnknown, "", "", 0, 0, "", "", "", "", (short) 0, "", "");
+        columnNullableUnknown, "", "", 0, 0, "", "", "", "", (short) 0, "", "", expression);
+  }
+
+  public JdbcColumn(String columnName, Expression expression) {
+    this("", "", "", columnName, Types.OTHER, "Other", 0, 0, 10, columnNullableUnknown, "", "", 0,
+        0, "", "", "", "", (short) 0, "", "", expression);
   }
 
   public JdbcColumn(String columnName) {
-    this("", "", "", columnName, Types.OTHER, "Other", 0, 0, 10, columnNullableUnknown, "", "", 0,
-        0, "", "", "", "", (short) 0, "", "");
+    this(columnName, new Column(columnName));
   }
 
   @Override
@@ -177,11 +200,48 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     return compareTo;
   }
 
-
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   @Override
   public String toString() {
-    return tableCatalog + "." + tableSchema + "." + tableName + "." + columnName + "\t" + typeName
-        + " (" + columnSize + ", " + decimalDigits + ")";
+    if (expression instanceof Function) {
+      Function f = (Function) expression;
+      return "Function: " + f.toString();
+    } else if (expression instanceof Column) {
+
+      StringBuilder b = new StringBuilder();
+      if (tableCatalog != null && !tableCatalog.isEmpty()) {
+        b.append(tableCatalog).append(".").append(tableSchema != null ? tableSchema : "")
+            .append(".");
+      } else if (tableSchema != null && !tableSchema.isEmpty()) {
+        b.append(tableSchema).append(".");
+      }
+      b.append(tableName).append(".").append(columnName);
+
+      if (scopeTable != null && !scopeTable.isEmpty()) {
+        b.append(" → ");
+        if (scopeCatalog != null && !scopeCatalog.isEmpty()) {
+          b.append(scopeCatalog).append(".").append(scopeSchema != null ? scopeSchema : "")
+              .append(".");
+        } else if (scopeSchema != null && !scopeSchema.isEmpty()) {
+          b.append(scopeSchema).append(".");
+        }
+        b.append(scopeTable).append(".").append(columnName);
+      }
+
+      b.append(" : ").append(typeName);
+
+      if (columnSize > 0) {
+        b.append("(").append(columnSize);
+        if (decimalDigits > 0) {
+          b.append(", ").append(decimalDigits);
+        }
+        b.append(")");
+      }
+
+      return b.toString();
+    } else {
+      return expression.getClass().getSimpleName() + ": " + expression.toString();
+    }
   }
 
 
@@ -210,5 +270,58 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     result = 31 * result + (isAutomaticIncrement != null ? isAutomaticIncrement.hashCode() : 0);
     result = 31 * result + (isGeneratedColumn != null ? isGeneratedColumn.hashCode() : 0);
     return result;
+  }
+
+  @Override
+  public TreeNode getChildAt(int childIndex) {
+    return childNodes.get(childIndex);
+  }
+
+  @Override
+  public int getChildCount() {
+    return childNodes.size();
+  }
+
+  @Override
+  public TreeNode getParent() {
+    return parent;
+  }
+
+  @Override
+  public int getIndex(TreeNode node) {
+    return childNodes.indexOf(node);
+  }
+
+  @Override
+  public boolean getAllowsChildren() {
+    return true;
+  }
+
+  @Override
+  public boolean isLeaf() {
+    return childNodes.isEmpty();
+  }
+
+  @Override
+  public Enumeration<? extends TreeNode> children() {
+    return Collections.enumeration(childNodes);
+  }
+
+  public JdbcColumn add(Collection<JdbcColumn> children) {
+    if (children != null) {
+      for (JdbcColumn child : children) {
+        child.parent = this;
+        childNodes.add(child);
+      }
+    }
+    return this;
+  }
+
+  public JdbcColumn add(JdbcColumn... children) {
+    return add(Arrays.asList(children));
+  }
+
+  public Expression getExpression() {
+    return expression;
   }
 }

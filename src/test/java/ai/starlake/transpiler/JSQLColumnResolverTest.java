@@ -18,7 +18,10 @@ package ai.starlake.transpiler;
 
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
+import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import com.opencsv.CSVWriter;
+import hu.webarticum.treeprinter.SimpleTreeNode;
+import hu.webarticum.treeprinter.printer.listing.ListingTreePrinter;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.assertj.core.api.Assertions;
@@ -28,11 +31,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import javax.swing.tree.TreeNode;
 import java.io.File;
 import java.io.StringWriter;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Enumeration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -285,25 +290,175 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     assertThatResolvesInto(sqlStr, expected);
   }
 
-  private ResultSetMetaData assertThatResolvesInto(String sqlStr, String[][] expectedColumns)
+  public static SimpleTreeNode translateNode(TreeNode node, String alias) {
+    SimpleTreeNode simpleTreeNode = new SimpleTreeNode(
+        ((alias != null && !alias.isEmpty()) ? alias + " AS " : "") + node.toString());
+    Enumeration<? extends TreeNode> children = node.children();
+    while (children.hasMoreElements()) {
+      simpleTreeNode.addChild(translateNode(children.nextElement(), ""));
+    }
+    return simpleTreeNode;
+  }
+
+  public static String assertLineage(JdbcResultSetMetaData resultSetMetaData, String expected)
+      throws SQLException {
+    // Define your own Tree based on your own TreeNode interface
+    SimpleTreeNode rootNode = new SimpleTreeNode("SELECT");
+    for (int i = 0; i < resultSetMetaData.getColumnCount(); i++) {
+
+      // Add each columns lineage tree as node to the root with a translation from Swing's TreeNode
+      rootNode.addChild(translateNode(resultSetMetaData.getColumns().get(i),
+          resultSetMetaData.getLabels().get(i)));
+    }
+
+    String actual = new ListingTreePrinter().stringify(rootNode);
+    Assertions.assertThat(actual).isEqualToIgnoringWhitespace(expected);
+
+    return actual;
+  }
+
+  @Test
+  void testFunction() throws JSQLParserException, SQLException {
+    String sqlStr =
+        "SELECT Sum(colBA + colBB) AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
+    String[][] expected = new String[][] {{"", "Sum", "total"}};
+    JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
+
+    String lineage = "SELECT\n" + "   └─total AS Function: Sum(colBA + colBB)\n"
+        + "      └─Addition: colBA + colBB\n" + "         ├─c.colBA → b.colBA : Other\n"
+        + "         └─c.colBB → b.colBB : Other";
+    assertLineage(resultSetMetaData, lineage);
+  }
+
+  @Test
+  void testFunction2() throws JSQLParserException, SQLException {
+    String sqlStr =
+        "SELECT Case when Sum(colBA + colBB)=0 then c.col1 else a.col2 end AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
+    String[][] expected = new String[][] {{"", "CaseExpression", "total"}};
+    JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
+
+    String lineage = "SELECT\n"
+        + " └─total AS CaseExpression: CASE WHEN Sum(colBA + colBB) = 0 THEN c.col1 ELSE a.col2 END\n"
+        + "    ├─WhenClause: WHEN Sum(colBA + colBB) = 0 THEN c.col1\n"
+        + "    │  ├─EqualsTo: Sum(colBA + colBB) = 0\n"
+        + "    │  │  └─Function: Sum(colBA + colBB)\n" + "    │  │     └─Addition: colBA + colBB\n"
+        + "    │  │        ├─c.colBA → b.colBA : Other\n"
+        + "    │  │        └─c.colBB → b.colBB : Other\n" + "    │  └─c.col1 → b.col1 : Other\n"
+        + "    └─a.col2 : Other\n";
+    assertLineage(resultSetMetaData, lineage);
+  }
+
+  @Test
+  void testWithLineage() throws JSQLParserException, SQLException {
+    String sqlStr = "WITH c AS (SELECT col1 AS test, colBA FROM b) SELECT * FROM c";
+    String[][] expected = new String[][] {{"c", "col1", "col1"}, {"c", "colBA", "colBA"}};
+    JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
+
+    String lineage = "SELECT\n" + " ├─c.col1 → b.col1 : Other\n" + " └─c.colBA → b.colBA : Other\n";
+    assertLineage(resultSetMetaData, lineage);
+  }
+
+  @Test
+  void testSubSelectLineage() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT (SELECT col1 AS test FROM b) col2 FROM a";
+    String[][] expected = new String[][] {{"b", "col1", "col2"}};
+    JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
+
+    String lineage = "SELECT\n" + " └─col2 AS b.col1 : Other\n";
+    assertLineage(resultSetMetaData, lineage);
+  }
+
+  void lineage() throws JSQLParserException, SQLException {
+    String[][] schemaDefinition = {
+        // Table a
+        {"a", "col1", "col2", "col3", "colAA", "colAB"},
+
+        // Table b
+        {"b", "col1", "col2", "col3", "colBA", "colBB"}};
+
+    String sqlStr =
+        "SELECT Sum(colBA + colBB) AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
+
+    // get the List of JdbcColumns, each holding its lineage using the TreeNode interface
+    JdbcResultSetMetaData resultSetMetaData =
+        new JSQLColumResolver(schemaDefinition).getResultSetMetaData(sqlStr);
+
+
+    // Define your own Tree based on your own TreeNode interface
+    SimpleTreeNode rootNode = new SimpleTreeNode("SELECT");
+    for (int i = 0; i < resultSetMetaData.getColumnCount(); i++) {
+
+      // Add each columns lineage tree as node to the root
+      // JdbcColum implements the Swing's TreeNode interface
+      // thus a translation between the different TreeNode interfaces may be needed
+      JdbcColumn column = resultSetMetaData.getColumns().get(i);
+      String alias = resultSetMetaData.getLabels().get(i);
+      rootNode.addChild(translateNode(column, alias));
+    }
+    new ListingTreePrinter().print(rootNode);
+  }
+
+
+
+  @Test
+  void testRewriteSimple() throws SQLException, JSQLParserException {
+    String sqlStr = "SELECT * FROM ( (SELECT * FROM b) c inner join a on c.col1 = a.col1 ) d ";
+
+    String expected = "SELECT  d.col1                 /* Resolved Column*/\n"
+        + "        , d.col2               /* Resolved Column*/\n"
+        + "        , d.col3               /* Resolved Column*/\n"
+        + "        , d.colba              /* Resolved Column*/\n"
+        + "        , d.colbb              /* Resolved Column*/\n"
+        + "        , d.col1_1             /* Resolved Column*/\n"
+        + "        , d.col2_1             /* Resolved Column*/\n"
+        + "        , d.col3_1             /* Resolved Column*/\n"
+        + "        , d.colaa              /* Resolved Column*/\n"
+        + "        , d.colab              /* Resolved Column*/\n"
+        + "FROM (  (   SELECT  b.col1     /* Resolved Column*/\n"
+        + "                    , b.col2   /* Resolved Column*/\n"
+        + "                    , b.col3   /* Resolved Column*/\n"
+        + "                    , b.colba  /* Resolved Column*/\n"
+        + "                    , b.colbb  /* Resolved Column*/\n" + "            FROM b ) c\n"
+        + "            INNER JOIN a\n" + "                ON c.col1 = a.col1 ) d\n" + ";";
+
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  private String assertThatRewritesInto(String sqlStr, String expected)
+      throws SQLException, JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3", "colAA", "colAB"},
+        {"b", "col1", "col2", "col3", "colBA", "colBB"}};
+    return assertThatRewritesInto(schemaDefinition, sqlStr, expected);
+  }
+
+  private String assertThatRewritesInto(String[][] schemaDefinition, String sqlStr, String expected)
+      throws SQLException, JSQLParserException {
+    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
+    String actual = resolver.getResolvedStatementText(sqlStr);
+    Assertions.assertThat(JSQLTranspilerTest.sanitize(actual))
+        .isEqualToIgnoringCase(JSQLTranspilerTest.sanitize(expected));
+    return actual;
+  }
+
+  private JdbcResultSetMetaData assertThatResolvesInto(String sqlStr, String[][] expectedColumns)
       throws SQLException, JSQLParserException {
     String[][] schemaDefinition = {{"a", "col1", "col2", "col3", "colAA", "colAB"},
         {"b", "col1", "col2", "col3", "colBA", "colBB"}};
 
     JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
 
-    ResultSetMetaData res = resolver.getResultSetMetaData(sqlStr);
+    JdbcResultSetMetaData res = resolver.getResultSetMetaData(sqlStr);
 
     assertThatResolvesInto(res, expectedColumns);
 
     return res;
   }
 
-  private ResultSetMetaData assertThatResolvesInto(String[][] schemaDefinition, String sqlStr,
+  private JdbcResultSetMetaData assertThatResolvesInto(String[][] schemaDefinition, String sqlStr,
       String[][] expectedColumns) throws SQLException, JSQLParserException {
     JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
 
-    ResultSetMetaData res = resolver.getResultSetMetaData(sqlStr);
+    JdbcResultSetMetaData res = resolver.getResultSetMetaData(sqlStr);
 
     assertThatResolvesInto(res, expectedColumns);
 

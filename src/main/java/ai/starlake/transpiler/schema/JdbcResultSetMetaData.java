@@ -21,8 +21,17 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 public class JdbcResultSetMetaData implements ResultSetMetaData {
-  ArrayList<JdbcColumn> columns = new ArrayList<>();
-  ArrayList<String> labels = new ArrayList<>();
+  final protected ArrayList<JdbcColumn> columns = new ArrayList<>();
+  final protected ArrayList<String> labels = new ArrayList<>();
+
+
+  public ArrayList<JdbcColumn> getColumns() {
+    return columns;
+  }
+
+  public ArrayList<String> getLabels() {
+    return labels;
+  }
 
   public void add(JdbcColumn jdbcColumn, String label) {
     columns.add(jdbcColumn);
@@ -87,7 +96,7 @@ public class JdbcResultSetMetaData implements ResultSetMetaData {
 
   @Override
   public String getColumnLabel(int column) throws SQLException {
-    if (labels.size() > column) {
+    if (labels.size() >= column) {
       String label = labels.get(column - 1);
 
       return label != null && !label.isEmpty() ? label : columns.get(column - 1).columnName;

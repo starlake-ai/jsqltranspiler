@@ -56,6 +56,9 @@ dependencies {
     // we do need better matchers
     testImplementation("org.assertj:assertj-core:+")
 
+    // for the ASCII Trees
+    testImplementation 'hu.webarticum:tree-printer:+'
+
     testImplementation 'org.duckdb:duckdb_jdbc:+'
     testImplementation 'org.apache.commons:commons-compress:+'
     testImplementation 'com.opencsv:opencsv:+'

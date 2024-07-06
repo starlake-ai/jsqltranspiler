@@ -108,6 +108,11 @@ JSQLColumResolver
 
 
 
+| *@Override*
+| **visit** (tableName)
+|          Table tableName
+
+
 | **visit** (parenthesedSelect, parameters) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 |          ParenthesedSelect parenthesedSelect
 |          :ref:`JdbcMetaData<ai.starlake.transpiler.schema.JdbcMetaData>` parameters
@@ -121,6 +126,11 @@ JSQLColumResolver
 |          S parameters
 |          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 
+
+
+| *@Override*
+| **visit** (parenthesedSelect)
+|          ParenthesedSelect parenthesedSelect
 
 
 | *@SuppressWarnings*
@@ -140,11 +150,21 @@ JSQLColumResolver
 
 
 | *@Override*
+| **visit** (plainSelect)
+|          PlainSelect plainSelect
+
+
+| *@Override*
 | **visit** (setOperationList, parameters) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 |          SetOperationList setOperationList
 |          S parameters
 |          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 
+
+
+| *@Override*
+| **visit** (setOpList)
+|          SetOperationList setOpList
 
 
 | *@Override*
@@ -156,11 +176,21 @@ JSQLColumResolver
 
 
 | *@Override*
+| **visit** (withItem)
+|          WithItem withItem
+
+
+| *@Override*
 | **visit** (values, parameters) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 |          Values values
 |          S parameters
 |          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 
+
+
+| *@Override*
+| **visit** (values)
+|          Values values
 
 
 | *@Override*
@@ -172,11 +202,21 @@ JSQLColumResolver
 
 
 | *@Override*
+| **visit** (lateralSubSelect)
+|          LateralSubSelect lateralSubSelect
+
+
+| *@Override*
 | **visit** (tableFunction, parameters) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 |          TableFunction tableFunction
 |          S parameters
 |          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 
+
+
+| *@Override*
+| **visit** (tableFunction)
+|          TableFunction tableFunction
 
 
 | *@Override*
@@ -188,11 +228,21 @@ JSQLColumResolver
 
 
 | *@Override*
+| **visit** (parenthesedFromItem)
+|          ParenthesedFromItem parenthesedFromItem
+
+
+| *@Override*
 | **visit** (tableStatement, parameters) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 |          TableStatement tableStatement
 |          S parameters
 |          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 
+
+
+| *@Override*
+| **visit** (tableStatement)
+|          TableStatement tableStatement
 
 
 
@@ -275,17 +325,17 @@ JSQLExpressionTranspiler
 
 
 | *@Override*
-| **visit** (allColumns, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (allColumns, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          AllColumns allColumns
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
 | *@SuppressWarnings*,| *@Override*
-| **visit** (function, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (function, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          AnalyticExpression function
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
@@ -301,25 +351,25 @@ JSQLExpressionTranspiler
 
 
             | *@Override*
-| **visit** (extractExpression, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (extractExpression, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          ExtractExpression extractExpression
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
 | *@Override*
-| **visit** (stringValue, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (stringValue, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          StringValue stringValue
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
 | *@Override*
-| **visit** (hexValue, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (hexValue, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          HexValue hexValue
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
@@ -331,17 +381,17 @@ JSQLExpressionTranspiler
 
 
 | *@Override*
-| **visit** (castExpression, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (castExpression, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          CastExpression castExpression
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
 | *@Override*
-| **visit** (structType, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (structType, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          StructType structType
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
@@ -434,25 +484,25 @@ JSQLExpressionTranspiler
 
 
 | *@Override*
-| **visit** (expression, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (expression, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          TimeKeyExpression expression
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
 | *@Override*
-| **visit** (likeExpression, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (likeExpression, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          LikeExpression likeExpression
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
 | *@Override*
-| **visit** (function, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (function, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          TranscodingFunction function
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
@@ -470,17 +520,17 @@ JSQLExpressionTranspiler
 
 
 | *@Override*
-| **visit** (column, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (column, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          Column column
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
 | *@Override*
-| **visit** (expressionList, parameters) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (expressionList, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          <any> expressionList
-|          S parameters
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
@@ -564,9 +614,9 @@ JSQLSelectTranspiler
 
 
 | *@Override*
-| **visit** (selectItem, params) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (selectItem, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          <any> selectItem
-|          S params
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
@@ -591,16 +641,30 @@ JSQLTranspiler
                 
                 
                 
-            | **JSQLTranspiler** ()
+            | **JSQLTranspiler** (parameters)
+|          :ref:`Map<java.util.Map>` parameters
+
+
+| **JSQLTranspiler** ()
 
 
 | *@SuppressWarnings*
-| **transpileQuery** (qryStr, dialect, executorService, consumer) → :ref:`String<java.lang.String>`
+| **transpileQuery** (qryStr, dialect, parameters, executorService, consumer) → :ref:`String<java.lang.String>`
 | Transpile a query string in the defined dialect into DuckDB compatible SQL.
 |          :ref:`String<java.lang.String>` qryStr  | qryStr the original query string
 |          :ref:`Dialect<ai.starlake.transpiler.JSQLTranspiler.Dialect>` dialect  | dialect the dialect of the query string
+|          :ref:`Map<java.util.Map>` parameters  | parameters the map of substitution key/value pairs (can be empty)
 |          :ref:`ExecutorService<java.util.concurrent.ExecutorService>` executorService  | executorService the ExecutorService to use for running and observing JSQLParser
 |          :ref:`Consumer<java.util.function.Consumer>` consumer  | consumer the parser configuration to use for the parsing
+|          returns :ref:`String<java.lang.String>`  | the transformed query string
+
+
+
+| **transpileQuery** (qryStr, dialect, parameters) → :ref:`String<java.lang.String>`
+| Transpile a query string in the defined dialect into DuckDB compatible SQL.
+|          :ref:`String<java.lang.String>` qryStr  | qryStr the original query string
+|          :ref:`Dialect<ai.starlake.transpiler.JSQLTranspiler.Dialect>` dialect  | dialect the dialect of the query string
+|          :ref:`Map<java.util.Map>` parameters  | parameters the map of substitution key/value pairs (can be empty)
 |          returns :ref:`String<java.lang.String>`  | the transformed query string
 
 
@@ -614,12 +678,22 @@ JSQLTranspiler
 
 
 | *@SuppressWarnings*
-| **transpile** (sqlStr, outputFile, executorService, consumer)
+| **transpile** (sqlStr, parameters, outputFile, executorService, consumer)
 | Transpile a query string from a file or STDIN and write the transformed query string into a file or STDOUT. Using the provided Executor Service for observing the parser.
 |          :ref:`String<java.lang.String>` sqlStr  | sqlStr the original query string
+|          :ref:`Map<java.util.Map>` parameters  | parameters the map of substitution key/value pairs (can be empty)
 |          :ref:`File<java.io.File>` outputFile  | outputFile the output file, writing to STDOUT when not defined
 |          :ref:`ExecutorService<java.util.concurrent.ExecutorService>` executorService  | executorService the ExecutorService to use for running and observing JSQLParser
 |          :ref:`Consumer<java.util.function.Consumer>` consumer  | consumer the parser configuration to use for the parsing
+
+
+| **transpile** (sqlStr, parameters, outputFile) → boolean
+| Transpile a query string from a file or STDIN and write the transformed query string into a file or STDOUT.
+|          :ref:`String<java.lang.String>` sqlStr  | sqlStr the original query string
+|          :ref:`Map<java.util.Map>` parameters  | parameters the map of substitution key/value pairs (can be empty)
+|          :ref:`File<java.io.File>` outputFile  | outputFile the output file, writing to STDOUT when not defined
+|          returns boolean
+
 
 
 | **transpile** (sqlStr, outputFile) → boolean
@@ -670,67 +744,77 @@ JSQLTranspiler
 |          :ref:`Connection<java.sql.Connection>` conn
 
 
-| **transpile** (statement) → :ref:`String<java.lang.String>`
+| **transpile** (statement, parameters) → :ref:`String<java.lang.String>`
 | Rewrite a given SQL Statement into a text representation.
 |          Statement statement  | statement the statement
+|          :ref:`Map<java.util.Map>` parameters
 |          returns :ref:`String<java.lang.String>`  | the string
 
 
 
-| **transpileBigQuery** (statement) → :ref:`String<java.lang.String>`
+| **transpileBigQuery** (statement, parameters) → :ref:`String<java.lang.String>`
 | Rewrite a given BigQuery SQL Statement into a text representation.
 |          Statement statement  | statement the statement
+|          :ref:`Map<java.util.Map>` parameters
 |          returns :ref:`String<java.lang.String>`  | the string
 
 
 
-| **transpileDatabricks** (statement) → :ref:`String<java.lang.String>`
+| **transpileDatabricks** (statement, parameters) → :ref:`String<java.lang.String>`
 | Rewrite a given DataBricks SQL Statement into a text representation.
 |          Statement statement  | statement the statement
+|          :ref:`Map<java.util.Map>` parameters
 |          returns :ref:`String<java.lang.String>`  | the string
 
 
 
-| **transpileSnowflake** (statement) → :ref:`String<java.lang.String>`
+| **transpileSnowflake** (statement, parameters) → :ref:`String<java.lang.String>`
 | Rewrite a given Snowflake SQL Statement into a text representation.
 |          Statement statement  | statement the statement
+|          :ref:`Map<java.util.Map>` parameters
 |          returns :ref:`String<java.lang.String>`  | the string
 
 
 
-| **transpileAmazonRedshift** (statement) → :ref:`String<java.lang.String>`
+| **transpileAmazonRedshift** (statement, parameters) → :ref:`String<java.lang.String>`
 | Rewrite a given Redshift SQL Statement into a text representation.
 |          Statement statement  | statement the statement
+|          :ref:`Map<java.util.Map>` parameters
 |          returns :ref:`String<java.lang.String>`  | the string
 
 
 
-| **visit** (select) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (select, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          Select select
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
-| **visit** (insert) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (insert, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          Insert insert
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
-| **visit** (update) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (update, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          Update update
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
-| **visit** (delete) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (delete, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          Delete delete
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
 
-| **visit** (merge) → :ref:`StringBuilder<java.lang.StringBuilder>`
+| **visit** (merge, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
 |          Merge merge
+|          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
 
 
@@ -794,7 +878,8 @@ BigQueryTranspiler
 
 *extends:* :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` 
 
-| **BigQueryTranspiler** ()
+| **BigQueryTranspiler** (parameters)
+|          :ref:`Map<java.util.Map>` parameters
 
 
 
@@ -882,7 +967,8 @@ DatabricksTranspiler
 
 *extends:* :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` 
 
-| **DatabricksTranspiler** ()
+| **DatabricksTranspiler** (parameters)
+|          :ref:`Map<java.util.Map>` parameters
 
 
 
@@ -962,7 +1048,8 @@ RedshiftTranspiler
 
 *extends:* :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` 
 
-| **RedshiftTranspiler** ()
+| **RedshiftTranspiler** (parameters)
+|          :ref:`Map<java.util.Map>` parameters
 
 
 
@@ -3672,6 +3759,7 @@ SnowflakeTranspiler
 
 *extends:* :ref:`JSQLTranspiler<ai.starlake.transpiler.JSQLTranspiler>` 
 
-| **SnowflakeTranspiler** ()
+| **SnowflakeTranspiler** (parameters)
+|          :ref:`Map<java.util.Map>` parameters
 
 

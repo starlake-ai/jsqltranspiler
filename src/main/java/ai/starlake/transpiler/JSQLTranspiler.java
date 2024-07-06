@@ -45,6 +45,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -119,6 +120,7 @@ public class JSQLTranspiler extends StatementDeParser {
    *
    * @param qryStr the original query string
    * @param dialect the dialect of the query string
+   * @param parameters the map of substitution key/value pairs (can be empty)
    * @param executorService the ExecutorService to use for running and observing JSQLParser
    * @param consumer the parser configuration to use for the parsing
    * @return the transformed query string
@@ -161,6 +163,7 @@ public class JSQLTranspiler extends StatementDeParser {
    *
    * @param qryStr the original query string
    * @param dialect the dialect of the query string
+   * @param parameters the map of substitution key/value pairs (can be empty)
    * @return the transformed query string
    * @throws JSQLParserException a parser exception when the statement can't be parsed
    * @throws InterruptedException a time-out exception, when the statement can't be parsed within 6
@@ -181,10 +184,26 @@ public class JSQLTranspiler extends StatementDeParser {
   }
 
   /**
+   * Transpile a query string in the defined dialect into DuckDB compatible SQL.
+   *
+   * @param qryStr the original query string
+   * @param dialect the dialect of the query string
+   * @return the transformed query string
+   * @throws JSQLParserException a parser exception when the statement can't be parsed
+   * @throws InterruptedException a time-out exception, when the statement can't be parsed within 6
+   *         seconds (hanging parser)
+   */
+  public static String transpileQuery(String qryStr, Dialect dialect)
+      throws JSQLParserException, InterruptedException {
+    return transpileQuery(qryStr, dialect, Collections.emptyMap());
+  }
+
+  /**
    * Transpile a query string from a file or STDIN and write the transformed query string into a
    * file or STDOUT. Using the provided Executor Service for observing the parser.
    *
    * @param sqlStr the original query string
+   * @param parameters the map of substitution key/value pairs (can be empty)
    * @param outputFile the output file, writing to STDOUT when not defined
    * @param executorService the ExecutorService to use for running and observing JSQLParser
    * @param consumer the parser configuration to use for the parsing
@@ -236,6 +255,7 @@ public class JSQLTranspiler extends StatementDeParser {
    *
    *
    * @param sqlStr the original query string
+   * @param parameters the map of substitution key/value pairs (can be empty)
    * @param outputFile the output file, writing to STDOUT when not defined
    * @throws JSQLParserException a parser exception when the statement can't be parsed
    * @throws InterruptedException a time-out exception, when the statement can't be parsed within 6
@@ -250,6 +270,21 @@ public class JSQLTranspiler extends StatementDeParser {
     });
     executorService.shutdown();
     return executorService.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
+  }
+
+  /**
+   * Transpile a query string from a file or STDIN and write the transformed query string into a
+   * file or STDOUT.
+   *
+   * @param sqlStr the original query string
+   * @param outputFile the output file, writing to STDOUT when not defined
+   * @throws JSQLParserException a parser exception when the statement can't be parsed
+   * @throws InterruptedException a time-out exception, when the statement can't be parsed within 6
+   *         seconds (hanging parser)
+   */
+  public static boolean transpile(String sqlStr, File outputFile)
+      throws JSQLParserException, InterruptedException {
+    return transpile(sqlStr, Collections.emptyMap(), outputFile);
   }
 
   /**

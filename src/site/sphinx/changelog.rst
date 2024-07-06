@@ -8,6 +8,12 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **doc: fix typo**
+    
+    Andreas Reichel, 2024-06-27
+  * **feat: provide TimeKeyParameters as parameters for each call**
+    
+    Andreas Reichel, 2024-06-27
   * **build: reduce coverage temporarily**
     
     Andreas Reichel, 2024-06-25

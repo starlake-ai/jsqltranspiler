@@ -16,6 +16,9 @@
  */
 package ai.starlake.transpiler.schema;
 
+import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
+
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -48,6 +51,9 @@ public final class JdbcMetaData implements DatabaseMetaData {
   private final String currentCatalogName;
   private final String currentSchemaName;
   private String catalogSeparator = ".";
+
+  private final CaseInsensitiveLinkedHashMap<Table> fromTables =
+      new CaseInsensitiveLinkedHashMap<>();
 
   static {
     for (Field field : Types.class.getFields()) {
@@ -415,7 +421,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
   public JdbcMetaData addTable(String tableName, String... columnNames) {
     LinkedHashSet<JdbcColumn> columns = new LinkedHashSet<>();
     for (String columnName : columnNames) {
-      columns.add(new JdbcColumn(currentCatalogName, currentSchemaName, tableName, columnName));
+      columns.add(new JdbcColumn(currentCatalogName, currentSchemaName, tableName, columnName,
+          new Column(columnName)));
     }
 
     return addTable(tableName, List.copyOf(columns));
@@ -1342,9 +1349,29 @@ public final class JdbcMetaData implements DatabaseMetaData {
     return false;
   }
 
-  public static JdbcMetaData copyOf(JdbcMetaData metaData) {
+  public CaseInsensitiveLinkedHashMap<Table> getFromTables() {
+    return fromTables;
+  }
+
+  public JdbcMetaData addFromTables(Collection<Table> fromTables) {
+    for (Table t : fromTables) {
+      this.fromTables.put(t.getName(), t);
+    }
+    return this;
+  }
+
+  public JdbcMetaData addFromTables(Table... fromTables) {
+    for (Table t : fromTables) {
+      this.fromTables.put(t.getName(), t);
+    }
+    return this;
+  }
+
+  public static JdbcMetaData copyOf(JdbcMetaData metaData,
+      CaseInsensitiveLinkedHashMap<Table> fromTables) {
     JdbcMetaData metaData1 =
         new JdbcMetaData(metaData.currentCatalogName, metaData.currentSchemaName);
+    metaData1.getFromTables().putAll(fromTables);
 
     for (JdbcCatalog catalog : metaData.catalogs.values()) {
       JdbcCatalog catalog1 = new JdbcCatalog(catalog.tableCatalog, metaData.catalogSeparator);
@@ -1363,6 +1390,10 @@ public final class JdbcMetaData implements DatabaseMetaData {
     return metaData1;
   }
 
+  public static JdbcMetaData copyOf(JdbcMetaData metaData) {
+    return copyOf(metaData, new CaseInsensitiveLinkedHashMap<Table>());
+  }
+
   private static JdbcTable getJdbcTable(JdbcTable table) {
     JdbcTable table1 = new JdbcTable(table.tableCatalog, table.tableSchema, table.tableName,
         table.tableType, table.remarks, table.typeCatalog, table.typeSchema, table.typeName,
@@ -1373,7 +1404,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
           column.decimalDigits, column.numericPrecisionRadix, column.nullable, column.remarks,
           column.columnDefinition, column.characterOctetLength, column.ordinalPosition,
           column.isNullable, column.scopeCatalog, column.scopeSchema, column.scopeTable,
-          column.sourceDataType, column.isAutomaticIncrement, column.isGeneratedColumn);
+          column.sourceDataType, column.isAutomaticIncrement, column.isGeneratedColumn,
+          column.getExpression());
       table1.add(column1);
     }
     return table1;

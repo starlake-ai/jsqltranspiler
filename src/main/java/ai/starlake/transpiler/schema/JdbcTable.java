@@ -16,6 +16,8 @@
  */
 package ai.starlake.transpiler.schema;
 
+import net.sf.jsqlparser.schema.Column;
+
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -207,7 +209,8 @@ public class JdbcTable implements Comparable<JdbcTable> {
         JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
             dataType, typeName, columnSize, decimalDigits, numericPrecicionRadix, nullable, remarks,
             columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
-            scopeSchema, scopeTable, sourceDataType, isAutoIncrement, isGeneratedColumn);
+            scopeSchema, scopeTable, sourceDataType, isAutoIncrement, isGeneratedColumn,
+            new Column(columnName));
 
         columns.put(jdbcColumn.columnName, jdbcColumn);
       }
@@ -364,7 +367,8 @@ public class JdbcTable implements Comparable<JdbcTable> {
     JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
         dataType, typeName, columnSize, decimalDigits, numericPrecisionRadix, nullable, remarks,
         columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
-        scopeSchema, scopeTable, sourceDataType, isAutomaticIncrement, isGeneratedColumn);
+        scopeSchema, scopeTable, sourceDataType, isAutomaticIncrement, isGeneratedColumn,
+        new Column(columnName));
     return add(jdbcColumn);
   }
 
