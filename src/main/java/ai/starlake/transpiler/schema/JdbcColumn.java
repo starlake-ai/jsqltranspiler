@@ -59,7 +59,7 @@ public class JdbcColumn implements Comparable<JdbcColumn>, TreeNode {
   JdbcColumn parent = null;
   List<JdbcColumn> childNodes = new ArrayList<>();
 
-  private final Expression expression;
+  private Expression expression;
 
   /* Each column description has the following columns:
   
@@ -327,5 +327,10 @@ public class JdbcColumn implements Comparable<JdbcColumn>, TreeNode {
 
   public Expression getExpression() {
     return expression;
+  }
+
+  public JdbcColumn setExpression(Expression expression) {
+    this.expression = expression;
+    return this;
   }
 }

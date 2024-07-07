@@ -294,10 +294,21 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
   }
 
 
-  public static String assertLineage(JdbcResultSetMetaData resultSetMetaData, String expected)
+  public static String assertLineage(String sqlStr, String expected)
       throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException,
-      IllegalAccessException {
-    String actual = resultSetMetaData.getLineage(AsciiTreeBuilder.class);
+      IllegalAccessException, JSQLParserException {
+
+    String[][] schemaDefinition = {
+        // Table A with Columns col1, col2, col3, colAA, colAB
+        {"a", "col1", "col2", "col3", "colAA", "colAB"},
+
+        // Table B with Columns col1, col2, col3, colBA, colBB
+        {"b", "col1", "col2", "col3", "colBA", "colBB"}};
+
+    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
+    JdbcResultSetMetaData resultSetMetaData = resolver.getResultSetMetaData(sqlStr);
+
+    String actual = resolver.getLineage(AsciiTreeBuilder.class, sqlStr);
     Assertions.assertThat(actual).isEqualToIgnoringWhitespace(expected);
 
     return actual;
@@ -309,12 +320,11 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     String sqlStr =
         "SELECT Sum(colBA + colBB) AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
     String[][] expected = new String[][] {{"", "Sum", "total"}};
-    JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
+    assertThatResolvesInto(sqlStr, expected);
 
-    String lineage = "SELECT\n" + "   └─total AS Function: Sum(colBA + colBB)\n"
-        + "      └─Addition: colBA + colBB\n" + "         ├─c.colBA → b.colBA : Other\n"
-        + "         └─c.colBB → b.colBB : Other";
-    assertLineage(resultSetMetaData, lineage);
+    String lineage = "SELECT\n" + " └─total AS Function Sum\n" + "    └─Addition: colBA + colBB\n"
+        + "       ├─c.colBA → b.colBA : Other\n" + "       └─c.colBB → b.colBB : Other";
+    assertLineage(sqlStr, lineage);
   }
 
   @Test
@@ -384,17 +394,17 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     String sqlStr =
         "SELECT Case when Sum(colBA + colBB)=0 then c.col1 else a.col2 end AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
     String[][] expected = new String[][] {{"", "CaseExpression", "total"}};
-    JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
+    assertThatResolvesInto(sqlStr, expected);
 
     String lineage = "SELECT\n"
         + " └─total AS CaseExpression: CASE WHEN Sum(colBA + colBB) = 0 THEN c.col1 ELSE a.col2 END\n"
         + "    ├─WhenClause: WHEN Sum(colBA + colBB) = 0 THEN c.col1\n"
-        + "    │  ├─EqualsTo: Sum(colBA + colBB) = 0\n"
-        + "    │  │  └─Function: Sum(colBA + colBB)\n" + "    │  │     └─Addition: colBA + colBB\n"
+        + "    │  ├─EqualsTo: Sum(colBA + colBB) = 0\n" + "    │  │  └─Function Sum\n"
+        + "    │  │     └─Addition: colBA + colBB\n"
         + "    │  │        ├─c.colBA → b.colBA : Other\n"
         + "    │  │        └─c.colBB → b.colBB : Other\n" + "    │  └─c.col1 → b.col1 : Other\n"
-        + "    └─a.col2 : Other\n";
-    assertLineage(resultSetMetaData, lineage);
+        + "    └─a.col2 : Other";
+    assertLineage(sqlStr, lineage);
   }
 
   @Test
@@ -402,10 +412,10 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr = "WITH c AS (SELECT col1 AS test, colBA FROM b) SELECT * FROM c";
     String[][] expected = new String[][] {{"c", "col1", "col1"}, {"c", "colBA", "colBA"}};
-    JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
+    assertThatResolvesInto(sqlStr, expected);
 
     String lineage = "SELECT\n" + " ├─c.col1 → b.col1 : Other\n" + " └─c.colBA → b.colBA : Other\n";
-    assertLineage(resultSetMetaData, lineage);
+    assertLineage(sqlStr, lineage);
   }
 
   @Test
@@ -413,10 +423,10 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr = "SELECT (SELECT col1 AS test FROM b) col2 FROM a";
     String[][] expected = new String[][] {{"b", "col1", "col2"}};
-    JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
+    assertThatResolvesInto(sqlStr, expected);
 
-    String lineage = "SELECT\n" + " └─col2 AS b.col1 : Other\n";
-    assertLineage(resultSetMetaData, lineage);
+    String lineage = "SELECT\n" + " └─col2 AS SELECT\n" + "    └─test AS b.col1 : Other";
+    assertLineage(sqlStr, lineage);
   }
 
   @Test
@@ -430,17 +440,17 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
         {"b", "col1", "col2", "col3", "colBA", "colBB"}};
 
     String sqlStr =
-        "SELECT Sum(colBA + colBB) AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
+        "SELECT Sum(colBA + colBB) AS total, (SELECT col1 AS test FROM b) col2 FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
 
     // get the List of JdbcColumns, each holding its lineage using the TreeNode interface
-    JdbcResultSetMetaData resultSetMetaData =
-        new JSQLColumResolver(schemaDefinition).getResultSetMetaData(sqlStr);
+    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
+    JdbcResultSetMetaData resultSetMetaData = resolver.getResultSetMetaData(sqlStr);
 
-    System.out.println(resultSetMetaData.getLineage(AsciiTreeBuilder.class));
+    System.out.println(resolver.getLineage(AsciiTreeBuilder.class, sqlStr));
 
-    System.out.println(resultSetMetaData.getLineage(XmlTreeBuilder.class));
+    System.out.println(resolver.getLineage(XmlTreeBuilder.class, sqlStr));
 
-    System.out.println(resultSetMetaData.getLineage(JsonTreeBuilder.class));
+    System.out.println(resolver.getLineage(JsonTreeBuilder.class, sqlStr));
   }
 
 

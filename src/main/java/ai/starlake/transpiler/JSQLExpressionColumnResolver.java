@@ -304,12 +304,18 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     ArrayList<JdbcColumn> columns = new ArrayList<>();
     if (select.getWithItemsList() != null) {
       for (WithItem item : select.getWithItemsList()) {
-        columns.addAll(item.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context)
-            .getColumns());
+        for (JdbcColumn col : item
+            .accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context).getColumns()) {
+          columns.add(col.setExpression(select));
+        }
       }
     }
-    columns.addAll(
-        select.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context).getColumns());
+
+    for (JdbcColumn col : select
+        .accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context).getColumns()) {
+      columns.add(col.setExpression(select));
+    }
+
     return columns;
   }
 

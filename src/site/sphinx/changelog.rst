@@ -8,6 +8,15 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **feat: access the Lineage via TreeBuilder interface**
+    
+    Andreas Reichel, 2024-07-07
+  * **doc: documentation of the Column Lineage resolver for expressions**
+    
+    Andreas Reichel, 2024-07-06
+  * **feat: Column Lineage resolver for expressions**
+    
+    Andreas Reichel, 2024-07-06
   * **doc: fix typo**
     
     Andreas Reichel, 2024-06-27

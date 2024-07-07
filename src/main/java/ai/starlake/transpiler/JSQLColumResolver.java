@@ -220,10 +220,11 @@ public class JSQLColumResolver
       InvocationTargetException, InstantiationException, IllegalAccessException, SQLException {
 
     JdbcMetaData metaData = new JdbcMetaData(connection);
-    JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr, metaData);
+    JSQLColumResolver resolver = new JSQLColumResolver(metaData);
+    JdbcResultSetMetaData resultSetMetaData = resolver.getResultSetMetaData(sqlStr);
     TreeBuilder<T> builder =
         treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
-    return builder.getConvertedTree();
+    return builder.getConvertedTree(resolver);
   }
 
   public static <T> T getLineage(Class<? extends TreeBuilder<T>> treeBuilderClass, String sqlStr,
@@ -233,10 +234,22 @@ public class JSQLColumResolver
 
     JdbcMetaData metaData =
         new JdbcMetaData(currentCatalogName, currentSchemaName, metaDataDefinition);
-    JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr, metaData);
+    JSQLColumResolver resolver = new JSQLColumResolver(metaData);
+
+    JdbcResultSetMetaData resultSetMetaData = resolver.getResultSetMetaData(sqlStr);
     TreeBuilder<T> builder =
         treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
-    return builder.getConvertedTree();
+    return builder.getConvertedTree(resolver);
+  }
+
+  // for visiting Column Sub-Selects
+  public <T> T getLineage(Class<? extends TreeBuilder<T>> treeBuilderClass, Select select)
+      throws NoSuchMethodException, InvocationTargetException, InstantiationException,
+      IllegalAccessException, SQLException {
+    JdbcResultSetMetaData resultSetMetaData = select.accept(this, JdbcMetaData.copyOf(metaData));
+    TreeBuilder<T> builder =
+        treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
+    return builder.getConvertedTree(this);
   }
 
 
@@ -246,7 +259,7 @@ public class JSQLColumResolver
     JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr);
     TreeBuilder<T> builder =
         treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
-    return builder.getConvertedTree();
+    return builder.getConvertedTree(this);
   }
 
 
@@ -447,6 +460,11 @@ public class JSQLColumResolver
   @Override
   public void visit(PlainSelect plainSelect) {
     SelectVisitor.super.visit(plainSelect);
+  }
+
+  // for visiting Column Sub-Selects
+  public JdbcResultSetMetaData visit(Select select) {
+    return select.accept(this, JdbcMetaData.copyOf(metaData));
   }
 
   @Override
