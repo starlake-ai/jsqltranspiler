@@ -19,9 +19,10 @@ package ai.starlake.transpiler;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
+import ai.starlake.transpiler.schema.treebuilder.JsonTreeBuilder;
+import ai.starlake.transpiler.schema.treebuilder.XmlTreeBuilder;
+import ai.starlake.transpiler.snowflake.AsciiTreeBuilder;
 import com.opencsv.CSVWriter;
-import hu.webarticum.treeprinter.SimpleTreeNode;
-import hu.webarticum.treeprinter.printer.listing.ListingTreePrinter;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
@@ -36,10 +37,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import javax.swing.tree.TreeNode;
 import java.io.File;
 import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -77,8 +78,8 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
       }
     }
 
-    ResultSetMetaData resultSetMetaData = JSQLColumResolver.getResultSetMetaData(t.providedSqlStr,
-        metaData, "JSQLTranspilerTest", "main");
+    ResultSetMetaData resultSetMetaData =
+        JSQLColumResolver.getResultSetMetaData(t.providedSqlStr, metaData);
 
     StringWriter stringWriter = new StringWriter();
     CSVWriter csvWriter = new CSVWriter(stringWriter);
@@ -134,8 +135,7 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
         .addTable("a", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"))
         .addTable("b", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"));
 
-    ResultSetMetaData res =
-        JSQLColumResolver.getResultSetMetaData("SELECT * FROM a, b", metaData, "", "");
+    ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData("SELECT * FROM a, b", metaData);
 
     Assertions.assertThat(6).isEqualTo(res.getColumnCount());
 
@@ -159,7 +159,7 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
         "col1", "col2", "col3");
 
     ResultSetMetaData res =
-        JSQLColumResolver.getResultSetMetaData("SELECT b.* FROM a, b", metaData, "", "");
+        JSQLColumResolver.getResultSetMetaData("SELECT b.* FROM a, b", metaData);
 
     Assertions.assertThat(3).isEqualTo(res.getColumnCount());
 
@@ -293,35 +293,19 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     assertThatResolvesInto(sqlStr, expected);
   }
 
-  public static SimpleTreeNode translateNode(TreeNode node, String alias) {
-    SimpleTreeNode simpleTreeNode = new SimpleTreeNode(
-        ((alias != null && !alias.isEmpty()) ? alias + " AS " : "") + node.toString());
-    Enumeration<? extends TreeNode> children = node.children();
-    while (children.hasMoreElements()) {
-      simpleTreeNode.addChild(translateNode(children.nextElement(), ""));
-    }
-    return simpleTreeNode;
-  }
 
   public static String assertLineage(JdbcResultSetMetaData resultSetMetaData, String expected)
-      throws SQLException {
-    // Define your own Tree based on your own TreeNode interface
-    SimpleTreeNode rootNode = new SimpleTreeNode("SELECT");
-    for (int i = 0; i < resultSetMetaData.getColumnCount(); i++) {
-
-      // Add each columns lineage tree as node to the root with a translation from Swing's TreeNode
-      rootNode.addChild(translateNode(resultSetMetaData.getColumns().get(i),
-          resultSetMetaData.getLabels().get(i)));
-    }
-
-    String actual = new ListingTreePrinter().stringify(rootNode);
+      throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException,
+      IllegalAccessException {
+    String actual = resultSetMetaData.getLineage(AsciiTreeBuilder.class);
     Assertions.assertThat(actual).isEqualToIgnoringWhitespace(expected);
 
     return actual;
   }
 
   @Test
-  void testFunction() throws JSQLParserException, SQLException {
+  void testFunction() throws JSQLParserException, SQLException, InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr =
         "SELECT Sum(colBA + colBB) AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
     String[][] expected = new String[][] {{"", "Sum", "total"}};
@@ -395,7 +379,8 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
   }
 
   @Test
-  void testFunction2() throws JSQLParserException, SQLException {
+  void testFunction2() throws JSQLParserException, SQLException, InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr =
         "SELECT Case when Sum(colBA + colBB)=0 then c.col1 else a.col2 end AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
     String[][] expected = new String[][] {{"", "CaseExpression", "total"}};
@@ -413,7 +398,8 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
   }
 
   @Test
-  void testWithLineage() throws JSQLParserException, SQLException {
+  void testWithLineage() throws JSQLParserException, SQLException, InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr = "WITH c AS (SELECT col1 AS test, colBA FROM b) SELECT * FROM c";
     String[][] expected = new String[][] {{"c", "col1", "col1"}, {"c", "colBA", "colBA"}};
     JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
@@ -423,7 +409,8 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
   }
 
   @Test
-  void testSubSelectLineage() throws JSQLParserException, SQLException {
+  void testSubSelectLineage() throws JSQLParserException, SQLException, InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr = "SELECT (SELECT col1 AS test FROM b) col2 FROM a";
     String[][] expected = new String[][] {{"b", "col1", "col2"}};
     JdbcResultSetMetaData resultSetMetaData = assertThatResolvesInto(sqlStr, expected);
@@ -432,7 +419,9 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     assertLineage(resultSetMetaData, lineage);
   }
 
-  void lineage() throws JSQLParserException, SQLException {
+  @Test
+  void lineage() throws JSQLParserException, SQLException, InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
     String[][] schemaDefinition = {
         // Table a
         {"a", "col1", "col2", "col3", "colAA", "colAB"},
@@ -447,19 +436,11 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     JdbcResultSetMetaData resultSetMetaData =
         new JSQLColumResolver(schemaDefinition).getResultSetMetaData(sqlStr);
 
+    System.out.println(resultSetMetaData.getLineage(AsciiTreeBuilder.class));
 
-    // Define your own Tree based on your own TreeNode interface
-    SimpleTreeNode rootNode = new SimpleTreeNode("SELECT");
-    for (int i = 0; i < resultSetMetaData.getColumnCount(); i++) {
+    System.out.println(resultSetMetaData.getLineage(XmlTreeBuilder.class));
 
-      // Add each columns lineage tree as node to the root
-      // JdbcColum implements the Swing's TreeNode interface
-      // thus a translation between the different TreeNode interfaces may be needed
-      JdbcColumn column = resultSetMetaData.getColumns().get(i);
-      String alias = resultSetMetaData.getLabels().get(i);
-      rootNode.addChild(translateNode(column, alias));
-    }
-    new ListingTreePrinter().print(rootNode);
+    System.out.println(resultSetMetaData.getLineage(JsonTreeBuilder.class));
   }
 
 

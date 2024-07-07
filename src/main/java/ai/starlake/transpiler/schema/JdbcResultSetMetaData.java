@@ -16,6 +16,9 @@
  */
 package ai.starlake.transpiler.schema;
 
+import ai.starlake.transpiler.schema.treebuilder.TreeBuilder;
+
+import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -178,5 +181,13 @@ public class JdbcResultSetMetaData implements ResultSetMetaData {
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
     // @todo: implement this properly
     return false;
+  }
+
+  public <T> T getLineage(Class<? extends TreeBuilder<T>> treeBuilderClass)
+      throws SQLException, NoSuchMethodException, InvocationTargetException, InstantiationException,
+      IllegalAccessException {
+    TreeBuilder<T> builder =
+        treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(this);
+    return builder.getConvertedTree();
   }
 }

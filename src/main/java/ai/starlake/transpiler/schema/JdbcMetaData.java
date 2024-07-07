@@ -1410,4 +1410,17 @@ public final class JdbcMetaData implements DatabaseMetaData {
     }
     return table1;
   }
+
+  public String getCurrentCatalogName() {
+    return currentCatalogName;
+  }
+
+  public String getCurrentSchemaName() {
+    return currentSchemaName;
+  }
+
+  public JdbcMetaData setCatalogSeparator(String catalogSeparator) {
+    this.catalogSeparator = catalogSeparator;
+    return this;
+  }
 }

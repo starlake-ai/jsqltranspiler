@@ -20,11 +20,11 @@ import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import ai.starlake.transpiler.schema.JdbcTable;
+import ai.starlake.transpiler.schema.treebuilder.TreeBuilder;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.schema.Database;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.FromItem;
@@ -44,6 +44,8 @@ import net.sf.jsqlparser.statement.select.Values;
 import net.sf.jsqlparser.statement.select.WithItem;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
+import java.lang.reflect.InvocationTargetException;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,37 +60,19 @@ public class JSQLColumResolver
     implements SelectVisitor<JdbcResultSetMetaData>, FromItemVisitor<JdbcResultSetMetaData> {
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
 
-  private final String currentCatalogName;
-  private final String currentSchemaName;
 
   private final JdbcMetaData metaData;
   private final JSQLExpressionColumnResolver expressionColumnResolver;
 
-  /**
-   * Instantiates a new JSQLColumnResolver for the provided Meta Data.
-   *
-   * @param currentCatalogName the current catalog name, can be empty
-   * @param currentSchemaName the current schema name, can be empty
-   * @param metaData the database meta data holding the catalogs, schemas and table definitions
-   */
-  public JSQLColumResolver(String currentCatalogName, String currentSchemaName,
-      JdbcMetaData metaData) {
-    this.currentCatalogName = currentCatalogName;
-    this.currentSchemaName = currentSchemaName;
-    this.metaData = metaData;
-
-    this.expressionColumnResolver = new JSQLExpressionColumnResolver(this);
-  }
-
 
   /**
-   * Instantiates a new JSQLColumnResolver for the provided Meta Data with an empty CURRENT_SCHEMA
-   * and CURRENT_CATALOG
+   * Instantiates a new JSQLColumnResolver for the provided Database Meta Data
    *
    * @param metaData the meta data
    */
   public JSQLColumResolver(JdbcMetaData metaData) {
-    this("", "", metaData);
+    this.metaData = metaData;
+    this.expressionColumnResolver = new JSQLExpressionColumnResolver(this);
   }
 
 
@@ -102,7 +86,7 @@ public class JSQLColumResolver
    */
   public JSQLColumResolver(String currentCatalogName, String currentSchemaName,
       String[][] metaDataDefinition) {
-    this(currentCatalogName, currentSchemaName, new JdbcMetaData(metaDataDefinition));
+    this(new JdbcMetaData(currentCatalogName, currentSchemaName, metaDataDefinition));
   }
 
   /**
@@ -122,23 +106,19 @@ public class JSQLColumResolver
    *
    * @param sqlStr the `SELECT` statement text
    * @param metaData the Database Meta Data
-   * @param currentCatalogName the CURRENT_CATALOG name (which is the default catalog for accessing
-   *        the schemas)
-   * @param currentSchemaName the CURRENT_SCHEMA name (which is the default schema for accessing the
-   *        tables)
    * @return the ResultSetMetaData representing the actual columns returned by the `SELECT`
    *         statement
    * @throws JSQLParserException when the `SELECT` statement text can not be parsed
    */
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
-  public static JdbcResultSetMetaData getResultSetMetaData(String sqlStr, JdbcMetaData metaData,
-      String currentCatalogName, String currentSchemaName) throws JSQLParserException {
+  public static JdbcResultSetMetaData getResultSetMetaData(String sqlStr, JdbcMetaData metaData)
+      throws JSQLParserException {
+
     if (sqlStr == null || sqlStr.trim().isEmpty()) {
       throw new JSQLParserException("The provided Statement must not be empty.");
     }
 
-    JSQLColumResolver resolver =
-        new JSQLColumResolver(currentCatalogName, currentSchemaName, metaData);
+    JSQLColumResolver resolver = new JSQLColumResolver(metaData);
 
     Statement st = CCJSqlParserUtil.parse(sqlStr);
     if (st instanceof Select) {
@@ -171,11 +151,11 @@ public class JSQLColumResolver
       throws JSQLParserException {
     JdbcMetaData metaData =
         new JdbcMetaData(currentCatalogName, currentSchemaName, metaDataDefinition);
-    return getResultSetMetaData(sqlStr, metaData, currentCatalogName, currentSchemaName);
+    return getResultSetMetaData(sqlStr, metaData);
   }
 
   /**
-   * Resolves the actual columns returned by a SELECT statement for an empty CURRENT_CATALOG and and
+   * Resolves the actual columns returned by a SELECT statement for an empty CURRENT_CATALOG and an
    * empty CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
    *
    * @param sqlStr the `SELECT` statement text
@@ -187,9 +167,8 @@ public class JSQLColumResolver
    */
   public JdbcResultSetMetaData getResultSetMetaData(String sqlStr, String[][] metaDataDefinition)
       throws JSQLParserException {
-    JdbcMetaData metaData =
-        new JdbcMetaData(currentCatalogName, currentSchemaName, metaDataDefinition);
-    return getResultSetMetaData(sqlStr, metaData, "", "");
+    JdbcMetaData metaData = new JdbcMetaData("", "", metaDataDefinition);
+    return getResultSetMetaData(sqlStr, metaData);
   }
 
   /**
@@ -236,20 +215,54 @@ public class JSQLColumResolver
     return builder.toString();
   }
 
+  public static <T> T getLineage(Class<? extends TreeBuilder<T>> treeBuilderClass, String sqlStr,
+      Connection connection) throws JSQLParserException, NoSuchMethodException,
+      InvocationTargetException, InstantiationException, IllegalAccessException, SQLException {
+
+    JdbcMetaData metaData = new JdbcMetaData(connection);
+    JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr, metaData);
+    TreeBuilder<T> builder =
+        treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
+    return builder.getConvertedTree();
+  }
+
+  public static <T> T getLineage(Class<? extends TreeBuilder<T>> treeBuilderClass, String sqlStr,
+      String[][] metaDataDefinition, String currentCatalogName, String currentSchemaName)
+      throws JSQLParserException, NoSuchMethodException, InvocationTargetException,
+      InstantiationException, IllegalAccessException, SQLException {
+
+    JdbcMetaData metaData =
+        new JdbcMetaData(currentCatalogName, currentSchemaName, metaDataDefinition);
+    JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr, metaData);
+    TreeBuilder<T> builder =
+        treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
+    return builder.getConvertedTree();
+  }
+
+
+  public <T> T getLineage(Class<? extends TreeBuilder<T>> treeBuilderClass, String sqlStr)
+      throws NoSuchMethodException, InvocationTargetException, InstantiationException,
+      IllegalAccessException, SQLException, JSQLParserException {
+    JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr);
+    TreeBuilder<T> builder =
+        treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
+    return builder.getConvertedTree();
+  }
+
 
   @Override
-  public <S> JdbcResultSetMetaData visit(Table table, S s) {
+  public <S> JdbcResultSetMetaData visit(Table table, S context) {
     JdbcResultSetMetaData rsMetaData = new JdbcResultSetMetaData();
 
     if (table.getSchemaName() == null || table.getSchemaName().isEmpty()) {
-      table.setSchemaName(currentSchemaName);
+      table.setSchemaName(metaData.getCurrentSchemaName());
     }
 
     if (table.getDatabase() == null) {
-      table.setDatabase(new Database(currentCatalogName));
+      table.setDatabaseName(metaData.getCurrentCatalogName());
     } else if (table.getDatabase().getDatabaseName() == null
         || table.getDatabase().getDatabaseName().isEmpty()) {
-      table.getDatabase().setDatabaseName(currentCatalogName);
+      table.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
     }
 
     for (JdbcColumn jdbcColumn : metaData.getTableColumns(table.getDatabase().getDatabaseName(),
@@ -261,19 +274,14 @@ public class JSQLColumResolver
     return rsMetaData;
   }
 
-  @Override
-  public void visit(Table tableName) {
-    FromItemVisitor.super.visit(tableName);
-  }
-
-  public JdbcResultSetMetaData visit(ParenthesedSelect parenthesedSelect, JdbcMetaData parameters) {
+  public JdbcResultSetMetaData visit(ParenthesedSelect parenthesedSelect, JdbcMetaData context) {
     JdbcResultSetMetaData rsMetaData = null;
     Alias alias = parenthesedSelect.getAlias();
-    JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName,
+    JdbcTable t = new JdbcTable(metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName(),
         alias != null ? parenthesedSelect.getAlias().getName() : "");
 
     rsMetaData = parenthesedSelect.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this,
-        JdbcMetaData.copyOf(parameters));
+        JdbcMetaData.copyOf(context));
     try {
       int columnCount = rsMetaData.getColumnCount();
       for (int i = 1; i <= columnCount; i++) {
@@ -291,9 +299,9 @@ public class JSQLColumResolver
   }
 
   @Override
-  public <S> JdbcResultSetMetaData visit(ParenthesedSelect parenthesedSelect, S parameters) {
-    if (parameters instanceof JdbcMetaData) {
-      JdbcMetaData metaData1 = (JdbcMetaData) parameters;
+  public <S> JdbcResultSetMetaData visit(ParenthesedSelect parenthesedSelect, S context) {
+    if (context instanceof JdbcMetaData) {
+      JdbcMetaData metaData1 = (JdbcMetaData) context;
       return visit(parenthesedSelect, JdbcMetaData.copyOf(metaData1));
     }
     return null;
@@ -329,7 +337,7 @@ public class JSQLColumResolver
       }
     } else if (fromItem != null) {
       Alias alias = fromItem.getAlias();
-      JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName,
+      JdbcTable t = new JdbcTable(metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName(),
           alias != null ? alias.getName() : "");
 
       JdbcResultSetMetaData rsMetaData = fromItem.accept(this, JdbcMetaData.copyOf(metaData));
@@ -363,8 +371,8 @@ public class JSQLColumResolver
           }
         } else {
           Alias alias = join.getFromItem().getAlias();
-          JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName,
-              alias != null ? alias.getName() : "");
+          JdbcTable t = new JdbcTable(metaData.getCurrentCatalogName(),
+              metaData.getCurrentSchemaName(), alias != null ? alias.getName() : "");
 
           JdbcResultSetMetaData rsMetaData =
               join.getFromItem().accept(this, JdbcMetaData.copyOf(metaData));
@@ -389,14 +397,14 @@ public class JSQLColumResolver
 
     for (Table t : metaData.getFromTables().values()) {
       if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
-        t.setSchemaName(currentSchemaName);
+        t.setSchemaName(metaData.getCurrentSchemaName());
       }
 
       if (t.getDatabase() == null) {
-        t.setDatabase(new Database(currentCatalogName));
+        t.setDatabaseName(metaData.getCurrentCatalogName());
       } else if (t.getDatabase().getDatabaseName() == null
           || t.getDatabase().getDatabaseName().isEmpty()) {
-        t.getDatabase().setDatabaseName(currentCatalogName);
+        t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
       }
     }
 
@@ -443,22 +451,20 @@ public class JSQLColumResolver
 
   @Override
   public <S> JdbcResultSetMetaData visit(SetOperationList setOperationList, S context) {
-    return null;
+    if (context instanceof JdbcMetaData) {
+      return setOperationList.getSelect(0).accept(this, (JdbcMetaData) context);
+    } else {
+      return null;
+    }
   }
-
-  @Override
-  public void visit(SetOperationList setOpList) {
-    SelectVisitor.super.visit(setOpList);
-  }
-
 
   @Override
   public <S> JdbcResultSetMetaData visit(WithItem withItem, S context) {
     if (context instanceof JdbcMetaData) {
       JdbcMetaData metaData = (JdbcMetaData) context;
 
-      JdbcTable t =
-          new JdbcTable(currentCatalogName, currentSchemaName, withItem.getAlias().getName());
+      JdbcTable t = new JdbcTable(metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName(),
+          withItem.getAlias().getName());
 
       JdbcResultSetMetaData md = withItem.getSelect()
           .accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
@@ -478,12 +484,6 @@ public class JSQLColumResolver
 
     return withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
   }
-
-  @Override
-  public void visit(WithItem withItem) {
-    SelectVisitor.super.visit(withItem);
-  }
-
 
   @Override
   public <S> JdbcResultSetMetaData visit(Values values, S context) {
@@ -511,11 +511,6 @@ public class JSQLColumResolver
   }
 
   @Override
-  public void visit(TableFunction tableFunction) {
-    FromItemVisitor.super.visit(tableFunction);
-  }
-
-  @Override
   public <S> JdbcResultSetMetaData visit(ParenthesedFromItem parenthesedFromItem, S context) {
     JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
 
@@ -540,18 +535,8 @@ public class JSQLColumResolver
   }
 
   @Override
-  public void visit(ParenthesedFromItem parenthesedFromItem) {
-    FromItemVisitor.super.visit(parenthesedFromItem);
-  }
-
-  @Override
   public <S> JdbcResultSetMetaData visit(TableStatement tableStatement, S context) {
     return null;
-  }
-
-  @Override
-  public void visit(TableStatement tableStatement) {
-    SelectVisitor.super.visit(tableStatement);
   }
 
 }
