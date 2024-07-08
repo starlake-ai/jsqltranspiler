@@ -262,6 +262,32 @@ public class JSQLColumResolver
     return builder.getConvertedTree(this);
   }
 
+  public static String getQualifiedTableName(String catalogName, String schemaName, String tableName) {
+    StringBuilder builder = new StringBuilder();
+    if (catalogName!=null && !catalogName.isEmpty()) {
+      builder.append(catalogName).append(".");
+      builder.append(schemaName!=null ? schemaName : "").append(".");
+    } else if (schemaName!=null && !schemaName.isEmpty()) {
+      builder.append(schemaName).append(".");
+    }
+    builder.append(tableName);
+    return builder.toString();
+  }
+
+  public static String getQualifiedColumnName(String catalogName, String schemaName, String tableName, String columName) {
+    StringBuilder builder = new StringBuilder();
+    if (tableName==null || tableName.isEmpty()) {
+      return columName;
+    } else if (catalogName!=null && !catalogName.isEmpty()) {
+      builder.append(catalogName).append(".");
+      builder.append(schemaName!=null ? schemaName : "").append(".");
+    } else if (schemaName!=null && !schemaName.isEmpty()) {
+      builder.append(schemaName).append(".");
+    }
+    builder.append(tableName).append(".").append(columName);
+
+    return builder.toString();
+  }
 
   @Override
   public <S> JdbcResultSetMetaData visit(Table table, S context) {
@@ -435,12 +461,15 @@ public class JSQLColumResolver
       List<JdbcColumn> jdbcColumns =
           selectItem.getExpression().accept(expressionColumnResolver, metaData);
 
-      for (JdbcColumn col : jdbcColumns) {
-        resultSetMetaData.add(col, alias != null ? alias.withUseAs(false).getName() : null);
+      // jdbcColumns can be null when the Column is an Expression without parameters, e. g. CURRENT_DATE()
+      if (jdbcColumns!=null) {
+        for (JdbcColumn col : jdbcColumns) {
+          resultSetMetaData.add(col, alias!=null ? alias.withUseAs(false).getName():null);
 
-        Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
-        newSelectItems.add(new SelectItem<>(
-            new Column(t, col.columnName).withCommentText("Resolved Column"), alias));
+          Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
+          newSelectItems.add(new SelectItem<>(
+                  new Column(t, col.columnName).withCommentText("Resolved Column"), alias));
+        }
       }
     }
     select.setSelectItems(newSelectItems);

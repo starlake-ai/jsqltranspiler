@@ -89,6 +89,11 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     return jdbcColumn;
   }
 
+  protected <S> List<JdbcColumn> visitExpression(Expression expression, S context) {
+    JdbcColumn col = new JdbcColumn(expression.getClass().getSimpleName(), expression);
+    return List.of(col);
+  }
+
   @Override
   protected <S> List<JdbcColumn> visitExpressions(Expression expression, S context,
       Collection<Expression> subExpressions) {

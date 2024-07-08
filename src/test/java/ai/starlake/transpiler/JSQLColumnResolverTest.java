@@ -419,6 +419,17 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
   }
 
   @Test
+  void testCurrentDateLineage() throws JSQLParserException, SQLException, InvocationTargetException,
+          NoSuchMethodException, InstantiationException, IllegalAccessException {
+    String sqlStr = "SELECT CURRENT_DATE";
+    String[][] expected = new String[][] {{"", "CURRENT_DATE", "CURRENT_DATE"}};
+    assertThatResolvesInto(sqlStr, expected);
+
+    String lineage = "SELECT\n" + " ├─c.col1 → b.col1 : Other\n" + " └─c.colBA → b.colBA : Other\n";
+    assertLineage(sqlStr, lineage);
+  }
+
+  @Test
   void testSubSelectLineage() throws JSQLParserException, SQLException, InvocationTargetException,
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr = "SELECT (SELECT col1 AS test FROM b) col2 FROM a";
@@ -440,7 +451,7 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
         {"b", "col1", "col2", "col3", "colBA", "colBB"}};
 
     String sqlStr =
-        "SELECT Sum(colBA + colBB) AS total, (SELECT col1 AS test FROM b) col2 FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
+        "SELECT Sum(colBA + colBB) AS total, (SELECT col1 AS test FROM b) col2, CURRENT_TIMESTAMP() as col3 FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
 
     // get the List of JdbcColumns, each holding its lineage using the TreeNode interface
     JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
