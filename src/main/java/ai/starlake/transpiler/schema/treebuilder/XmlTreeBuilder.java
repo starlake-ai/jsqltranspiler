@@ -45,6 +45,7 @@ public class XmlTreeBuilder extends TreeBuilder<String> {
     return result;
   }
 
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   private void convertNodeToXml(JdbcColumn column, String alias, int indent) {
     addIndentation(indent);
     xmlBuilder.append("<Column");
@@ -55,13 +56,21 @@ public class XmlTreeBuilder extends TreeBuilder<String> {
     xmlBuilder.append(" name='").append(column.columnName).append("'");
 
     if (column.getExpression() instanceof Column) {
-      xmlBuilder.append(" table='").append( JSQLColumResolver.getQualifiedTableName(column.tableCatalog, column.tableSchema, column.tableName) ).append("'");
-      if (column.scopeTable!=null && ! column.scopeTable.isEmpty()) xmlBuilder.append(" scope='").append(JSQLColumResolver.getQualifiedColumnName(column.scopeCatalog, column.scopeSchema, column.scopeTable, column.columnName)).append("'");
-      xmlBuilder.append(" dataType='java.sql.Types.").append(JdbcMetaData.getTypeName(column.dataType)).append("'");
-      xmlBuilder.append(" typeName='").append( column.typeName ).append("'");
-      xmlBuilder.append(" columnSize='").append( column.columnSize ).append("'");
-      xmlBuilder.append(" decimalDigits='").append( column.decimalDigits ).append("'");
-      xmlBuilder.append(" nullable='").append( column.isNullable ).append("'");
+      xmlBuilder.append(" table='").append(JSQLColumResolver
+          .getQualifiedTableName(column.tableCatalog, column.tableSchema, column.tableName))
+          .append("'");
+      if (column.scopeTable != null && !column.scopeTable.isEmpty()) {
+        xmlBuilder.append(" scope='")
+            .append(JSQLColumResolver.getQualifiedColumnName(column.scopeCatalog,
+                column.scopeSchema, column.scopeTable, column.columnName))
+            .append("'");
+      }
+      xmlBuilder.append(" dataType='java.sql.Types.")
+          .append(JdbcMetaData.getTypeName(column.dataType)).append("'");
+      xmlBuilder.append(" typeName='").append(column.typeName).append("'");
+      xmlBuilder.append(" columnSize='").append(column.columnSize).append("'");
+      xmlBuilder.append(" decimalDigits='").append(column.decimalDigits).append("'");
+      xmlBuilder.append(" nullable='").append(column.isNullable).append("'");
     }
 
     Expression expression = column.getExpression();
@@ -70,9 +79,10 @@ public class XmlTreeBuilder extends TreeBuilder<String> {
 
       Select select = (Select) expression;
       try {
-        xmlBuilder.append(addIndentation(resolver.getLineage(this.getClass(), select), indent + 2)).append("\n");
+        xmlBuilder.append(addIndentation(resolver.getLineage(this.getClass(), select), indent + 2))
+            .append("\n");
       } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
-               | IllegalAccessException | SQLException e) {
+          | IllegalAccessException | SQLException e) {
         throw new RuntimeException(e);
       }
       addIndentation(indent);

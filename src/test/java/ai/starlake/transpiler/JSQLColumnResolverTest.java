@@ -22,111 +22,29 @@ import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import ai.starlake.transpiler.schema.treebuilder.JsonTreeBuilder;
 import ai.starlake.transpiler.schema.treebuilder.XmlTreeBuilder;
 import ai.starlake.transpiler.snowflake.AsciiTreeBuilder;
-import com.opencsv.CSVWriter;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import javax.swing.tree.TreeNode;
 import java.io.File;
-import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Iterator;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
-public class JSQLColumnResolverTest extends JSQLTranspilerTest {
+public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
   public final static String TEST_FOLDER_STR = "build/resources/test/ai/starlake/transpiler/schema";
 
   static Stream<Arguments> getSqlTestMap() {
     return unrollParameterMap(getSqlTestMap(new File(TEST_FOLDER_STR).listFiles(FILENAME_FILTER),
         JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY, JSQLTranspiler.Dialect.DUCK_DB));
-  }
-
-  @ParameterizedTest(name = "{index} {0} {1}: {2}")
-  @MethodSource("getSqlTestMap")
-  @Disabled
-  protected void transpile(File f, int idx, SQLTest t) throws Exception {
-
-  }
-
-  @ParameterizedTest(name = "{index} {0} {1}: {2}")
-  @MethodSource("getSqlTestMap")
-  protected void resolve(File f, int idx, SQLTest t) throws Exception {
-    ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-
-    if (t.prologue != null && !t.prologue.isEmpty()) {
-      try (Statement st = connDuck.createStatement();) {
-        st.executeUpdate("set timezone='Asia/Bangkok'");
-        for (net.sf.jsqlparser.statement.Statement statement : CCJSqlParserUtil
-            .parseStatements(t.prologue, executorService, parser -> {
-            })) {
-          st.executeUpdate(statement.toString());
-        }
-      }
-    }
-
-    ResultSetMetaData resultSetMetaData =
-        JSQLColumResolver.getResultSetMetaData(t.providedSqlStr, metaData);
-
-    StringWriter stringWriter = new StringWriter();
-    CSVWriter csvWriter = new CSVWriter(stringWriter);
-
-    csvWriter.writeNext(new String[] {"#", "label", "name", "table", "schema", "catalog", "type",
-        "type name", "precision", "scale", "display size"
-
-        /* we can skip these for now
-        , "auto increment"
-        , "case-sensitive"
-        , "searchable"
-        , "currency"
-        , "nullable"
-        , "signed"
-        , "readonly"
-        , "writable"
-        */
-    }, true);
-
-    final int maxI = resultSetMetaData.getColumnCount();
-    for (int i = 1; i <= maxI; i++) {
-      csvWriter.writeNext(new String[] {String.valueOf(i), resultSetMetaData.getColumnLabel(i),
-          resultSetMetaData.getColumnName(i), resultSetMetaData.getTableName(i),
-          resultSetMetaData.getSchemaName(i), resultSetMetaData.getCatalogName(i),
-          JdbcMetaData.getTypeName(resultSetMetaData.getColumnType(i)),
-          resultSetMetaData.getColumnTypeName(i), String.valueOf(resultSetMetaData.getPrecision(i)),
-          String.valueOf(resultSetMetaData.getScale(i)),
-          String.valueOf(resultSetMetaData.getColumnDisplaySize(i))
-
-          /* we can skip these for now
-          , "auto increment"
-          , "case-sensitive"
-          , "searchable"
-          , "currency"
-          , "nullable"
-          , "signed"
-          , "readonly"
-          , "writable"
-          */
-      }, true);
-    }
-    csvWriter.flush();
-    csvWriter.close();
-
-
-    Assertions.assertThat(stringWriter.toString().trim()).isEqualToIgnoringCase(t.expectedResult);
-
   }
 
   @Test
@@ -258,11 +176,25 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
 
 
     // Nested With Statements
-    sqlStr = "WITH d AS (\n" + "        WITH c AS (\n" + "                SELECT *\n"
-        + "                FROM b )\n" + "        SELECT *\n" + "        FROM c )\n" + "SELECT *\n"
-        + "FROM d\n" + ";";
-    expected = new String[][] {{"d", "col1"}, {"d", "col2"}, {"d", "col3"}, {"d", "colBA"},
-        {"d", "colBB"}};
+    //@formatter:off
+    sqlStr =
+            " WITH d AS (\n" +
+            "        WITH c AS (\n" +
+            "                SELECT *\n" +
+            "                FROM b )\n" +
+            "        SELECT *\n" +
+            "        FROM c )\n" +
+            " SELECT *\n" +
+            " FROM d\n" + ";";
+
+    expected = new String[][] {
+            {"d", "col1"},
+            {"d", "col2"},
+            {"d", "col3"},
+            {"d", "colBA"},
+            {"d", "colBB"}
+    };
+    //@formatter:on
     assertThatResolvesInto(sqlStr, expected);
   }
 
@@ -294,26 +226,6 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
   }
 
 
-  public static String assertLineage(String sqlStr, String expected)
-      throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException,
-      IllegalAccessException, JSQLParserException {
-
-    String[][] schemaDefinition = {
-        // Table A with Columns col1, col2, col3, colAA, colAB
-        {"a", "col1", "col2", "col3", "colAA", "colAB"},
-
-        // Table B with Columns col1, col2, col3, colBA, colBB
-        {"b", "col1", "col2", "col3", "colBA", "colBB"}};
-
-    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
-    JdbcResultSetMetaData resultSetMetaData = resolver.getResultSetMetaData(sqlStr);
-
-    String actual = resolver.getLineage(AsciiTreeBuilder.class, sqlStr);
-    Assertions.assertThat(actual).isEqualToIgnoringWhitespace(expected);
-
-    return actual;
-  }
-
   @Test
   void testFunction() throws JSQLParserException, SQLException, InvocationTargetException,
       NoSuchMethodException, InstantiationException, IllegalAccessException {
@@ -322,8 +234,15 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     String[][] expected = new String[][] {{"", "Sum", "total"}};
     assertThatResolvesInto(sqlStr, expected);
 
-    String lineage = "SELECT\n" + " └─total AS Function Sum\n" + "    └─Addition: colBA + colBB\n"
-        + "       ├─c.colBA → b.colBA : Other\n" + "       └─c.colBB → b.colBB : Other";
+    //@formatter:off
+    String lineage =
+            "SELECT\n" +
+            " └─total AS Function Sum\n" +
+            "    └─Addition: colBA + colBB\n" +
+            "       ├─c.colBA → b.colBA : Other\n" +
+            "       └─c.colBB → b.colBB : Other"
+            ;
+    //@formatter:on
     assertLineage(sqlStr, lineage);
   }
 
@@ -389,21 +308,27 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
   }
 
   @Test
-  void testFunction2() throws JSQLParserException, SQLException, InvocationTargetException,
+  void testCaseExpression() throws JSQLParserException, SQLException, InvocationTargetException,
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr =
         "SELECT Case when Sum(colBA + colBB)=0 then c.col1 else a.col2 end AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
     String[][] expected = new String[][] {{"", "CaseExpression", "total"}};
     assertThatResolvesInto(sqlStr, expected);
 
-    String lineage = "SELECT\n"
-        + " └─total AS CaseExpression: CASE WHEN Sum(colBA + colBB) = 0 THEN c.col1 ELSE a.col2 END\n"
-        + "    ├─WhenClause: WHEN Sum(colBA + colBB) = 0 THEN c.col1\n"
-        + "    │  ├─EqualsTo: Sum(colBA + colBB) = 0\n" + "    │  │  └─Function Sum\n"
-        + "    │  │     └─Addition: colBA + colBB\n"
-        + "    │  │        ├─c.colBA → b.colBA : Other\n"
-        + "    │  │        └─c.colBB → b.colBB : Other\n" + "    │  └─c.col1 → b.col1 : Other\n"
-        + "    └─a.col2 : Other";
+    //@formatter:off
+    String lineage = "SELECT\n" +
+            " └─total AS CaseExpression: CASE WHEN Sum(colBA + colBB) = 0 THEN c.col1 ELSE a.col2 END\n" +
+            "    ├─WhenClause: WHEN Sum(colBA + colBB) = 0 THEN c.col1\n" +
+            "    │  ├─EqualsTo: Sum(colBA + colBB) = 0\n" +
+            "    │  │  ├─Function Sum\n" +
+            "    │  │  │  └─Addition: colBA + colBB\n" +
+            "    │  │  │     ├─c.colBA → b.colBA : Other\n" +
+            "    │  │  │     └─c.colBB → b.colBB : Other\n" +
+            "    │  │  └─LongValue: 0\n" +
+            "    │  └─c.col1 → b.col1 : Other\n" +
+            "    └─a.col2 : Other";
+    //@formatter:on
+
     assertLineage(sqlStr, lineage);
   }
 
@@ -414,18 +339,30 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     String[][] expected = new String[][] {{"c", "col1", "col1"}, {"c", "colBA", "colBA"}};
     assertThatResolvesInto(sqlStr, expected);
 
-    String lineage = "SELECT\n" + " ├─c.col1 → b.col1 : Other\n" + " └─c.colBA → b.colBA : Other\n";
+    //@formatter:off
+    String lineage =
+            "SELECT\n" +
+            " ├─c.col1 → b.col1 : Other\n" +
+            " └─c.colBA → b.colBA : Other\n"
+            ;
+    //@formatter:on
+
     assertLineage(sqlStr, lineage);
   }
 
   @Test
   void testCurrentDateLineage() throws JSQLParserException, SQLException, InvocationTargetException,
-          NoSuchMethodException, InstantiationException, IllegalAccessException {
-    String sqlStr = "SELECT CURRENT_DATE";
-    String[][] expected = new String[][] {{"", "CURRENT_DATE", "CURRENT_DATE"}};
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
+    String sqlStr = "SELECT CURRENT_DATE()";
+    String[][] expected = new String[][] {{"", "CURRENT_DATE"}};
     assertThatResolvesInto(sqlStr, expected);
 
-    String lineage = "SELECT\n" + " ├─c.col1 → b.col1 : Other\n" + " └─c.colBA → b.colBA : Other\n";
+    //@formatter:off
+    String lineage =
+            "SELECT\n" +
+            " └─TimeKeyExpression: CURRENT_DATE()";
+    //@formatter:on
+
     assertLineage(sqlStr, lineage);
   }
 
@@ -436,7 +373,12 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
     String[][] expected = new String[][] {{"b", "col1", "col2"}};
     assertThatResolvesInto(sqlStr, expected);
 
-    String lineage = "SELECT\n" + " └─col2 AS SELECT\n" + "    └─test AS b.col1 : Other";
+    //@formatter:off
+    String lineage =
+            "SELECT\n" +
+            " └─col2 AS SELECT\n" +
+            "    └─test AS b.col1 : Other";
+    //@formatter:on
     assertLineage(sqlStr, lineage);
   }
 
@@ -488,67 +430,5 @@ public class JSQLColumnResolverTest extends JSQLTranspilerTest {
         + "            INNER JOIN a\n" + "                ON c.col1 = a.col1 ) d\n" + ";";
 
     assertThatRewritesInto(sqlStr, expected);
-  }
-
-  private String assertThatRewritesInto(String sqlStr, String expected)
-      throws SQLException, JSQLParserException {
-    String[][] schemaDefinition = {{"a", "col1", "col2", "col3", "colAA", "colAB"},
-        {"b", "col1", "col2", "col3", "colBA", "colBB"}};
-    return assertThatRewritesInto(schemaDefinition, sqlStr, expected);
-  }
-
-  private String assertThatRewritesInto(String[][] schemaDefinition, String sqlStr, String expected)
-      throws SQLException, JSQLParserException {
-    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
-    String actual = resolver.getResolvedStatementText(sqlStr);
-    Assertions.assertThat(JSQLTranspilerTest.sanitize(actual))
-        .isEqualToIgnoringCase(JSQLTranspilerTest.sanitize(expected));
-    return actual;
-  }
-
-  private JdbcResultSetMetaData assertThatResolvesInto(String sqlStr, String[][] expectedColumns)
-      throws SQLException, JSQLParserException {
-    String[][] schemaDefinition = {
-        // Table A with Columns col1, col2, col3, colAA, colAB
-        {"a", "col1", "col2", "col3", "colAA", "colAB"},
-
-        // Table B with Columns col1, col2, col3, colBA, colBB
-        {"b", "col1", "col2", "col3", "colBA", "colBB"}};
-
-    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
-
-    JdbcResultSetMetaData res = resolver.getResultSetMetaData(sqlStr);
-
-    assertThatResolvesInto(res, expectedColumns);
-
-    return res;
-  }
-
-  private JdbcResultSetMetaData assertThatResolvesInto(String[][] schemaDefinition, String sqlStr,
-      String[][] expectedColumns) throws SQLException, JSQLParserException {
-    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
-
-    JdbcResultSetMetaData res = resolver.getResultSetMetaData(sqlStr);
-
-    assertThatResolvesInto(res, expectedColumns);
-
-    return res;
-  }
-
-  private void assertThatResolvesInto(ResultSetMetaData res, String[][] expectedColumns)
-      throws SQLException {
-    Assertions.assertThat(res.getColumnCount()).isEqualTo(expectedColumns.length);
-    for (int i = 0; i < expectedColumns.length; i++) {
-      // No Label expected
-      if (expectedColumns[i].length == 2) {
-        Assertions.assertThat(new String[] {res.getTableName(i + 1), res.getColumnName(i + 1)})
-            .isEqualTo(expectedColumns[i]);
-
-        // Label is explicitly expected
-      } else {
-        Assertions.assertThat(new String[] {res.getTableName(i + 1), res.getColumnName(i + 1),
-            res.getColumnLabel(i + 1)}).isEqualTo(expectedColumns[i]);
-      }
-    }
   }
 }

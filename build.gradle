@@ -43,12 +43,8 @@ configurations {
 }
 
 dependencies {
-    // temporarily use a pre-compiled binary
-    // until the extended visitor pattern has been published
-    // implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
+    implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
     
-    implementation fileTree(dir: "lib", include: ['*.jar'])
-
     testImplementation 'org.junit.jupiter:junit-jupiter-api:+'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:+'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:+'

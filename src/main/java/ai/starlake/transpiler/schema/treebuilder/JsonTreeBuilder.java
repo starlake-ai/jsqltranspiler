@@ -46,6 +46,7 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
     return result;
   }
 
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   private void convertNodeToJson(JdbcColumn column, String alias, int indent) {
     addIndentation(indent);
     jsonBuilder.append("{\n");
@@ -62,17 +63,24 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
     if (column.getExpression() instanceof Column) {
       jsonBuilder.append("\n");
       addIndentation(indent + 2);
-      jsonBuilder.append("\"table\": \"").append(JSQLColumResolver.getQualifiedTableName(column.tableCatalog, column.tableSchema, column.tableName)).append("\",");
+      jsonBuilder
+          .append("\"table\": \"").append(JSQLColumResolver
+              .getQualifiedTableName(column.tableCatalog, column.tableSchema, column.tableName))
+          .append("\",");
 
       if (column.scopeTable != null && !column.scopeTable.isEmpty()) {
         jsonBuilder.append("\n");
         addIndentation(indent + 2);
-        jsonBuilder.append("\"scope\": \"").append(JSQLColumResolver.getQualifiedColumnName(column.scopeCatalog, column.scopeSchema, column.scopeTable, column.columnName)).append("\",");
+        jsonBuilder.append("\"scope\": \"")
+            .append(JSQLColumResolver.getQualifiedColumnName(column.scopeCatalog,
+                column.scopeSchema, column.scopeTable, column.columnName))
+            .append("\",");
       }
 
       jsonBuilder.append("\n");
       addIndentation(indent + 2);
-      jsonBuilder.append("\"dataType\": \"java.sql.Types.").append(JdbcMetaData.getTypeName(column.dataType)).append("\",");
+      jsonBuilder.append("\"dataType\": \"java.sql.Types.")
+          .append(JdbcMetaData.getTypeName(column.dataType)).append("\",");
 
       jsonBuilder.append("\n");
       addIndentation(indent + 2);
@@ -99,8 +107,10 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
 
       Select select = (Select) expression;
       try {
-        jsonBuilder.append(addIndentation(resolver.getLineage(this.getClass(), select), indent+2));
-      } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException | SQLException e) {
+        jsonBuilder
+            .append(addIndentation(resolver.getLineage(this.getClass(), select), indent + 2));
+      } catch (NoSuchMethodException | InvocationTargetException | InstantiationException
+          | IllegalAccessException | SQLException e) {
         throw new RuntimeException(e);
       }
       jsonBuilder.append("\n");
@@ -138,7 +148,8 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
     jsonBuilder.append("  \"columnSet\": [\n");
 
     for (int i = 0; i < resultSetMetaData.getColumnCount(); i++) {
-      convertNodeToJson(resultSetMetaData.getColumns().get(i), resultSetMetaData.getLabels().get(i), 4);
+      convertNodeToJson(resultSetMetaData.getColumns().get(i), resultSetMetaData.getLabels().get(i),
+          4);
       if (i < resultSetMetaData.getColumnCount() - 1) {
         jsonBuilder.append(",");
       }
