@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Logger;
 
+@SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<JdbcColumn>>
     implements SelectVisitor<List<JdbcColumn>> {
   public final static Logger LOGGER =
@@ -197,7 +198,7 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     return columns;
   }
 
-  @SuppressWarnings({"PMD.CyclomaticComplexity"})
+  @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   @Override
   public <S> List<JdbcColumn> visit(AllColumns allColumns, S context) {
     ArrayList<JdbcColumn> columns = new ArrayList<>();
@@ -264,27 +265,37 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
             t.getName(), null)) {
           boolean inserted = false;
           if (!excepts.contains(jdbcColumn)) {
-            if (metaData.getLeftUsingJoinedColumns().containsKey(jdbcColumn.columnName) ) {
-              for (int i=0; i<columns.size(); i++) {
+
+            if (metaData.getNaturalJoinedTables().containsValue(t)) {
+              for (int i = 0; i < columns.size(); i++) {
                 if (columns.get(i).columnName.equalsIgnoreCase(jdbcColumn.columnName)) {
-                  inserted=true;
+                  inserted = true;
+                  break;
+                }
+              }
+            }
+
+            if (metaData.getLeftUsingJoinedColumns().containsKey(jdbcColumn.columnName)) {
+              for (int i = 0; i < columns.size(); i++) {
+                if (columns.get(i).columnName.equalsIgnoreCase(jdbcColumn.columnName)) {
+                  inserted = true;
                   break;
                 }
               }
             }
 
             if (metaData.getRightUsingJoinedColumns().containsKey(jdbcColumn.columnName)) {
-              for (int i=0; i<columns.size(); i++) {
+              for (int i = 0; i < columns.size(); i++) {
                 if (columns.get(i).columnName.equalsIgnoreCase(jdbcColumn.columnName)) {
                   columns.remove(i);
                   columns.add(i, jdbcColumn);
-                  inserted=true;
+                  inserted = true;
                   break;
                 }
               }
             }
 
-            if (!inserted){
+            if (!inserted) {
               columns.add(jdbcColumn);
             }
 
