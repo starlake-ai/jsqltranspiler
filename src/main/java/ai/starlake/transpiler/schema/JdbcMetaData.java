@@ -55,6 +55,12 @@ public final class JdbcMetaData implements DatabaseMetaData {
   private final CaseInsensitiveLinkedHashMap<Table> fromTables =
       new CaseInsensitiveLinkedHashMap<>();
 
+  private final CaseInsensitiveLinkedHashMap<Table> naturalJoinedTables =
+          new CaseInsensitiveLinkedHashMap<>();
+
+  private final CaseInsensitiveLinkedHashMap<Column> leftUsingJoinedColumns = new CaseInsensitiveLinkedHashMap<>();
+  private final CaseInsensitiveLinkedHashMap<Column> rightUsingJoinedColumns = new CaseInsensitiveLinkedHashMap<>();
+
   static {
     for (Field field : Types.class.getFields()) {
       try {
@@ -1367,8 +1373,39 @@ public final class JdbcMetaData implements DatabaseMetaData {
     return this;
   }
 
+  public CaseInsensitiveLinkedHashMap<Column> getLeftUsingJoinedColumns() {
+    return leftUsingJoinedColumns;
+  }
+
+  public JdbcMetaData addLeftUsingJoinColumns(Collection<Column> columns) {
+    for (Column column: columns) {
+      this.leftUsingJoinedColumns.put(column.getFullyQualifiedName(), column);
+    }
+    return this;
+  }
+
+  public CaseInsensitiveLinkedHashMap<Column> getRightUsingJoinedColumns() {
+    return rightUsingJoinedColumns;
+  }
+
+  public JdbcMetaData addRightUsingJoinColumns(Collection<Column> columns) {
+    for (Column column: columns) {
+      this.rightUsingJoinedColumns.put(column.getFullyQualifiedName(), column);
+    }
+    return this;
+  }
+
+  public CaseInsensitiveLinkedHashMap<Table> getNaturalJoinedTables() {
+    return naturalJoinedTables;
+  }
+
+  public JdbcMetaData addNaturalJoinedTable(Table t) {
+    naturalJoinedTables.put(t.getName(), t);
+    return this;
+  }
+
   public static JdbcMetaData copyOf(JdbcMetaData metaData,
-      CaseInsensitiveLinkedHashMap<Table> fromTables) {
+                                    CaseInsensitiveLinkedHashMap<Table> fromTables) {
     JdbcMetaData metaData1 =
         new JdbcMetaData(metaData.currentCatalogName, metaData.currentSchemaName);
     metaData1.getFromTables().putAll(fromTables);

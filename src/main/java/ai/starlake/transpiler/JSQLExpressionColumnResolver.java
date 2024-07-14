@@ -262,8 +262,32 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
 
         for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
             t.getName(), null)) {
+          boolean inserted = false;
           if (!excepts.contains(jdbcColumn)) {
-            columns.add(jdbcColumn);
+            if (metaData.getLeftUsingJoinedColumns().containsKey(jdbcColumn.columnName) ) {
+              for (int i=0; i<columns.size(); i++) {
+                if (columns.get(i).columnName.equalsIgnoreCase(jdbcColumn.columnName)) {
+                  inserted=true;
+                  break;
+                }
+              }
+            }
+
+            if (metaData.getRightUsingJoinedColumns().containsKey(jdbcColumn.columnName)) {
+              for (int i=0; i<columns.size(); i++) {
+                if (columns.get(i).columnName.equalsIgnoreCase(jdbcColumn.columnName)) {
+                  columns.remove(i);
+                  columns.add(i, jdbcColumn);
+                  inserted=true;
+                  break;
+                }
+              }
+            }
+
+            if (!inserted){
+              columns.add(jdbcColumn);
+            }
+
           }
         }
       }

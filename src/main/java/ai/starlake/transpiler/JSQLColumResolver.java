@@ -359,6 +359,8 @@ public class JSQLColumResolver
     FromItem fromItem = select.getFromItem();
     List<Join> joins = select.getJoins();
 
+
+
     if (select.getWithItemsList() != null) {
       for (WithItem withItem : select.getWithItemsList()) {
         withItem.accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
@@ -399,14 +401,27 @@ public class JSQLColumResolver
 
     if (joins != null) {
       for (Join join : joins) {
+        if (join.isLeft() || join.isInner()) {
+          metaData.addLeftUsingJoinColumns(join.getUsingColumns());
+        } else if (join.isRight()) {
+          metaData.addRightUsingJoinColumns(join.getUsingColumns());
+        }
+
         if (join.getFromItem() instanceof Table) {
           Alias alias = join.getFromItem().getAlias();
           Table t = (Table) join.getFromItem();
 
           if (alias != null) {
             metaData.getFromTables().put(alias.getName(), t);
+            if (join.isNatural()) {
+              metaData.getNaturalJoinedTables().put(alias.getName(), t);
+            }
+
           } else {
             metaData.getFromTables().put(t.getName(), t);
+            if (join.isNatural()) {
+              metaData.addNaturalJoinedTable(t);
+            }
           }
         } else {
           Alias alias = join.getFromItem().getAlias();
@@ -427,6 +442,11 @@ public class JSQLColumResolver
             metaData.put(t);
             metaData.getFromTables().put(alias != null ? alias.getName() : t.tableName,
                 new Table(alias != null ? alias.getName() : t.tableName));
+
+            if (join.isNatural()) {
+              metaData.getNaturalJoinedTables().put(alias != null ? alias.getName() : t.tableName,
+                      new Table(alias != null ? alias.getName() : t.tableName));
+            }
           } catch (SQLException e) {
             throw new RuntimeException(e);
           }
@@ -443,6 +463,19 @@ public class JSQLColumResolver
         t.setDatabaseName(metaData.getCurrentCatalogName());
       } else if (t.getDatabase().getDatabaseName() == null
           || t.getDatabase().getDatabaseName().isEmpty()) {
+        t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
+      }
+    }
+
+    for (Table t : metaData.getNaturalJoinedTables().values()) {
+      if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
+        t.setSchemaName(metaData.getCurrentSchemaName());
+      }
+
+      if (t.getDatabase() == null) {
+        t.setDatabaseName(metaData.getCurrentCatalogName());
+      } else if (t.getDatabase().getDatabaseName() == null
+              || t.getDatabase().getDatabaseName().isEmpty()) {
         t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
       }
     }

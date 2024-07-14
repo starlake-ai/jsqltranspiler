@@ -225,6 +225,38 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     assertThatResolvesInto(sqlStr, expected);
   }
 
+  @Test
+  void testLeftJoinUsing() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT * from a left join b using (col1, col2)";
+    String[][] expected = new String[][] {
+            {"a", "col1"}
+            , {"a", "col2"}
+            , {"a", "col3"}
+            , {"a", "colAA"}
+            , {"a", "colAB"}
+            , {"b", "col3"}
+            , {"b", "colBA"}
+            , {"b", "colBB"}
+    };
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testRightJoinUsing() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT * from a right join b using (col1, col2)";
+    String[][] expected = new String[][] {
+            {"b", "col1"}
+            , {"b", "col2"}
+            , {"a", "col3"}
+            , {"a", "colAA"}
+            , {"a", "colAB"}
+            , {"b", "col3"}
+            , {"b", "colBA"}
+            , {"b", "colBB"}
+    };
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
 
   @Test
   void testFunction() throws JSQLParserException, SQLException, InvocationTargetException,

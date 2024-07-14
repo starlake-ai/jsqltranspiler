@@ -189,7 +189,7 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
   void assertThatResolvesInto(ResultSetMetaData res, String[][] expectedColumns)
       throws SQLException {
     Assertions.assertThat(res.getColumnCount()).isEqualTo(expectedColumns.length);
-    for (int i = 0; i < expectedColumns.length; i++) {
+    for (int i = 0; i < res.getColumnCount(); i++) {
       // No Label expected
       if (expectedColumns[i].length == 2) {
         Assertions.assertThat(new String[] {res.getTableName(i + 1), res.getColumnName(i + 1)})
