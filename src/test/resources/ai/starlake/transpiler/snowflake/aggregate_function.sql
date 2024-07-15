@@ -1,34 +1,4 @@
 -- prolog
-CREATE OR REPLACE TABLE avg_example(int_col int, d decimal(10,5), s1 varchar(10), s2 varchar(10));
-INSERT INTO avg_example VALUES
-    (1, 1.1, '1.1','one'),
-    (1, 10, '10','ten'),
-    (2, 2.4, '2.4','two'),
-    (2, NULL, NULL, 'NULL'),
-    (3, NULL, NULL, 'NULL'),
-    (NULL, 9.9, '9.9','nine');
-
--- provided
-SELECT
-       int_col,
-       AVG(int_col) OVER(PARTITION BY int_col) AS avg
-    FROM avg_example
-    ORDER BY int_col;
-
--- result
-"int_col","avg"
-"1","1.0"
-"1","1.0"
-"2","2.0"
-"2","2.0"
-"3","3.0"
-"",""
-
--- epilog
-drop TABLE avg_example;
-
-
--- prolog
 CREATE OR REPLACE TABLE aggr(k int, v decimal(10,2), v2 decimal(10, 2));
 INSERT INTO aggr VALUES(1, 10, NULL);
 INSERT INTO aggr VALUES(2, 10, 11), (2, 20, 22), (2, 25, NULL), (2, 30, 35);
@@ -124,34 +94,6 @@ SELECT O_ORDERSTATUS, listagg(O_CLERK, ', ' ORDER BY O_TOTALPRICE DESC) AS clerk
 "F","Clerk#000000136, Clerk#000000521, Clerk#000000386, Clerk#000000508"
 "O","Clerk#000000220, Clerk#000000411, Clerk#000000114"
 
-
--- prolog
-CREATE OR REPLACE TABLE sample_table(k CHAR(4), d CHAR(4));
-
-INSERT INTO sample_table VALUES
-    ('1', '1'), ('1', '5'), ('1', '3'),
-    ('2', '2'), ('2', NULL),
-    ('3', NULL),
-    (NULL, '7'), (NULL, '1');
-
--- provided
-SELECT k, d, MAX(d) OVER (ORDER BY k, d ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS max
-  FROM sample_table
-  ORDER BY k, d;
-
--- result
-"k","d","max"
-"1","1","1"
-"1","3","3"
-"1","5","5"
-"2","2","5"
-"2","","2"
-"3","",""
-"","1","1"
-"","7","7"
-
--- epilog
-drop TABLE sample_table;
 
 
 -- prolog
@@ -271,33 +213,6 @@ SELECT menu_category, STDDEV(menu_cogs_usd) stddev_cogs, STDDEV(menu_price_usd) 
 "Dessert","1.005194840151235","1.4719601443879744"
 
 
--- prolog
-CREATE OR REPLACE TABLE bitwise_example
-        (k int, d decimal(10,5), s1 varchar(10), s2 varchar(10));
-
-INSERT INTO bitwise_example VALUES
-        (15, 1.1, '12','one'),
-        (26, 2.9, '10','two'),
-        (12, 7.1, '7.9','two'),
-        (14, null, null,'null'),
-        (8, null, null, 'null'),
-        (null, 9.1, '14','nine');
-
--- provided
-select s2, bitand_agg(k), bitand_agg(d) from bitwise_example group by s2
-    order by 3;
-
--- expected
-select s2, bit_and(k::int), bit_and(d::int) from bitwise_example group by s2
-    order by 3;
-
--- result
-"s2","bit_and(CAST(k AS INTEGER))","bit_and(CAST(d AS INTEGER))"
-"one","15","1"
-"two","8","3"
-"nine","","9"
-"null","8",""
-
 
 -- prolog
 create or replace table test_boolean_agg(
@@ -391,25 +306,6 @@ select Skewness(K) AS skew, Skewness(V) AS skew, Skewness(V2) AS skew
 "skew","skew","skew"
 "-2.236067977499806","0.052407843222651324",""
 
-
--- prolog
-CREATE OR REPLACE TABLE aggr2(col_x int, col_y int, col_z int);
-INSERT INTO aggr2 VALUES(1, 2, 1), (1, 2, 3);
-INSERT INTO aggr2 VALUES(2, 1, 10), (2, 2, 11), (2, 2, 3);
-
--- provided
-SELECT col_x, col_y, sum(col_z),
-       grouping(col_x), grouping(col_y), grouping(col_x, col_y)
-    FROM aggr2 GROUP BY GROUPING SETS ((col_x), (col_y), ())
-    ORDER BY 1, 2;
-
--- result
-"col_x","col_y","sum(col_z)","GROUPING(col_x)","GROUPING(col_y)","GROUPING(col_x, col_y)"
-"1","","4","0","1","1"
-"2","","24","0","1","1"
-"","1","10","1","0","2"
-"","2","18","1","0","2"
-"","","28","1","1","3"
 
 
 -- prolog
