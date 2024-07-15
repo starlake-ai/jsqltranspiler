@@ -1,5 +1,14 @@
 # [JSQLTranspiler](https://starlake.ai/starlake/index.html#sql-transpiler) - Transpile Dialect, Resolve Columns, Show Lineage
 
+![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/ai.starlake.jsqltranspiler/jsqltranspiler?server=https%3A%2F%2Fs01.oss.sonatype.org)
+[![javadoc](https://javadoc.io/badge2/ai.starlake.jsqltranspiler/jsqltranspiler/javadoc.svg)](https://javadoc.io/doc/ai.starlake.jsqltranspiler/jsqltranspiler)
+[![Gradle CI](https://github.com/starlake-ai/jsqltranspiler/actions/workflows/snapshot.yml/badge.svg)](https://github.com/starlake-ai/jsqltranspiler/actions/workflows/snapshot.yml)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/80374649d914462ebd6e5b160a1ebdbb)](https://app.codacy.com/gh/starlake-ai/jsqltranspiler/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Coverage Status](https://coveralls.io/repos/github/starlake-ai/jsqltranspiler/badge.svg)](https://coveralls.io/github/starlake-ai/jsqltranspiler)
+[![License](https://img.shields.io/badge/License-Apache-blue)](#LICENSE)
+[![issues - JSQLFormatter](https://img.shields.io/github/issues/starlake-ai/jsqltranspiler)](https://github.com/starlake-ai/jsqltranspiler/issues)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://egghead.io/courses/how-to-contribute-to-an-open-source-project-on-github?af=5236ad)
+
 A pure Java stand-alone SQL Transpiler, Column- and Lineage Resolver for translating various large RDBMS SQL Dialects into a few smaller RDBMS Dialects for Unit Testing. Based on JSQLParser.
 
 Supports `SELECT` queries as well as `INSERT`, `UPDATE`, `DELETE` and `MERGE` statements.

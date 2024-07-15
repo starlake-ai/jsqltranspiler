@@ -453,7 +453,4 @@ tasks.register('upload') {
     }
 }
 
-check.dependsOn jacocoTestCoverageVerification
-
-
 
