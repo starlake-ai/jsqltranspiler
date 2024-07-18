@@ -50,11 +50,10 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   @Test
   void testSimpleSchemaProvider() throws JSQLParserException, SQLException {
     JdbcMetaData metaData = new JdbcMetaData("", "")
-        .addTable("a", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"))
+        .addTable("d", "a", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"))
         .addTable("b", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"));
 
-    ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData("SELECT * FROM a, b", metaData);
-
+    ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData("SELECT * FROM d.a, b", metaData);
     Assertions.assertThat(6).isEqualTo(res.getColumnCount());
 
     Assertions.assertThat(new String[] {"a", "col1"})
@@ -71,6 +70,22 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
         .isEqualTo(new String[] {res.getTableName(6), res.getColumnName(6)});
   }
 
+  @Test
+  void testWithBQProjectIdAndQuotes() throws JSQLParserException, SQLException {
+    JdbcMetaData metaData = new JdbcMetaData("", "")
+            .addTable("sales", "orders", new JdbcColumn("customer_id"), new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
+            .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"), new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"), new JdbcColumn("name2"), new JdbcColumn("id1"));
+    String sqlStr = "with mycte as (\n" +
+            "    select o.amount, c.id, CURRENT_TIMESTAMP() as timestamp\n" +
+            "    from sales.orders o, sales.customers c\n" +
+            "    where o.customer_id = c.id\n" +
+            ")\n" +
+            "select id, sum(amount) as sum, timestamp\n" +
+            "from mycte\n" +
+            "group by mycte.id, mycte.timestamp";
+    ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr, metaData);
+  }
+  
   @Test
   void testSimplerSchemaProvider() throws JSQLParserException, SQLException {
     JdbcMetaData metaData = new JdbcMetaData().addTable("a", "col1", "col2", "col3").addTable("b",
@@ -335,7 +350,10 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   void testCaseExpression() throws JSQLParserException, SQLException, InvocationTargetException,
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr =
-        "SELECT Case when Sum(colBA + colBB)=0 then c.col1 else a.col2 end AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
+        "SELECT " +
+                "Case when Sum(colBA + colBB)=0 " +
+                "then c.col1 else a.col2 end AS total " +
+                "FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
     String[][] expected = new String[][] {{"", "CaseExpression", "total"}};
     assertThatResolvesInto(sqlStr, expected);
 
