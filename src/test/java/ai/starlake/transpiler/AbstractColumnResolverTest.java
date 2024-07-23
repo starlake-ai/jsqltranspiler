@@ -121,24 +121,35 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
 
   }
 
-  static String assertLineage(String sqlStr, String expected)
+  static String assertLineage(JdbcMetaData metaData, String sqlStr, String expected)
       throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException,
       IllegalAccessException, JSQLParserException {
 
-    String[][] schemaDefinition = {
-        // Table A with Columns col1, col2, col3, colAA, colAB
-        {"a", "col1", "col2", "col3", "colAA", "colAB"},
-
-        // Table B with Columns col1, col2, col3, colBA, colBB
-        {"b", "col1", "col2", "col3", "colBA", "colBB"}};
-
-    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
+    JSQLColumResolver resolver = new JSQLColumResolver(metaData);
     JdbcResultSetMetaData resultSetMetaData = resolver.getResultSetMetaData(sqlStr);
 
     String actual = resolver.getLineage(AsciiTreeBuilder.class, sqlStr);
     Assertions.assertThat(actual).isEqualToIgnoringWhitespace(expected);
 
     return actual;
+  }
+
+  static String assertLineage(String sqlStr, String expected)
+      throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException,
+      IllegalAccessException, JSQLParserException {
+
+    //@formatter:off
+    String[][] schemaDefinition = {
+        // Table A with Columns col1, col2, col3, colAA, colAB
+        {"a", "col1", "col2", "col3", "colAA", "colAB"},
+
+        // Table B with Columns col1, col2, col3, colBA, colBB
+        {"b", "col1", "col2", "col3", "colBA", "colBB"}
+    };
+    //@formatter:on
+    JdbcMetaData metaData = new JdbcMetaData(schemaDefinition);
+
+    return assertLineage(metaData, sqlStr, expected);
   }
 
   String assertThatRewritesInto(String sqlStr, String expected)

@@ -56,10 +56,12 @@ public final class JdbcMetaData implements DatabaseMetaData {
       new CaseInsensitiveLinkedHashMap<>();
 
   private final CaseInsensitiveLinkedHashMap<Table> naturalJoinedTables =
-          new CaseInsensitiveLinkedHashMap<>();
+      new CaseInsensitiveLinkedHashMap<>();
 
-  private final CaseInsensitiveLinkedHashMap<Column> leftUsingJoinedColumns = new CaseInsensitiveLinkedHashMap<>();
-  private final CaseInsensitiveLinkedHashMap<Column> rightUsingJoinedColumns = new CaseInsensitiveLinkedHashMap<>();
+  private final CaseInsensitiveLinkedHashMap<Column> leftUsingJoinedColumns =
+      new CaseInsensitiveLinkedHashMap<>();
+  private final CaseInsensitiveLinkedHashMap<Column> rightUsingJoinedColumns =
+      new CaseInsensitiveLinkedHashMap<>();
 
   static {
     for (Field field : Types.class.getFields()) {
@@ -118,6 +120,11 @@ public final class JdbcMetaData implements DatabaseMetaData {
   public JdbcMetaData(String catalogName, String schemaName) {
     currentCatalogName = catalogName;
     currentSchemaName = schemaName;
+
+    JdbcCatalog catalog = new JdbcCatalog(catalogName, catalogSeparator);
+    put(catalog);
+
+    catalog.put(new JdbcSchema(schemaName, catalogName));
   }
 
   /**
@@ -1378,7 +1385,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   public JdbcMetaData addLeftUsingJoinColumns(Collection<Column> columns) {
-    for (Column column: columns) {
+    for (Column column : columns) {
       this.leftUsingJoinedColumns.put(column.getFullyQualifiedName(), column);
     }
     return this;
@@ -1389,7 +1396,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   public JdbcMetaData addRightUsingJoinColumns(Collection<Column> columns) {
-    for (Column column: columns) {
+    for (Column column : columns) {
       this.rightUsingJoinedColumns.put(column.getFullyQualifiedName(), column);
     }
     return this;
@@ -1405,7 +1412,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   public static JdbcMetaData copyOf(JdbcMetaData metaData,
-                                    CaseInsensitiveLinkedHashMap<Table> fromTables) {
+      CaseInsensitiveLinkedHashMap<Table> fromTables) {
     JdbcMetaData metaData1 =
         new JdbcMetaData(metaData.currentCatalogName, metaData.currentSchemaName);
     metaData1.getFromTables().putAll(fromTables);

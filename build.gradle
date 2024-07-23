@@ -43,7 +43,7 @@ configurations {
 }
 
 dependencies {
-    implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
+    implementation('com.github.jsqlparser:jsqlparser:+') { changing = true }
     
     testImplementation 'org.junit.jupiter:junit-jupiter-api:+'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:+'
@@ -179,6 +179,10 @@ test {
     // set heap size for the test JVM(s)
     minHeapSize = "128m"
     maxHeapSize = "1G"
+
+    jacoco {
+        excludes = ['net/sf/jsqlparser/parser/CCJSqlParserTokenManager']
+    }
 
     doFirst {
         // Download Amazon Redshift `TickitDB` example

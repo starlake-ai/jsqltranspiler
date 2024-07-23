@@ -360,14 +360,19 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   void testWithLineage() throws JSQLParserException, SQLException, InvocationTargetException,
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     String sqlStr = "WITH c AS (SELECT col1 AS test, colBA FROM b) SELECT * FROM c";
-    String[][] expected = new String[][] {{"c", "col1", "col1"}, {"c", "colBA", "colBA"}};
+    //@formatter:off
+    String[][] expected = new String[][] {
+            {"c", "test", "test"}
+            , {"c", "colBA", "colBA"}
+    };
+    //@formatter:on
     assertThatResolvesInto(sqlStr, expected);
 
     //@formatter:off
     String lineage =
-            "SELECT\n" +
-            " ├─c.col1 → b.col1 : Other\n" +
-            " └─c.colBA → b.colBA : Other\n"
+            "SELECT\n"
+            + " ├─c.test → b.test : Other\n"
+            + " └─c.colBA → b.colBA : Other\n"
             ;
     //@formatter:on
 
@@ -455,4 +460,60 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     assertThatRewritesInto(sqlStr, expected);
   }
+
+
+  @Test
+  void testHayssam1() throws JSQLParserException, SQLException {
+    JdbcMetaData metaData = new JdbcMetaData("", "");
+    metaData.addTable("d", "a", new JdbcColumn("col1"), new JdbcColumn("col2"),
+        new JdbcColumn("col3"));
+    metaData.addTable("b", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"));
+
+
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData("SELECT * FROM d.a, b", metaData);
+    Assertions.assertThat(6).isEqualTo(res.getColumnCount());
+
+    String[][] expected = new String[][] {{"a", "col1"}, {"a", "col2"}, {"a", "col3"},
+        {"b", "col1"}, {"b", "col2"}, {"b", "col3"}};
+
+    assertThatResolvesInto(res, expected);
+
+  }
+
+  @Test
+  void testWithBQProjectIdAndQuotes()
+      throws JSQLParserException, SQLException, InvocationTargetException, NoSuchMethodException,
+      InstantiationException, IllegalAccessException {
+    JdbcMetaData metaData =
+        new JdbcMetaData("", "").addTable("sales", "orders", new JdbcColumn("customer_id"),
+            new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
+            .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
+                new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
+                new JdbcColumn("name2"), new JdbcColumn("id1"));
+    String sqlStr =
+        "with mycte as (\n" + "    select o.amount, c.id, CURRENT_TIMESTAMP() as timestamp1\n"
+            + "    from sales.orders o, sales.customers c\n" + "    where o.customer_id = c.id\n"
+            + ")\n" + "select id, sum(amount) as sum, timestamp1\n" + "from mycte\n"
+            + "group by mycte.id, mycte.timestamp1";
+
+
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
+
+    String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp1"}};
+    assertThatResolvesInto(res, expected);
+
+    //@formatter:off
+    String lineage =
+            "SELECT\n"
+            + " ├─mycte.id → customers.id : Other\n"
+            + " ├─sum AS Function sum\n"
+            + " │  └─mycte.amount → orders.amount : Other\n"
+            + " └─mycte.timestamp1 : Other";
+    //@formatter:on
+    assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
+  }
+
+
 }

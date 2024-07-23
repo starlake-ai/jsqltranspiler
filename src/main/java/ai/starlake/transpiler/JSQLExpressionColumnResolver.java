@@ -70,8 +70,15 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       String actualColumnTableName =
           fromTables.containsKey(columnTableName) ? fromTables.get(columnTableName).getName()
               : null;
-      jdbcColumn = metaData.getColumn(columnCatalogName, columnSchemaName, actualColumnTableName,
-          column.getColumnName());
+      String actualColumnSchemaName =
+          fromTables.containsKey(columnTableName) ? fromTables.get(columnTableName).getSchemaName()
+              : columnSchemaName;
+      String actualColumnCatalogName =
+          fromTables.containsKey(columnTableName) ? fromTables.get(columnTableName).getCatalogName()
+              : columnCatalogName;
+
+      jdbcColumn = metaData.getColumn(actualColumnCatalogName, actualColumnSchemaName,
+          actualColumnTableName, column.getColumnName());
 
     } else {
       // column has no table name prefix and we have to lookup in all tables of the scope

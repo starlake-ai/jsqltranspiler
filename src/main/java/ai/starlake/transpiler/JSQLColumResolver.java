@@ -27,6 +27,8 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.FromItemVisitor;
 import net.sf.jsqlparser.statement.select.Join;
@@ -262,26 +264,28 @@ public class JSQLColumResolver
     return builder.getConvertedTree(this);
   }
 
-  public static String getQualifiedTableName(String catalogName, String schemaName, String tableName) {
+  public static String getQualifiedTableName(String catalogName, String schemaName,
+      String tableName) {
     StringBuilder builder = new StringBuilder();
-    if (catalogName!=null && !catalogName.isEmpty()) {
+    if (catalogName != null && !catalogName.isEmpty()) {
       builder.append(catalogName).append(".");
-      builder.append(schemaName!=null ? schemaName : "").append(".");
-    } else if (schemaName!=null && !schemaName.isEmpty()) {
+      builder.append(schemaName != null ? schemaName : "").append(".");
+    } else if (schemaName != null && !schemaName.isEmpty()) {
       builder.append(schemaName).append(".");
     }
     builder.append(tableName);
     return builder.toString();
   }
 
-  public static String getQualifiedColumnName(String catalogName, String schemaName, String tableName, String columName) {
+  public static String getQualifiedColumnName(String catalogName, String schemaName,
+      String tableName, String columName) {
     StringBuilder builder = new StringBuilder();
-    if (tableName==null || tableName.isEmpty()) {
+    if (tableName == null || tableName.isEmpty()) {
       return columName;
-    } else if (catalogName!=null && !catalogName.isEmpty()) {
+    } else if (catalogName != null && !catalogName.isEmpty()) {
       builder.append(catalogName).append(".");
-      builder.append(schemaName!=null ? schemaName : "").append(".");
-    } else if (schemaName!=null && !schemaName.isEmpty()) {
+      builder.append(schemaName != null ? schemaName : "").append(".");
+    } else if (schemaName != null && !schemaName.isEmpty()) {
       builder.append(schemaName).append(".");
     }
     builder.append(tableName).append(".").append(columName);
@@ -324,7 +328,10 @@ public class JSQLColumResolver
     try {
       int columnCount = rsMetaData.getColumnCount();
       for (int i = 1; i <= columnCount; i++) {
-        t.add(t.tableCatalog, t.tableSchema, t.tableName, rsMetaData.getColumnName(i),
+        t.add(t.tableCatalog, t.tableSchema, t.tableName,
+            rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
+                ? rsMetaData.getColumnLabel(i)
+                : rsMetaData.getColumnName(i),
             rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
             rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
             "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getCatalogName(i),
@@ -359,8 +366,6 @@ public class JSQLColumResolver
     FromItem fromItem = select.getFromItem();
     List<Join> joins = select.getJoins();
 
-
-
     if (select.getWithItemsList() != null) {
       for (WithItem withItem : select.getWithItemsList()) {
         withItem.accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
@@ -385,7 +390,10 @@ public class JSQLColumResolver
       try {
         int columnCount = rsMetaData.getColumnCount();
         for (int i = 1; i <= columnCount; i++) {
-          t.add(t.tableCatalog, t.tableSchema, t.tableName, rsMetaData.getColumnName(i),
+          t.add(t.tableCatalog, t.tableSchema, t.tableName,
+              rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
+                  ? rsMetaData.getColumnLabel(i)
+                  : rsMetaData.getColumnName(i),
               rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
               rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
               "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getCatalogName(i),
@@ -445,7 +453,7 @@ public class JSQLColumResolver
 
             if (join.isNatural()) {
               metaData.getNaturalJoinedTables().put(alias != null ? alias.getName() : t.tableName,
-                      new Table(alias != null ? alias.getName() : t.tableName));
+                  new Table(alias != null ? alias.getName() : t.tableName));
             }
           } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -475,7 +483,7 @@ public class JSQLColumResolver
       if (t.getDatabase() == null) {
         t.setDatabaseName(metaData.getCurrentCatalogName());
       } else if (t.getDatabase().getDatabaseName() == null
-              || t.getDatabase().getDatabaseName().isEmpty()) {
+          || t.getDatabase().getDatabaseName().isEmpty()) {
         t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
       }
     }
@@ -494,16 +502,18 @@ public class JSQLColumResolver
       List<JdbcColumn> jdbcColumns =
           selectItem.getExpression().accept(expressionColumnResolver, metaData);
 
-      // jdbcColumns can be null when the Column is an Expression without parameters, e. g. CURRENT_DATE()
-      if (jdbcColumns!=null) {
-        for (JdbcColumn col : jdbcColumns) {
-          resultSetMetaData.add(col, alias!=null ? alias.withUseAs(false).getName():null);
-
-          Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
+      for (JdbcColumn col : jdbcColumns) {
+        resultSetMetaData.add(col, alias != null ? alias.withUseAs(false).getName() : null);
+        Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
+        if (selectItem.getExpression() instanceof AllColumns
+            || selectItem.getExpression() instanceof AllTableColumns) {
           newSelectItems.add(new SelectItem<>(
-                  new Column(t, col.columnName).withCommentText("Resolved Column"), alias));
+              new Column(t, col.columnName).withCommentText("Resolved Column"), alias));
+        } else {
+          newSelectItems.add(selectItem);
         }
       }
+
     }
     select.setSelectItems(newSelectItems);
 
@@ -546,15 +556,19 @@ public class JSQLColumResolver
       JdbcTable t = new JdbcTable(metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName(),
           withItem.getAlias().getName());
 
-      JdbcResultSetMetaData md = withItem.getSelect()
+      JdbcResultSetMetaData rsMetaData = withItem.getSelect()
           .accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
       try {
-        int columnCount = md.getColumnCount();
+        int columnCount = rsMetaData.getColumnCount();
         for (int i = 1; i <= columnCount; i++) {
-          t.add(t.tableCatalog, t.tableSchema, t.tableName, md.getColumnName(i),
-              md.getColumnType(i), md.getColumnClassName(i), md.getPrecision(i), md.getScale(i), 10,
-              md.isNullable(i), "", "", md.getColumnDisplaySize(i), i, "", md.getCatalogName(i),
-              md.getSchemaName(i), md.getTableName(i), null, "", "");
+          t.add(t.tableCatalog, t.tableSchema, t.tableName,
+              rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
+                  ? rsMetaData.getColumnLabel(i)
+                  : rsMetaData.getColumnName(i),
+              rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
+              rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
+              "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getCatalogName(i),
+              rsMetaData.getSchemaName(i), rsMetaData.getTableName(i), null, "", "");
         }
         metaData.put(t);
       } catch (SQLException ex) {
