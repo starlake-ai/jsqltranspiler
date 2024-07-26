@@ -221,7 +221,7 @@ public class JdbcTable implements Comparable<JdbcTable> {
   public void getIndices(DatabaseMetaData metaData, boolean approximate) throws SQLException {
     try (ResultSet rs =
         metaData.getIndexInfo(tableCatalog, tableSchema, tableName, false, approximate);) {
-      LOGGER.info(tableCatalog + "." + tableSchema + "." + tableName);
+      LOGGER.fine(tableCatalog + "." + tableSchema + "." + tableName);
 
       while (rs.next()) {
         // TABLE_CATALOG String => catalog name(may be null)
@@ -286,7 +286,7 @@ public class JdbcTable implements Comparable<JdbcTable> {
       }
 
     } catch (SQLFeatureNotSupportedException ex1) {
-      LOGGER.warning("This database does not support Index Information yet.");
+      LOGGER.fine("This database does not support Index Information yet.");
     }
   }
 

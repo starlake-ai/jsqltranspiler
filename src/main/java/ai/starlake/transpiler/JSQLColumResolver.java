@@ -377,9 +377,9 @@ public class JSQLColumResolver
       Table t = (Table) fromItem;
 
       if (alias != null) {
-        metaData.getFromTables().put(alias.getName(), (Table) fromItem);
+        metaData.getFromTables().put(alias.getName().replaceAll("^\"|\"$", ""), (Table) fromItem);
       } else {
-        metaData.getFromTables().put(t.getName(), (Table) fromItem);
+        metaData.getFromTables().put(t.getName().replaceAll("^\"|\"$", ""), (Table) fromItem);
       }
     } else if (fromItem != null) {
       Alias alias = fromItem.getAlias();
@@ -400,7 +400,9 @@ public class JSQLColumResolver
               rsMetaData.getSchemaName(i), rsMetaData.getTableName(i), null, "", "");
         }
         metaData.put(t);
-        metaData.getFromTables().put(alias != null ? alias.getName() : t.tableName,
+        metaData.getFromTables().put(
+            alias != null ? alias.getName().replaceAll("^\"|\"$", "")
+                : t.tableName.replaceAll("^\"|\"$", ""),
             new Table(alias != null ? alias.getName() : t.tableName));
       } catch (SQLException e) {
         throw new RuntimeException(e);
@@ -420,13 +422,13 @@ public class JSQLColumResolver
           Table t = (Table) join.getFromItem();
 
           if (alias != null) {
-            metaData.getFromTables().put(alias.getName(), t);
+            metaData.getFromTables().put(alias.getName().replaceAll("^\"|\"$", ""), t);
             if (join.isNatural()) {
-              metaData.getNaturalJoinedTables().put(alias.getName(), t);
+              metaData.getNaturalJoinedTables().put(alias.getName().replaceAll("^\"|\"$", ""), t);
             }
 
           } else {
-            metaData.getFromTables().put(t.getName(), t);
+            metaData.getFromTables().put(t.getName().replaceAll("^\"|\"$", ""), t);
             if (join.isNatural()) {
               metaData.addNaturalJoinedTable(t);
             }
@@ -448,7 +450,9 @@ public class JSQLColumResolver
                   rsMetaData.getSchemaName(i), rsMetaData.getTableName(i), null, "", "");
             }
             metaData.put(t);
-            metaData.getFromTables().put(alias != null ? alias.getName() : t.tableName,
+            metaData.getFromTables().put(
+                alias != null ? alias.getName().replaceAll("^\"|\"$", "")
+                    : t.tableName.replaceAll("^\"|\"$", ""),
                 new Table(alias != null ? alias.getName() : t.tableName));
 
             if (join.isNatural()) {
@@ -554,7 +558,7 @@ public class JSQLColumResolver
       JdbcMetaData metaData = (JdbcMetaData) context;
 
       JdbcTable t = new JdbcTable(metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName(),
-          withItem.getAlias().getName());
+          withItem.getAlias().getName().replaceAll("^\"|\"$", ""));
 
       JdbcResultSetMetaData rsMetaData = withItem.getSelect()
           .accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
@@ -563,8 +567,8 @@ public class JSQLColumResolver
         for (int i = 1; i <= columnCount; i++) {
           t.add(t.tableCatalog, t.tableSchema, t.tableName,
               rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
-                  ? rsMetaData.getColumnLabel(i)
-                  : rsMetaData.getColumnName(i),
+                  ? rsMetaData.getColumnLabel(i).replaceAll("^\"|\"$", "")
+                  : rsMetaData.getColumnName(i).replaceAll("^\"|\"$", ""),
               rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
               rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
               "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getCatalogName(i),

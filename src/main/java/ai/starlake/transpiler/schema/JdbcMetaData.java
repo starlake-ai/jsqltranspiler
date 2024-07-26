@@ -245,8 +245,9 @@ public final class JdbcMetaData implements DatabaseMetaData {
           "Catalog " + catalogName + " does not exist in the DatabaseMetaData.");
     }
 
-    JdbcSchema jdbcSchema = jdbcCatalog
-        .get(schemaName == null || schemaName.isEmpty() ? currentSchemaName : schemaName);
+    JdbcSchema jdbcSchema =
+        jdbcCatalog.get(schemaName == null || schemaName.isEmpty() ? currentSchemaName
+            : schemaName.replaceAll("^\"|\"$", ""));
     if (jdbcSchema == null) {
       LOGGER.info("Available schema: "
           + Arrays.deepToString(jdbcCatalog.schemas.keySet().toArray(new String[0])));
@@ -255,7 +256,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
     }
 
     if (tableName != null && !tableName.isEmpty()) {
-      JdbcTable jdbcTable = jdbcSchema.get(tableName);
+      JdbcTable jdbcTable = jdbcSchema.get(tableName.replaceAll("^\"|\"$", ""));
 
       if (jdbcTable == null) {
         LOGGER.info("Available tables: "
@@ -263,11 +264,11 @@ public final class JdbcMetaData implements DatabaseMetaData {
         throw new RuntimeException(
             "Table " + tableName + " does not exist in the given Schema " + schemaName);
       } else {
-        jdbcColumn = jdbcTable.columns.get(columnName);
+        jdbcColumn = jdbcTable.columns.get(columnName.replaceAll("^\"|\"$", ""));
       }
     } else {
       for (JdbcTable jdbcTable : jdbcSchema.tables.values()) {
-        jdbcColumn = jdbcTable.columns.get(columnName);
+        jdbcColumn = jdbcTable.columns.get(columnName.replaceAll("^\"|\"$", ""));
         if (jdbcColumn != null) {
           break;
         }

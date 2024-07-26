@@ -53,10 +53,10 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
 
     Table table = column.getTable();
     if (table != null) {
-      columnTableName = table.getName();
+      columnTableName = table.getName().replaceAll("^\"|\"$", "");
 
       if (table.getSchemaName() != null) {
-        columnSchemaName = table.getSchemaName();
+        columnSchemaName = table.getSchemaName().replaceAll("^\"|\"$", "");
       }
 
       if (table.getDatabase() != null) {
@@ -67,28 +67,45 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     if (columnTableName != null) {
       // column has a table name prefix, which could be the actual table name or the table's
       // alias
-      String actualColumnTableName =
-          fromTables.containsKey(columnTableName) ? fromTables.get(columnTableName).getName()
-              : null;
-      String actualColumnSchemaName =
-          fromTables.containsKey(columnTableName) ? fromTables.get(columnTableName).getSchemaName()
-              : columnSchemaName;
-      String actualColumnCatalogName =
-          fromTables.containsKey(columnTableName) ? fromTables.get(columnTableName).getCatalogName()
-              : columnCatalogName;
+      String unquotedColumnTableName = columnTableName.replaceAll("^\"|\"$", "");
+      String actualColumnTableName = fromTables.containsKey(unquotedColumnTableName)
+          ? fromTables.get(unquotedColumnTableName).getName()
+          : null;
+      if (actualColumnTableName != null && !actualColumnTableName.isEmpty()) {
+        actualColumnTableName = actualColumnTableName.replaceAll("^\"|\"$", "");
+      }
+
+      String actualColumnSchemaName = fromTables.containsKey(unquotedColumnTableName)
+          ? fromTables.get(unquotedColumnTableName).getSchemaName()
+          : columnSchemaName;
+      if (actualColumnSchemaName != null && !actualColumnSchemaName.isEmpty()) {
+        actualColumnSchemaName = actualColumnSchemaName.replaceAll("^\"|\"$", "");
+      }
+
+      String actualColumnCatalogName = fromTables.containsKey(unquotedColumnTableName)
+          ? fromTables.get(unquotedColumnTableName).getCatalogName()
+          : columnCatalogName;
+      if (actualColumnCatalogName != null && !actualColumnCatalogName.isEmpty()) {
+        actualColumnCatalogName = actualColumnCatalogName.replaceAll("^\"|\"$", "");
+      }
 
       jdbcColumn = metaData.getColumn(actualColumnCatalogName, actualColumnSchemaName,
-          actualColumnTableName, column.getColumnName());
+          actualColumnTableName, column.getColumnName().replaceAll("^\"|\"$", ""));
 
     } else {
       // column has no table name prefix and we have to lookup in all tables of the scope
       for (Table t : fromTables.values()) {
-        String tableSchemaName = t.getSchemaName();
+        String columnName = column.getColumnName().replaceAll("^\"|\"$", "");
+        String tableName = t.getName().replaceAll("^\"|\"$", "");
+        String tableSchemaName = t.getSchemaName().replaceAll("^\"|\"$", "");
+
         String tableCatalogName =
             t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
+        if (tableCatalogName != null && !tableCatalogName.isEmpty()) {
+          tableCatalogName = tableCatalogName.replaceAll("^\"|\"$", "");
+        }
 
-        jdbcColumn = metaData.getColumn(tableCatalogName, tableSchemaName, t.getName(),
-            column.getColumnName());
+        jdbcColumn = metaData.getColumn(tableCatalogName, tableSchemaName, tableName, columnName);
         if (jdbcColumn != null) {
           break;
         }
