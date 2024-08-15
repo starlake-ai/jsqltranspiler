@@ -166,7 +166,7 @@ Maven Artifact with Snapshot support:
 </repositories>
 
 <dependency>
-    <groupId>com.starlake-ai.jsqltranspiler</groupId>
+    <groupId>ai.starlake.jsqltranspiler</groupId>
     <artifactId>jsqltranspiler</artifactId>
     <version>0.7-SNAPSHOT</version>
 </dependency>
