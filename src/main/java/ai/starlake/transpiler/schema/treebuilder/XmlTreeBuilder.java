@@ -10,7 +10,6 @@ import net.sf.jsqlparser.statement.select.Select;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLException;
-import java.util.Enumeration;
 
 public class XmlTreeBuilder extends TreeBuilder<String> {
   private final StringBuilder xmlBuilder = new StringBuilder();
@@ -87,14 +86,12 @@ public class XmlTreeBuilder extends TreeBuilder<String> {
       }
       addIndentation(indent);
       xmlBuilder.append("</Column>\n");
-    } else if (!column.isLeaf()) {
+    } else if (!column.getChildren().isEmpty()) {
       xmlBuilder.append(">\n");
       addIndentation(indent + 1);
       xmlBuilder.append("<ColumnSet>\n");
 
-      Enumeration<JdbcColumn> children = column.children();
-      while (children.hasMoreElements()) {
-        JdbcColumn child = children.nextElement();
+      for (JdbcColumn child : column.getChildren()) {
         convertNodeToXml(child, "", indent + 2);
       }
 

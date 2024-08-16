@@ -30,12 +30,10 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.Arguments;
 
-import javax.swing.tree.TreeNode;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Iterator;
 import java.util.stream.Stream;
 
 public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
@@ -309,21 +307,15 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
       String alias = resultSetMetaData.getLabels().get(i - 1);
       Assertions.assertThat(alias).isEqualToIgnoringCase("total");
 
-
-      // JdbcColum implements the TreeNode interface which can be used to traverse through the
-      // lineage
-      Assertions.assertThat(column).isInstanceOf(TreeNode.class);
-
       // JdbcColumn points on its Expression
       Assertions.assertThat(column.getExpression()).isInstanceOf(Function.class);
 
-      Iterator<JdbcColumn> iterator = column.children().asIterator();
-      if (iterator.hasNext()) {
-        JdbcColumn child = iterator.next();
+      // JdbcColum has methods which can be used to traverse through the lineage
+      // getChildren() provides a List of children
+      for (JdbcColumn child : column.getChildren()) {
 
-        // JdbcColum implements the TreeNode interface which can be used to traverse through the
-        // lineage
-        Assertions.assertThat(child).isInstanceOf(TreeNode.class);
+        // getParent() provides the parent
+        Assertions.assertThat(child.getParent()).isNull();
 
         // JdbcColumn points on its Expression
         Assertions.assertThat(child.getExpression()).isInstanceOf(Addition.class);
