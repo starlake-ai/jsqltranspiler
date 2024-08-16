@@ -101,7 +101,7 @@ Download
         :substitutions:
 
         <dependency>
-            <groupId>com.starlake-ai.jsqltranspiler</groupId>
+            <groupId>ai.starlake.jsqltranspiler</groupId>
             <artifactId>jsqltranspiler</artifactId>
             <version>|JSQLTRANSPILER_VERSION|</version>
         </dependency>
@@ -122,7 +122,7 @@ Download
             </repository>
         </repositories>
         <dependency>
-            <groupId>com.starlake-ai.jsqltranspiler</groupId>
+            <groupId>ai.starlake.jsqltranspiler</groupId>
             <artifactId>jsqltranspiler</artifactId>
             <version>|JSQLTRANSPILER_SNAPSHOT_VERSION|</version>
         </dependency>
@@ -138,7 +138,7 @@ Download
         }
 
         dependencies {
-            implementation 'com.starlake-ai.jsqltranspiler:jsqltranspiler:|JSQLTRANSPILER_VERSION|'
+            implementation 'ai.starlake.jsqltranspiler:jsqltranspiler:|JSQLTRANSPILER_VERSION|'
         }
 
 
@@ -154,7 +154,7 @@ Download
         }
 
         dependencies {
-            implementation 'com.starlake-ai.jsqltranspiler:jsqltranspiler:|JSQLTRANSPILER_SNAPSHOT_VERSION|'
+            implementation 'ai.starlake.jsqltranspiler:jsqltranspiler:|JSQLTRANSPILER_SNAPSHOT_VERSION|'
         }
 
 
