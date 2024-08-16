@@ -18,6 +18,7 @@ plugins {
     id 'org.hidetake.ssh' version "latest.release"
     id "com.github.hierynomus.license" version "latest.release"
     id "se.bjurr.gitchangelog.git-changelog-gradle-plugin" version "latest.release"
+    id 'biz.aQute.bnd.builder' version '6.4.0'
 }
 
 repositories {
@@ -65,7 +66,6 @@ dependencies {
     // Java Doc in XML Format
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
 }
-
 
 configurations.configureEach {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
@@ -163,9 +163,12 @@ tasks.register('xmldoc', Javadoc) {
 }
 
 jar {
-    manifest {
-        attributes('Main-Class': 'ai.starlake.transpiler.JSQLTranspiler')
-    }
+	bnd("Created-By": System.properties.get('user.name'),
+        "Main-Class": "ai.starlake.transpiler.JSQLTranspiler",
+        "Bundle-SymbolicName": "ai.starlake.transpiler", 
+        "Import-Package": "*",
+        "Export-Package": "ai.starlake.transpiler.*"
+	)
 }
 
 shadowJar {
