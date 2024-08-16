@@ -13,7 +13,6 @@ import net.sf.jsqlparser.statement.select.Select;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLException;
-import java.util.Enumeration;
 
 public class AsciiTreeBuilder extends TreeBuilder<String> {
   private JSQLColumResolver resolver;
@@ -86,9 +85,8 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
 
     SimpleTreeNode simpleTreeNode = new SimpleTreeNode(nodeContent);
 
-    Enumeration<JdbcColumn> children = column.children();
-    while (children.hasMoreElements()) {
-      simpleTreeNode.addChild(translateNode(children.nextElement(), ""));
+    for (JdbcColumn child : column.getChildren()) {
+      simpleTreeNode.addChild(translateNode(child, ""));
     }
     return simpleTreeNode;
   }

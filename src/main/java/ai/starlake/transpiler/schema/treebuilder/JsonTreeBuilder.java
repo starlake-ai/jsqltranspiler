@@ -10,7 +10,6 @@ import net.sf.jsqlparser.statement.select.Select;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLException;
-import java.util.Enumeration;
 
 public class JsonTreeBuilder extends TreeBuilder<String> {
   private final StringBuilder jsonBuilder = new StringBuilder();
@@ -115,16 +114,16 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
       }
       jsonBuilder.append("\n");
       addIndentation(indent);
-    } else if (!column.isLeaf()) {
+    } else if (!column.getChildren().isEmpty()) {
       jsonBuilder.append(",\n");
       addIndentation(indent + 2);
       jsonBuilder.append("\"columnSet\": [\n");
 
-      Enumeration<JdbcColumn> children = column.children();
-      while (children.hasMoreElements()) {
-        JdbcColumn child = children.nextElement();
+      boolean first = true;
+      for (JdbcColumn child : column.getChildren()) {
         convertNodeToJson(child, "", indent + 4);
-        if (children.hasMoreElements()) {
+        if (!first) {
+          first = false;
           jsonBuilder.append(",");
         }
         jsonBuilder.append("\n");

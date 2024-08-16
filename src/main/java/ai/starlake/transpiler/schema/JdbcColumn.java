@@ -19,20 +19,16 @@ package ai.starlake.transpiler.schema;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.schema.Column;
-
-import javax.swing.tree.TreeNode;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Enumeration;
 import java.util.List;
 import java.util.Objects;
 
 import static java.sql.DatabaseMetaData.columnNullableUnknown;
 
-public class JdbcColumn implements Comparable<JdbcColumn>, TreeNode {
+public class JdbcColumn implements Comparable<JdbcColumn> {
 
   public String tableCatalog;
   public String tableSchema;
@@ -272,42 +268,11 @@ public class JdbcColumn implements Comparable<JdbcColumn>, TreeNode {
     return result;
   }
 
-  @Override
-  public TreeNode getChildAt(int childIndex) {
-    return childNodes.get(childIndex);
-  }
-
-  @Override
-  public int getChildCount() {
-    return childNodes.size();
-  }
-
-  @Override
-  public TreeNode getParent() {
+  public JdbcColumn getParent() {
     return parent;
   }
 
-  @Override
-  public int getIndex(TreeNode node) {
-    return childNodes.indexOf(node);
-  }
-
-  @Override
-  public boolean getAllowsChildren() {
-    return true;
-  }
-
-  @Override
-  public boolean isLeaf() {
-    return childNodes.isEmpty();
-  }
-
-  @Override
-  public Enumeration<JdbcColumn> children() {
-    return Collections.enumeration(childNodes);
-  }
-
-  public Collection<JdbcColumn> getChildNodes() {
+  public List<JdbcColumn> getChildren() {
     return childNodes;
   }
 
@@ -333,4 +298,5 @@ public class JdbcColumn implements Comparable<JdbcColumn>, TreeNode {
     this.expression = expression;
     return this;
   }
+
 }
