@@ -37,7 +37,7 @@ See the Java API for all the available constructors and methods.
     // Further Simplified for an empty catalog and empty schema
     String[][] schemaDefinition = {
         // table a with columns
-        {"a", "col1", "col2", "col3, "colAA", "colAB""}
+        {"a", "col1", "col2", "col3, "colAA", "colAB"}
 
         // table b with columns
         , {"b", "col1", "col2", "col3", "colBA", "colBB"}
@@ -67,7 +67,7 @@ Step 2: Rewrite the Star Operators
     String[][] schemaDefinition = {
 
         // table a with columns
-        {"a", "col1", "col2", "col3, "colAA", "colAB""}
+        {"a", "col1", "col2", "col3, "colAA", "colAB"}
 
         // table b with columns
         , {"b", "col1", "col2", "col3", "colBA", "colBB"}
