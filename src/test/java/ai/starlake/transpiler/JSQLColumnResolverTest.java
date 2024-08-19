@@ -315,7 +315,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
       for (JdbcColumn child : column.getChildren()) {
 
         // getParent() provides the parent
-        Assertions.assertThat(child.getParent()).isNull();
+        Assertions.assertThat(child.getParent()).isInstanceOf(JdbcColumn.class);
 
         // JdbcColumn points on its Expression
         Assertions.assertThat(child.getExpression()).isInstanceOf(Addition.class);
@@ -546,14 +546,15 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
-  void testWithAllBackTickQuoted() throws JSQLParserException, SQLException, InvocationTargetException,
-                                  NoSuchMethodException, InstantiationException, IllegalAccessException {
+  void testWithAllBackTickQuoted()
+      throws JSQLParserException, SQLException, InvocationTargetException, NoSuchMethodException,
+      InstantiationException, IllegalAccessException {
     JdbcMetaData metaData =
-            new JdbcMetaData("", "").addTable("sales", "orders", new JdbcColumn("customer_id"),
-                                              new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
-                                    .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
-                                              new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
-                                              new JdbcColumn("name2"), new JdbcColumn("id1"));
+        new JdbcMetaData("", "").addTable("sales", "orders", new JdbcColumn("customer_id"),
+            new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
+            .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
+                new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
+                new JdbcColumn("name2"), new JdbcColumn("id1"));
     //@formatter:off
     String sqlStr =
             "with `mycte` as (\n"
@@ -567,7 +568,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     //@formatter:on
 
     ResultSetMetaData res =
-            JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
+        JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
 
     String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
     assertThatResolvesInto(res, expected);
