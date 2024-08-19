@@ -1,3 +1,19 @@
+/**
+ * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
+ * Copyright (C) 2024 Starlake.AI
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package ai.starlake.transpiler.schema.treebuilder;
 
 import ai.starlake.transpiler.JSQLColumResolver;
@@ -10,7 +26,6 @@ import net.sf.jsqlparser.statement.select.Select;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLException;
-import java.util.Enumeration;
 
 public class JsonTreeBuilder extends TreeBuilder<String> {
   private final StringBuilder jsonBuilder = new StringBuilder();
@@ -115,16 +130,16 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
       }
       jsonBuilder.append("\n");
       addIndentation(indent);
-    } else if (!column.isLeaf()) {
+    } else if (!column.getChildren().isEmpty()) {
       jsonBuilder.append(",\n");
       addIndentation(indent + 2);
       jsonBuilder.append("\"columnSet\": [\n");
 
-      Enumeration<JdbcColumn> children = column.children();
-      while (children.hasMoreElements()) {
-        JdbcColumn child = children.nextElement();
+      boolean first = true;
+      for (JdbcColumn child : column.getChildren()) {
         convertNodeToJson(child, "", indent + 4);
-        if (children.hasMoreElements()) {
+        if (!first) {
+          first = false;
           jsonBuilder.append(",");
         }
         jsonBuilder.append("\n");
