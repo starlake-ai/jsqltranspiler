@@ -8,6 +8,63 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **fix: better handling of quoted identifiers**
+    
+    manticore-projects, 2024-08-19
+  * **chore: add Q/A tasks for verifying PRs**
+    
+    manticore-projects, 2024-08-19
+  * **fix: syntax errors**
+    
+    manticore-projects, 2024-08-16
+  * **fix: Maven coordinates**
+    
+    manticore-projects, 2024-08-16
+  * **fix maven coordinates (#21)**
+    
+    Hayssam Saleh, 2024-08-15
+  * **fix maven coordinates**
+    
+    Stefan Bischof, 2024-08-15
+  * **feat: JSQLColumnResolver supports quoted identifiers**
+    
+    manticore-projects, 2024-07-26
+  * **fix: aliased expressions in sub-query**
+    
+    Andreas Reichel, 2024-07-23
+  * **doc: Sphinx website**
+    
+    Andreas Reichel, 2024-07-15
+  * **doc: fine tuning**
+    
+    Andreas Reichel, 2024-07-15
+  * **Create dependabot.yml**
+    
+    manticore-projects, 2024-07-15
+  * **test: temporally disable 4 tests failing on GitHub (only)**
+    
+    Andreas Reichel, 2024-07-15
+  * **build: update gradle wrapper**
+    
+    Andreas Reichel, 2024-07-15
+  * **doc: README badges incl. coverage**
+    
+    Andreas Reichel, 2024-07-15
+  * **feat: support NATURAL Joins**
+    
+    Andreas Reichel, 2024-07-14
+  * **feat: support USING Joins**
+    
+    Andreas Reichel, 2024-07-14
+  * **fix: remove local libs and improve tests**
+    
+    Andreas Reichel, 2024-07-08
+  * **feat: improve JSon and XML lineage**
+    
+    Andreas Reichel, 2024-07-08
+  * **feat: Columns defined as `SELECT` Expression**
+    
+    Andreas Reichel, 2024-07-07
   * **feat: access the Lineage via TreeBuilder interface**
     
     Andreas Reichel, 2024-07-07

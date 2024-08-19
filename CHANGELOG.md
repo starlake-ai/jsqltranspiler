@@ -2,6 +2,80 @@
 
 Changelog of jsqltranspiler.
 
+## 0.6 (2024-06-25)
+
+### Breaking changes
+
+-  JSQLColumnResolver with deeply nested `SelectVisitor` and `FromItemVisitor` ([1693f](https://github.com/starlake-ai/jsqltranspiler/commit/1693f52cc1879e1) Andreas Reichel)  
+
+### Features
+
+-  JSQLColumnResolver with deeply nested `SelectVisitor` and `FromItemVisitor` ([1693f](https://github.com/starlake-ai/jsqltranspiler/commit/1693f52cc1879e1) Andreas Reichel)  
+-  Resolve columns for `WITH ... ` clauses ([fb3dd](https://github.com/starlake-ai/jsqltranspiler/commit/fb3dd73fe95e449) Andreas Reichel)  
+-  support `EXCEPT` and `REPLACE` clauses ([6bef0](https://github.com/starlake-ai/jsqltranspiler/commit/6bef0de0f235347) Andreas Reichel)  
+-  add syntax sugar ([dffb6](https://github.com/starlake-ai/jsqltranspiler/commit/dffb63f42644f0e) Andreas Reichel)  
+-  further Schema Provider and Test simplifications ([23013](https://github.com/starlake-ai/jsqltranspiler/commit/23013fa9f1baa3f) Andreas Reichel)  
+-  STAR column resolver, wip ([b309d](https://github.com/starlake-ai/jsqltranspiler/commit/b309df83547310d) Andreas Reichel)  
+-  STAR column resolver, wip ([c20f5](https://github.com/starlake-ai/jsqltranspiler/commit/c20f5add69cc288) Andreas Reichel)  
+-  STAR column resolver, wip ([c63e1](https://github.com/starlake-ai/jsqltranspiler/commit/c63e10012bd8853) Andreas Reichel)  
+-  STAR column resolver, wip ([ed49e](https://github.com/starlake-ai/jsqltranspiler/commit/ed49e89c31d13c9) Andreas Reichel)  
+
+### Bug Fixes
+
+-  BigQuery default sort order ([2c309](https://github.com/starlake-ai/jsqltranspiler/commit/2c3090e59bba146) Andreas Reichel)  
+-  BigQuery `SELECT AS STRUCT ...` and `SELECT AS VALUE ...` ([d5352](https://github.com/starlake-ai/jsqltranspiler/commit/d5352cfd8214e8a) Andreas Reichel)  
+-  BigQuery `GENERATE_DATE_ARRAY` with only 2 parameters ([0264e](https://github.com/starlake-ai/jsqltranspiler/commit/0264ea1ca951b07) Andreas Reichel)  
+
+### Other changes
+
+**API URL update**
+
+
+[67d62](https://github.com/starlake-ai/jsqltranspiler/commit/67d62bdd349b804) Hayssam Saleh *2024-06-12 20:13:03*
+
+**Update readme & licence**
+
+
+[9e4ea](https://github.com/starlake-ai/jsqltranspiler/commit/9e4eae7161ef4fd) Hayssam Saleh *2024-06-11 11:43:16*
+
+
+## 0.5 (2024-06-10)
+
+### Features
+
+-  Transpile `EXCEPT` and `REPLACE` clauses ([469af](https://github.com/starlake-ai/jsqltranspiler/commit/469af1cd3973718) Andreas Reichel)  
+-  Time Key substitutions ([9a269](https://github.com/starlake-ai/jsqltranspiler/commit/9a2692f3433948f) Andreas Reichel)  
+-  Time Key substitutions ([a093b](https://github.com/starlake-ai/jsqltranspiler/commit/a093b486665503c) Andreas Reichel)  
+
+### Other changes
+
+**Update README.md**
+
+
+[bd8c7](https://github.com/starlake-ai/jsqltranspiler/commit/bd8c7b3cc944570) manticore-projects *2024-06-10 05:26:29*
+
+**Update project root name**
+
+* tests after secret update worked 
+
+[527cc](https://github.com/starlake-ai/jsqltranspiler/commit/527cc11b58d1cb3) Hayssam Saleh *2024-06-04 14:00:15*
+
+**test publication by updating secrets**
+
+
+[3773c](https://github.com/starlake-ai/jsqltranspiler/commit/3773c338facfe42) Hayssam Saleh *2024-06-04 13:57:36*
+
+**Sonatype credentials passed through gradle.properties**
+
+
+[48dff](https://github.com/starlake-ai/jsqltranspiler/commit/48dffc3215367f4) Hayssam Saleh *2024-06-04 06:53:35*
+
+**Do not sign snapshots**
+
+
+[1e052](https://github.com/starlake-ai/jsqltranspiler/commit/1e0524dd90b521f) Hayssam Saleh *2024-06-04 06:52:09*
+
+
 ## 0.4 (2024-06-04)
 
 ### Features
