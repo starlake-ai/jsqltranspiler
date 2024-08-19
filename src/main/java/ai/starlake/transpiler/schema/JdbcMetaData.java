@@ -53,7 +53,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
   private String catalogSeparator = ".";
 
   private final CaseInsensitiveLinkedHashMap<Table> fromTables =
-      new CaseInsensitiveLinkedHashMap<>();
+      new CaseInsensitiveLinkedHashMap<>() {};
 
   private final CaseInsensitiveLinkedHashMap<Table> naturalJoinedTables =
       new CaseInsensitiveLinkedHashMap<>();

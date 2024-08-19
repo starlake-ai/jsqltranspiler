@@ -553,5 +553,43 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
 
+  @Test
+  void testWithAllBackTickQuoted() throws JSQLParserException, SQLException, InvocationTargetException,
+                                  NoSuchMethodException, InstantiationException, IllegalAccessException {
+    JdbcMetaData metaData =
+            new JdbcMetaData("", "").addTable("sales", "orders", new JdbcColumn("customer_id"),
+                                              new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
+                                    .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
+                                              new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
+                                              new JdbcColumn("name2"), new JdbcColumn("id1"));
+    //@formatter:off
+    String sqlStr =
+            "with `mycte` as (\n"
+            + "    select `o`.`amount`, `c`.`id`, CURRENT_TIMESTAMP() as `timestamp`\n"
+            + "    from `sales`.`orders` `o`, `sales`.`customers` `c`\n"
+            + "    where `o`.`customer_id` = `c`.`id`\n"
+            + ")\n"
+            + "select `id`, sum(`amount`) as sum, `timestamp`\n"
+            + "from `mycte`\n"
+            + "group by `mycte`.`id`, `mycte`.`timestamp`";
+    //@formatter:on
+
+    ResultSetMetaData res =
+            JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
+
+    String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
+    assertThatResolvesInto(res, expected);
+
+    //@formatter:off
+    String lineage =
+            "SELECT\n"
+            + " ├─mycte.id → customers.id : Other\n"
+            + " ├─sum AS Function sum\n"
+            + " │  └─mycte.amount → orders.amount : Other\n"
+            + " └─mycte.timestamp : Other";
+    //@formatter:on
+    assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
+  }
+
 
 }

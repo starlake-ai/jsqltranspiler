@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * A Case insensitive linked hash map preserving the original spelling of the keys. It can be used
@@ -30,18 +31,31 @@ import java.util.Set;
  */
 public class CaseInsensitiveLinkedHashMap<V> extends LinkedHashMap<String, V> {
   private final Map<String, String> originalKeys = new LinkedHashMap<>();
+  private static final Pattern LEADING_TRAILING_QUOTES_PATTERN =
+      Pattern.compile("^[\"\\[`]+|[\"\\]`]+$");
+
+  /**
+   * Removes leading and trailing quotes from a SQL quoted identifier
+   *
+   * @param quotedIdentifier the quoted identifier
+   * @return the pure identifier without quotes
+   */
+  public static String unquote(String quotedIdentifier) {
+    return LEADING_TRAILING_QUOTES_PATTERN.matcher(quotedIdentifier).replaceAll("");
+  }
 
   @Override
   public V put(String key, V value) {
-    String lowerCaseKey = key.toLowerCase();
-    originalKeys.put(lowerCaseKey, key);
+    String lowerCaseKey = unquote(key.toLowerCase());
+    originalKeys.put(lowerCaseKey, unquote(key));
     return super.put(lowerCaseKey, value);
   }
 
   @Override
   public V get(Object key) {
     if (key instanceof String) {
-      return super.get(((String) key).toLowerCase());
+      String unquotedLowerCaseKey = unquote(((String) key).toLowerCase());
+      return super.get(unquotedLowerCaseKey);
     }
     return null;
   }
@@ -49,7 +63,8 @@ public class CaseInsensitiveLinkedHashMap<V> extends LinkedHashMap<String, V> {
   @Override
   public boolean containsKey(Object key) {
     if (key instanceof String) {
-      return super.containsKey(((String) key).toLowerCase());
+      String unquotedLowerCaseKey = unquote(((String) key).toLowerCase());
+      return super.containsKey(unquotedLowerCaseKey);
     }
     return false;
   }
@@ -57,9 +72,9 @@ public class CaseInsensitiveLinkedHashMap<V> extends LinkedHashMap<String, V> {
   @Override
   public V remove(Object key) {
     if (key instanceof String) {
-      String lowerCaseKey = ((String) key).toLowerCase();
-      originalKeys.remove(lowerCaseKey);
-      return super.remove(lowerCaseKey);
+      String unquotedLowerCaseKey = unquote(((String) key).toLowerCase());
+      originalKeys.remove(unquotedLowerCaseKey);
+      return super.remove(unquotedLowerCaseKey);
     }
     return null;
   }

@@ -53,57 +53,43 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
 
     Table table = column.getTable();
     if (table != null) {
-      columnTableName = table.getName().replaceAll("^\"|\"$", "");
+      columnTableName = table.getUnquotedName();
 
       if (table.getSchemaName() != null) {
-        columnSchemaName = table.getSchemaName().replaceAll("^\"|\"$", "");
+        columnSchemaName = table.getUnquotedSchemaName();
       }
 
       if (table.getDatabase() != null) {
-        columnCatalogName = table.getDatabase().getDatabaseName();
+        columnCatalogName = table.getUnquotedDatabaseName();
       }
     }
 
     if (columnTableName != null) {
       // column has a table name prefix, which could be the actual table name or the table's
       // alias
-      String unquotedColumnTableName = columnTableName.replaceAll("^\"|\"$", "");
-      String actualColumnTableName = fromTables.containsKey(unquotedColumnTableName)
-          ? fromTables.get(unquotedColumnTableName).getName()
+      String actualColumnTableName = fromTables.containsKey(columnTableName)
+          ? fromTables.get(columnTableName).getUnquotedName()
           : null;
-      if (actualColumnTableName != null && !actualColumnTableName.isEmpty()) {
-        actualColumnTableName = actualColumnTableName.replaceAll("^\"|\"$", "");
-      }
 
-      String actualColumnSchemaName = fromTables.containsKey(unquotedColumnTableName)
-          ? fromTables.get(unquotedColumnTableName).getSchemaName()
+      String actualColumnSchemaName = fromTables.containsKey(columnTableName)
+          ? fromTables.get(columnTableName).getUnquotedSchemaName()
           : columnSchemaName;
-      if (actualColumnSchemaName != null && !actualColumnSchemaName.isEmpty()) {
-        actualColumnSchemaName = actualColumnSchemaName.replaceAll("^\"|\"$", "");
-      }
 
-      String actualColumnCatalogName = fromTables.containsKey(unquotedColumnTableName)
-          ? fromTables.get(unquotedColumnTableName).getCatalogName()
+      String actualColumnCatalogName = fromTables.containsKey(columnTableName)
+          ? fromTables.get(columnTableName).getUnquotedDatabaseName()
           : columnCatalogName;
-      if (actualColumnCatalogName != null && !actualColumnCatalogName.isEmpty()) {
-        actualColumnCatalogName = actualColumnCatalogName.replaceAll("^\"|\"$", "");
-      }
 
       jdbcColumn = metaData.getColumn(actualColumnCatalogName, actualColumnSchemaName,
-          actualColumnTableName, column.getColumnName().replaceAll("^\"|\"$", ""));
+          actualColumnTableName, column.getUnquotedColumnName());
 
     } else {
       // column has no table name prefix and we have to lookup in all tables of the scope
       for (Table t : fromTables.values()) {
-        String columnName = column.getColumnName().replaceAll("^\"|\"$", "");
-        String tableName = t.getName().replaceAll("^\"|\"$", "");
-        String tableSchemaName = t.getSchemaName().replaceAll("^\"|\"$", "");
+        String columnName = column.getUnquotedColumnName();
+        String tableName = t.getUnquotedName();
+        String tableSchemaName = t.getUnquotedSchemaName();
 
-        String tableCatalogName =
-            t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
-        if (tableCatalogName != null && !tableCatalogName.isEmpty()) {
-          tableCatalogName = tableCatalogName.replaceAll("^\"|\"$", "");
-        }
+        String tableCatalogName = t.getDatabase() != null ? t.getUnquotedDatabaseName() : null;
 
         jdbcColumn = metaData.getColumn(tableCatalogName, tableSchemaName, tableName, columnName);
         if (jdbcColumn != null) {
@@ -354,9 +340,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   public <S> List<JdbcColumn> visit(ParenthesedSelect select, S context) {
     ArrayList<JdbcColumn> columns = new ArrayList<>();
     if (select.getWithItemsList() != null) {
-      for (WithItem item : select.getWithItemsList()) {
-        columns.addAll(item.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context)
-            .getColumns());
+      for (WithItem<?> item : select.getWithItemsList()) {
+        columns.addAll(item.accept(columResolver, context).getColumns());
       }
     }
     columns.addAll(
@@ -368,16 +353,14 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   public <S> List<JdbcColumn> visit(Select select, S context) {
     ArrayList<JdbcColumn> columns = new ArrayList<>();
     if (select.getWithItemsList() != null) {
-      for (WithItem item : select.getWithItemsList()) {
-        for (JdbcColumn col : item
-            .accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context).getColumns()) {
+      for (WithItem<?> item : select.getWithItemsList()) {
+        for (JdbcColumn col : item.accept(columResolver, context).getColumns()) {
           columns.add(col.setExpression(select));
         }
       }
     }
 
-    for (JdbcColumn col : select
-        .accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context).getColumns()) {
+    for (JdbcColumn col : select.accept(columResolver, context).getColumns()) {
       columns.add(col.setExpression(select));
     }
 
@@ -407,12 +390,11 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   }
 
   @Override
-  public <S> List<JdbcColumn> visit(WithItem withItem, S context) {
+  public <S> List<JdbcColumn> visit(WithItem<?> withItem, S context) {
     ArrayList<JdbcColumn> columns = new ArrayList<>();
     if (context instanceof JdbcMetaData) {
       JdbcResultSetMetaData resultSetMetaData =
-          withItem.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver,
-              JdbcMetaData.copyOf((JdbcMetaData) context));
+          withItem.accept(columResolver, JdbcMetaData.copyOf((JdbcMetaData) context));
       columns.addAll(resultSetMetaData.getColumns());
     }
     return columns;
