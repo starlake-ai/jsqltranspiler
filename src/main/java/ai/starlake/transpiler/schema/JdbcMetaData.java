@@ -247,7 +247,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
 
     JdbcSchema jdbcSchema =
         jdbcCatalog.get(schemaName == null || schemaName.isEmpty() ? currentSchemaName
-            : schemaName.replaceAll("^\"|\"$", ""));
+            : ai.starlake.transpiler.Utils.unquote(schemaName));
     if (jdbcSchema == null) {
       LOGGER.info("Available schema: "
           + Arrays.deepToString(jdbcCatalog.schemas.keySet().toArray(new String[0])));
@@ -256,7 +256,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
     }
 
     if (tableName != null && !tableName.isEmpty()) {
-      JdbcTable jdbcTable = jdbcSchema.get(tableName.replaceAll("^\"|\"$", ""));
+      JdbcTable jdbcTable = jdbcSchema.get(ai.starlake.transpiler.Utils.unquote(tableName));
 
       if (jdbcTable == null) {
         LOGGER.info("Available tables: "
@@ -264,11 +264,11 @@ public final class JdbcMetaData implements DatabaseMetaData {
         throw new RuntimeException(
             "Table " + tableName + " does not exist in the given Schema " + schemaName);
       } else {
-        jdbcColumn = jdbcTable.columns.get(columnName.replaceAll("^\"|\"$", ""));
+        jdbcColumn = jdbcTable.columns.get(ai.starlake.transpiler.Utils.unquote(columnName));
       }
     } else {
       for (JdbcTable jdbcTable : jdbcSchema.tables.values()) {
-        jdbcColumn = jdbcTable.columns.get(columnName.replaceAll("^\"|\"$", ""));
+        jdbcColumn = jdbcTable.columns.get(ai.starlake.transpiler.Utils.unquote(columnName));
         if (jdbcColumn != null) {
           break;
         }

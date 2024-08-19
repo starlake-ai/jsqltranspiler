@@ -485,7 +485,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
                 new JdbcColumn("name2"), new JdbcColumn("id1"));
     String sqlStr =
         "with mycte as (\n" + "    select o.amount, c.id, CURRENT_TIMESTAMP() as timestamp1\n"
-            + "    from sales.orders o, sales.customers c\n" + "    where o.customer_id = c.id\n"
+            + "    from `sales`.`orders` o, sales.customers c\n" + "    where o.customer_id = c.id\n"
             + ")\n" + "select id, sum(amount) as sum, timestamp1\n" + "from mycte\n"
             + "group by mycte.id, mycte.timestamp1";
 

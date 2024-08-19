@@ -63,11 +63,11 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
   }
 
   public JdbcSchema put(JdbcSchema jdbcSchema) {
-    return schemas.put(jdbcSchema.tableSchema.replaceAll("^\"|\"$", "").toUpperCase(), jdbcSchema);
+    return schemas.put(ai.starlake.transpiler.Utils.unquote(jdbcSchema.tableSchema).toUpperCase(), jdbcSchema);
   }
 
   public JdbcSchema get(String tableSchema) {
-    return schemas.get(tableSchema.replaceAll("^\"|\"$", "").toUpperCase());
+    return schemas.get(ai.starlake.transpiler.Utils.unquote(tableSchema).toUpperCase());
   }
 
   @Override

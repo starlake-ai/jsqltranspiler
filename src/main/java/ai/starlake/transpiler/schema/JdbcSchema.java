@@ -70,7 +70,7 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
   }
 
   public JdbcTable get(String tableName) {
-    return tables.get(tableName.replaceAll("^\"|\"$", "").toUpperCase());
+    return tables.get(ai.starlake.transpiler.Utils.unquote(tableName).toUpperCase());
   }
 
   @Override

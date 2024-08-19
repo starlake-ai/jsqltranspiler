@@ -69,10 +69,10 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
 
     Table table = column.getTable();
     if (table != null) {
-      columnTableName = table.getName().replaceAll("^\"|\"$", "");
+      columnTableName = ai.starlake.transpiler.Utils.unquote(table.getName());
 
       if (table.getSchemaName() != null) {
-        columnSchemaName = table.getSchemaName().replaceAll("^\"|\"$", "");
+        columnSchemaName = ai.starlake.transpiler.Utils.unquote(table.getSchemaName());
       }
 
       if (table.getDatabase() != null) {
@@ -83,42 +83,42 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     if (columnTableName != null) {
       // column has a table name prefix, which could be the actual table name or the table's
       // alias
-      String unquotedColumnTableName = columnTableName.replaceAll("^\"|\"$", "");
+      String unquotedColumnTableName = ai.starlake.transpiler.Utils.unquote(columnTableName);
       String actualColumnTableName = fromTables.containsKey(unquotedColumnTableName)
           ? fromTables.get(unquotedColumnTableName).getName()
           : null;
       if (actualColumnTableName != null && !actualColumnTableName.isEmpty()) {
-        actualColumnTableName = actualColumnTableName.replaceAll("^\"|\"$", "");
+        actualColumnTableName = ai.starlake.transpiler.Utils.unquote(actualColumnTableName);
       }
 
       String actualColumnSchemaName = fromTables.containsKey(unquotedColumnTableName)
           ? fromTables.get(unquotedColumnTableName).getSchemaName()
           : columnSchemaName;
       if (actualColumnSchemaName != null && !actualColumnSchemaName.isEmpty()) {
-        actualColumnSchemaName = actualColumnSchemaName.replaceAll("^\"|\"$", "");
+        actualColumnSchemaName = ai.starlake.transpiler.Utils.unquote(actualColumnSchemaName);
       }
 
       String actualColumnCatalogName = fromTables.containsKey(unquotedColumnTableName)
           ? fromTables.get(unquotedColumnTableName).getCatalogName()
           : columnCatalogName;
       if (actualColumnCatalogName != null && !actualColumnCatalogName.isEmpty()) {
-        actualColumnCatalogName = actualColumnCatalogName.replaceAll("^\"|\"$", "");
+        actualColumnCatalogName = ai.starlake.transpiler.Utils.unquote(actualColumnCatalogName);
       }
 
       jdbcColumn = metaData.getColumn(actualColumnCatalogName, actualColumnSchemaName,
-          actualColumnTableName, column.getColumnName().replaceAll("^\"|\"$", ""));
+          actualColumnTableName, ai.starlake.transpiler.Utils.unquote(column.getColumnName()));
 
     } else {
       // column has no table name prefix and we have to lookup in all tables of the scope
       for (Table t : fromTables.values()) {
-        String columnName = column.getColumnName().replaceAll("^\"|\"$", "");
-        String tableName = t.getName().replaceAll("^\"|\"$", "");
-        String tableSchemaName = t.getSchemaName().replaceAll("^\"|\"$", "");
+        String columnName = ai.starlake.transpiler.Utils.unquote(column.getColumnName());
+        String tableName = ai.starlake.transpiler.Utils.unquote(t.getName());
+        String tableSchemaName = ai.starlake.transpiler.Utils.unquote(t.getSchemaName());
 
         String tableCatalogName =
             t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
         if (tableCatalogName != null && !tableCatalogName.isEmpty()) {
-          tableCatalogName = tableCatalogName.replaceAll("^\"|\"$", "");
+          tableCatalogName = ai.starlake.transpiler.Utils.unquote(tableCatalogName);
         }
 
         jdbcColumn = metaData.getColumn(tableCatalogName, tableSchemaName, tableName, columnName);
