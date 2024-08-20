@@ -189,6 +189,27 @@ public final class JdbcMetaData implements DatabaseMetaData {
     return jdbcSchema.put(jdbcTable);
   }
 
+  public JdbcTable put(JdbcResultSetMetaData rsMetaData, String name, String errorMessage) {
+    try {
+      JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName, name);
+      int columnCount = rsMetaData.getColumnCount();
+      for (int i = 1; i <= columnCount; i++) {
+        t.add(t.tableCatalog, t.tableSchema, t.tableName,
+            rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
+                ? rsMetaData.getColumnLabel(i)
+                : rsMetaData.getColumnName(i),
+            rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
+            rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
+            "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getScopeCatalog(i),
+            rsMetaData.getScopeSchema(i), rsMetaData.getScopeTable(i), null, "", "");
+      }
+      put(t);
+      return t;
+    } catch (SQLException ex) {
+      throw new RuntimeException(errorMessage, ex);
+    }
+  }
+
   // @todo: implement a GLOB based column name filter
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public List<JdbcColumn> getTableColumns(String catalogName, String schemaName, String tableName,
@@ -225,6 +246,18 @@ public final class JdbcMetaData implements DatabaseMetaData {
           column.tableCatalog = jdbcCatalog.tableCatalog;
           column.tableSchema = jdbcSchema.tableSchema;
           column.tableName = jdbcTable.tableName;
+
+          if (column.scopeCatalog == null || column.scopeCatalog.isEmpty()) {
+            column.scopeCatalog = jdbcCatalog.tableCatalog;
+          }
+          if (column.scopeSchema == null || column.scopeSchema.isEmpty()) {
+            column.scopeSchema = jdbcSchema.tableSchema;
+          }
+          if (column.scopeTable == null || column.scopeTable.isEmpty()) {
+            column.scopeTable = jdbcTable.tableName;
+          }
+
+
           jdbcColumns.add(column);
         }
       }
@@ -235,6 +268,15 @@ public final class JdbcMetaData implements DatabaseMetaData {
           column.tableCatalog = jdbcCatalog.tableCatalog;
           column.tableSchema = jdbcSchema.tableSchema;
           column.tableName = jdbcTable.tableName;
+          if (column.scopeCatalog == null || column.scopeCatalog.isEmpty()) {
+            column.scopeCatalog = jdbcCatalog.tableCatalog;
+          }
+          if (column.scopeSchema == null || column.scopeSchema.isEmpty()) {
+            column.scopeSchema = jdbcSchema.tableSchema;
+          }
+          if (column.scopeTable == null || column.scopeTable.isEmpty()) {
+            column.scopeTable = jdbcTable.tableName;
+          }
           jdbcColumns.add(column);
         }
       }
@@ -412,8 +454,11 @@ public final class JdbcMetaData implements DatabaseMetaData {
     int ordinalPosition = table.columns.size();
     for (JdbcColumn column : columns) {
       column.tableCatalog = catalog.tableCatalog;
+      column.scopeCatalog = catalog.tableCatalog;
       column.tableSchema = schema.tableSchema;
+      column.scopeSchema = schema.tableSchema;
       column.tableName = table.tableName;
+      column.scopeTable = table.tableName;
       column.ordinalPosition = ordinalPosition;
       table.add(column);
     }

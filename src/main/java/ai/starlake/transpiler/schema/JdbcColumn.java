@@ -131,8 +131,8 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
       Integer dataType, String typeName, Integer columnSize, Integer decimalDigits,
       Integer nullable, String remarks, Expression expression) {
     this(tableCatalog, tableSchema, tableName, columnName, dataType, typeName, columnSize,
-        decimalDigits, 10, nullable, remarks, "", 0, 0, "", "", "", "", (short) 0, "", "",
-        expression);
+        decimalDigits, 10, nullable, remarks, "", 0, 0, "", tableCatalog, tableSchema, tableName,
+        (short) 0, "", "", expression);
   }
 
   public JdbcColumn(String columnName, Integer dataType, String typeName, Integer columnSize,
@@ -144,7 +144,8 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
   public JdbcColumn(String tableCatalog, String tableSchema, String tableName, String columnName,
       Expression expression) {
     this(tableCatalog, tableSchema, tableName, columnName, Types.OTHER, "Other", 0, 0, 10,
-        columnNullableUnknown, "", "", 0, 0, "", "", "", "", (short) 0, "", "", expression);
+        columnNullableUnknown, "", "", 0, 0, "", tableCatalog, tableSchema, tableName, (short) 0,
+        "", "", expression);
   }
 
   public JdbcColumn(String columnName, Expression expression) {

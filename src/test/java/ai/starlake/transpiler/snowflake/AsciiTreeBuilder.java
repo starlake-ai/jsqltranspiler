@@ -26,6 +26,7 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.Select;
+import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLException;
@@ -67,7 +68,9 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
       }
       b.append(column.tableName).append(".").append(column.columnName);
 
-      if (column.scopeTable != null && !column.scopeTable.isEmpty()) {
+      if (!StringUtils.equals(column.tableCatalog, column.scopeCatalog)
+          || !StringUtils.equals(column.tableSchema, column.scopeSchema)
+          || !StringUtils.equals(column.tableName, column.scopeTable)) {
         b.append(" → ");
         if (column.scopeCatalog != null && !column.scopeCatalog.isEmpty()) {
           b.append(column.scopeCatalog).append(".")
@@ -75,7 +78,12 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
         } else if (column.scopeSchema != null && !column.scopeSchema.isEmpty()) {
           b.append(column.scopeSchema).append(".");
         }
-        b.append(column.scopeTable).append(".").append(column.columnName);
+
+        if (!StringUtils.isEmpty(column.scopeTable)) {
+          b.append(column.scopeTable).append(".");
+        }
+
+        b.append(column.columnName);
       }
 
       b.append(" : ").append(column.typeName);

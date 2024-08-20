@@ -110,6 +110,18 @@ public class JdbcResultSetMetaData implements ResultSetMetaData {
     return columns.get(column - 1).columnName;
   }
 
+  public String getScopeTable(int column) {
+    return columns.get(column - 1).scopeTable;
+  }
+
+  public String getScopeSchema(int column) {
+    return columns.get(column - 1).scopeSchema;
+  }
+
+  public String getScopeCatalog(int column) {
+    return columns.get(column - 1).scopeCatalog;
+  }
+
   @Override
   public String getSchemaName(int column) throws SQLException {
     return columns.get(column - 1).tableSchema;

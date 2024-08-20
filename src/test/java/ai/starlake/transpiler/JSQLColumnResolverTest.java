@@ -171,8 +171,15 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   @Test
   void testWithClause() throws JSQLParserException, SQLException {
     String sqlStr = "WITH c AS (SELECT * FROM b) SELECT * FROM c";
-    String[][] expected = new String[][] {{"c", "col1"}, {"c", "col2"}, {"c", "col3"},
-        {"c", "colBA"}, {"c", "colBB"}};
+    //@formatter:off
+    String[][] expected = new String[][] {
+            {"c", "col1"}
+            , {"c", "col2"}
+            , {"c", "col3"}
+            , {"c", "colBA"}
+            , {"c", "colBB"}
+    };
+    //@formatter:on
     assertThatResolvesInto(sqlStr, expected);
 
 
@@ -528,7 +535,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + " ├─mycte.id → sales.customers.id : Other\n"
             + " ├─sum AS Function sum\n"
             + " │  └─mycte.amount → sales.orders.amount : Other\n"
-            + " └─mycte.timestamp1 : Other\n";
+            + " └─mycte.timestamp1 → timestamp1 : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -566,7 +573,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + " ├─mycte.id → sales.customers.id : Other\n"
             + " ├─sum AS Function sum\n"
             + " │  └─mycte.amount → sales.orders.amount : Other\n"
-            + " └─mycte.timestamp : Other\n";
+            + " └─mycte.timestamp → timestamp : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -605,7 +612,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + " ├─mycte.id → sales.customers.id : Other\n"
             + " ├─sum AS Function sum\n"
             + " │  └─mycte.amount → sales.orders.amount : Other\n"
-            + " └─mycte.timestamp : Other\n";
+            + " └─mycte.timestamp → timestamp : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -644,10 +651,66 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + " ├─mycte.id → sales.customers.id : Other\n"
             + " ├─sum AS Function sum\n"
             + " │  └─mycte.amount → sales.orders.amount : Other\n"
-            + " └─mycte.timestamp : Other\n";
+            + " └─mycte.timestamp → timestamp : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
 
+  @Test
+  void testWithWith() throws JSQLParserException, SQLException, InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
+    JdbcMetaData metaData =
+        new JdbcMetaData("", "").addTable("sales", "orders", new JdbcColumn("customer_id"),
+            new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
+            .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
+                new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
+                new JdbcColumn("name2"), new JdbcColumn("id1"));
+    //@formatter:off
+    String sqlStr =
+            "WITH mycte AS (\n"
+            + "        SELECT  o.amount\n"
+            + "                , c.id\n"
+            + "                , CURRENT_TIMESTAMP() AS timestamp1\n"
+            + "                , o.amount AS amount2\n"
+            + "        FROM sales.orders o\n"
+            + "            , sales.customers c\n"
+            + "        WHERE o.customer_id = c.id )\n"
+            + "    , yourcte AS (\n"
+            + "        SELECT *\n"
+            + "        FROM mycte )\n"
+            + "SELECT  id\n"
+            + "        , Sum( amount ) AS sum\n"
+            + "        , timestamp1\n"
+            + "        , amount AS amount2\n"
+            + "FROM yourcte\n"
+            + "GROUP BY    yourcte.id\n"
+            + "            , yourcte.timestamp1\n"
+            + ";";
+    //@formatter:on
+
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
+
+    //@formatter:off
+    String[][] expected = new String[][] {
+            {"yourcte", "id", "id"}
+            , {"", "Sum", "sum"}
+            , {"yourcte", "timestamp1", "timestamp1"}
+            , {"yourcte", "amount", "amount2"}
+    };
+    //@formatter:on
+    assertThatResolvesInto(res, expected);
+
+    //@formatter:off
+    String lineage =
+            "SELECT\n"
+            + " ├─yourcte.id → sales.customers.id : Other\n"
+            + " ├─sum AS Function Sum\n"
+            + " │  └─yourcte.amount → sales.orders.amount : Other\n"
+            + " ├─yourcte.timestamp1 → mycte.timestamp1 : Other\n"
+            + " └─amount2 AS yourcte.amount → sales.orders.amount : Other\n";
+    //@formatter:on
+    assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
+  }
 
 }
