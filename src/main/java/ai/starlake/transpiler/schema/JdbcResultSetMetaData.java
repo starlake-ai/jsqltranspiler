@@ -112,7 +112,7 @@ public class JdbcResultSetMetaData implements ResultSetMetaData {
 
   @Override
   public String getSchemaName(int column) throws SQLException {
-    return columns.get(column - 1).scopeSchema;
+    return columns.get(column - 1).tableSchema;
   }
 
   @Override

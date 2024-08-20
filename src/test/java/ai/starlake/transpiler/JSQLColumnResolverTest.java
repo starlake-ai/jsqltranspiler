@@ -16,9 +16,12 @@
  */
 package ai.starlake.transpiler;
 
+import ai.starlake.transpiler.schema.JdbcCatalog;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
+import ai.starlake.transpiler.schema.JdbcSchema;
+import ai.starlake.transpiler.schema.JdbcTable;
 import ai.starlake.transpiler.schema.treebuilder.JsonTreeBuilder;
 import ai.starlake.transpiler.schema.treebuilder.XmlTreeBuilder;
 import ai.starlake.transpiler.snowflake.AsciiTreeBuilder;
@@ -474,6 +477,29 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
+  void testBigQuerySinglePairQuoting() throws JSQLParserException, SQLException {
+    JdbcMetaData metaData = new JdbcMetaData("c", "s");
+    JdbcCatalog catalog = new JdbcCatalog("c", ".");
+    metaData.put(catalog);
+
+    JdbcSchema schema = new JdbcSchema("s", "c");
+    catalog.put(schema);
+
+    JdbcTable table = new JdbcTable("c", "s", "t");
+    table.add(new JdbcColumn("a"));
+    table.add(new JdbcColumn("b"));
+    schema.put(table);
+
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData("SELECT * from `c.s.t`", metaData);
+
+    String[][] expected = new String[][] {{"c", "s", "t", "a", "a"}, {"c", "s", "t", "b", "b"}};
+
+    assertThatResolvesInto(res, expected);
+
+  }
+
+  @Test
   void testWithBQProjectIdAndQuotes()
       throws JSQLParserException, SQLException, InvocationTargetException, NoSuchMethodException,
       InstantiationException, IllegalAccessException {
@@ -499,10 +525,10 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     //@formatter:off
     String lineage =
             "SELECT\n"
-            + " ├─mycte.id → customers.id : Other\n"
+            + " ├─mycte.id → sales.customers.id : Other\n"
             + " ├─sum AS Function sum\n"
-            + " │  └─mycte.amount → orders.amount : Other\n"
-            + " └─mycte.timestamp1 : Other";
+            + " │  └─mycte.amount → sales.orders.amount : Other\n"
+            + " └─mycte.timestamp1 : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -537,10 +563,10 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     //@formatter:off
     String lineage =
             "SELECT\n"
-            + " ├─mycte.id → customers.id : Other\n"
+            + " ├─mycte.id → sales.customers.id : Other\n"
             + " ├─sum AS Function sum\n"
-            + " │  └─mycte.amount → orders.amount : Other\n"
-            + " └─mycte.timestamp : Other";
+            + " │  └─mycte.amount → sales.orders.amount : Other\n"
+            + " └─mycte.timestamp : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -576,10 +602,49 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     //@formatter:off
     String lineage =
             "SELECT\n"
-            + " ├─mycte.id → customers.id : Other\n"
+            + " ├─mycte.id → sales.customers.id : Other\n"
             + " ├─sum AS Function sum\n"
-            + " │  └─mycte.amount → orders.amount : Other\n"
-            + " └─mycte.timestamp : Other";
+            + " │  └─mycte.amount → sales.orders.amount : Other\n"
+            + " └─mycte.timestamp : Other\n";
+    //@formatter:on
+    assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
+  }
+
+  @Test
+  void testWithBigQuerySingleQuotePair()
+      throws JSQLParserException, SQLException, InvocationTargetException, NoSuchMethodException,
+      InstantiationException, IllegalAccessException {
+    JdbcMetaData metaData =
+        new JdbcMetaData("", "").addTable("sales", "orders", new JdbcColumn("customer_id"),
+            new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
+            .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
+                new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
+                new JdbcColumn("name2"), new JdbcColumn("id1"));
+    //@formatter:off
+    String sqlStr =
+            "with `mycte` as (\n"
+            + "    select `o`.`amount`, `c`.`id`, CURRENT_TIMESTAMP() as `timestamp`\n"
+            + "    from `sales.orders` `o`, `sales.customers` `c`\n"
+            + "    where `o`.`customer_id` = `c`.`id`\n"
+            + ")\n"
+            + "select `id`, sum(`amount`) as sum, `timestamp`\n"
+            + "from `mycte`\n"
+            + "group by `mycte`.`id`, `mycte`.`timestamp`";
+    //@formatter:on
+
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
+
+    String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
+    assertThatResolvesInto(res, expected);
+
+    //@formatter:off
+    String lineage =
+            "SELECT\n"
+            + " ├─mycte.id → sales.customers.id : Other\n"
+            + " ├─sum AS Function sum\n"
+            + " │  └─mycte.amount → sales.orders.amount : Other\n"
+            + " └─mycte.timestamp : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }

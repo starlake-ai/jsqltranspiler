@@ -206,6 +206,13 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
         Assertions.assertThat(new String[] {res.getTableName(i + 1), res.getColumnName(i + 1)})
             .isEqualTo(expectedColumns[i]);
 
+        // catalog, schema, table, column, label
+      } else if (expectedColumns[i].length == 5) {
+        Assertions
+            .assertThat(new String[] {res.getCatalogName(i + 1), res.getSchemaName(i + 1),
+                res.getTableName(i + 1), res.getColumnName(i + 1), res.getColumnLabel(i + 1)})
+            .isEqualTo(expectedColumns[i]);
+
         // Label is explicitly expected
       } else {
         Assertions.assertThat(new String[] {res.getTableName(i + 1), res.getColumnName(i + 1),

@@ -283,9 +283,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       }
 
       for (Table t : metaData.getFromTables().values()) {
-        String tableSchemaName = t.getSchemaName();
-        String tableCatalogName =
-            t.getDatabase() != null ? t.getDatabase().getDatabaseName() : null;
+        String tableSchemaName = t.getUnquotedSchemaName();
+        String tableCatalogName = t.getUnquotedDatabaseName();
 
         for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
             t.getName(), null)) {

@@ -221,12 +221,22 @@ public final class JdbcMetaData implements DatabaseMetaData {
             "Table " + tableName + " does not exist in the given Schema " + schemaName);
       } else {
         // @todo: implement a GLOB based column name filter
-        jdbcColumns.addAll(jdbcTable.columns.values());
+        for (JdbcColumn column : jdbcTable.columns.values()) {
+          column.tableCatalog = jdbcCatalog.tableCatalog;
+          column.tableSchema = jdbcSchema.tableSchema;
+          column.tableName = jdbcTable.tableName;
+          jdbcColumns.add(column);
+        }
       }
     } else {
       for (JdbcTable jdbcTable : jdbcSchema.tables.values()) {
         // @todo: implement a GLOB based column name filter
-        jdbcColumns.addAll(jdbcTable.columns.values());
+        for (JdbcColumn column : jdbcTable.columns.values()) {
+          column.tableCatalog = jdbcCatalog.tableCatalog;
+          column.tableSchema = jdbcSchema.tableSchema;
+          column.tableName = jdbcTable.tableName;
+          jdbcColumns.add(column);
+        }
       }
     }
     return jdbcColumns;
