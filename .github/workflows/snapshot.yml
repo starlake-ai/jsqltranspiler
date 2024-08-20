@@ -1,9 +1,8 @@
-name: Gradle Publish Snapshots
+name: Gradle Publish Snapshot
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -21,13 +20,6 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-    - id: check
-      name: Build with Gradle
-      run: ./gradlew check jacocoTestReport jacocoTestCoverageVerification coveralls
-      env:
-        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
     - id: install-gradle-properties
       name: Install Gradle Properties from Secret
       env:
