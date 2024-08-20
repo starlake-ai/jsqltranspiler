@@ -22,4 +22,4 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
-    - run: ./gradlew check jacocoTestReport jacocoTestCoverageVerification coveralls
+    - run: ./gradlew --no-build-cache --refresh-dependencies check jacocoTestReport jacocoTestCoverageVerification coveralls
