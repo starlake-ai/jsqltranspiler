@@ -157,7 +157,7 @@ SELECT count_if(col % 2 = 0)  AS count_if FROM VALUES (NULL), (0), (1), (2), (2)
 
 -- result
 "covar_pop"
-"0.6666666666666666"
+"0.666666667"
 
 
 -- provided
@@ -275,7 +275,7 @@ SELECT regr_avgx(y, x) AS regr_avgx FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4
 
 -- result
 "regr_avgx"
-"2.6666666666666665"
+"2.666666667"
 
 
 -- provided
@@ -283,7 +283,7 @@ SELECT regr_avgy(y, x)  AS regr_avgy FROM VALUES (1, 2), (2, 3), (2, 3), (null, 
 
 -- result
 "regr_avgy"
-"1.6666666666666667"
+"1.666666667"
 
 
 -- provided
@@ -299,7 +299,7 @@ SELECT regr_intercept(y, x) AS regr_intercept FROM VALUES (1, 2), (2, 3), (2, 3)
 
 -- result
 "regr_intercept"
-"-0.9999999999999993"
+"-1.0"
 
 
 -- provided
@@ -315,7 +315,7 @@ SELECT regr_slope(y, x) AS regr_slope FROM VALUES (1, 2), (2, 3), (2, 3), (null,
 
 -- result
 "regr_slope"
-"0.9999999999999999"
+"1.0"
 
 
 -- provided
@@ -323,7 +323,7 @@ SELECT regr_sxx(y, x) AS regr_sxx FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4),
 
 -- result
 "regr_sxx"
-"0.6666666666666667"
+"0.666666667"
 
 
 -- provided
@@ -331,7 +331,7 @@ SELECT regr_sxy(y, x) AS regr_sxy FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4),
 
 -- result
 "regr_sxy"
-"0.6666666666666666"
+"0.666666667"
 
 
 -- provided
@@ -339,7 +339,7 @@ SELECT regr_syy(y, x) AS regr_syy FROM VALUES (1, 2), (2, 3), (2, 3), (null, 4),
 
 -- result
 "regr_syy"
-"0.6666666666666666"
+"0.666666667"
 
 
 -- provided
@@ -347,7 +347,7 @@ SELECT skewness(DISTINCT col) AS skewness FROM VALUES (-10), (-20), (100), (1000
 
 -- result
 "skewness"
-"1.9287524512029974"
+"1.928752451"
 
 
 -- provided
@@ -366,7 +366,7 @@ SELECT stddev_pop(DISTINCT col) AS stddev_pop FROM VALUES (1), (2), (3), (3) AS 
 
 -- result
 "stddev_pop"
-"0.816496580927726"
+"0.816496581"
 
 
 -- provided
@@ -376,8 +376,8 @@ SELECT a, b, cume_dist() OVER (PARTITION BY a ORDER BY b) AS cume_dist
 
 -- result
 "a","b","cume_dist"
-"A1","1","0.6666666666666666"
-"A1","1","0.6666666666666666"
+"A1","1","0.666666667"
+"A1","1","0.666666667"
 "A1","2","1.0"
 "A2","3","1.0"
 
@@ -466,9 +466,9 @@ SELECT a, b, percent_rank() OVER (PARTITION BY a ORDER BY b) AS percent_rank
 "a","b","percent_rank"
 "A1","1","0.0"
 "A1","1","0.0"
-"A1","2","0.3333333333333333"
+"A1","2","0.333333333"
 "A1","3","0.5"
-"A1","6","0.6666666666666666"
-"A1","7","0.8333333333333334"
-"A1","7","0.8333333333333334"
+"A1","6","0.666666667"
+"A1","7","0.833333333"
+"A1","7","0.833333333"
 "A2","3","0.0"

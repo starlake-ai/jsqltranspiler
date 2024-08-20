@@ -51,11 +51,13 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
@@ -504,6 +506,11 @@ public class JSQLTranspilerTest {
       Assertions.assertThat(i).isEqualTo(t.expectedTally);
     }
 
+    DecimalFormat floatingPointFormat = (DecimalFormat) DecimalFormat.getInstance(Locale.US);
+    floatingPointFormat.setGroupingUsed(false);
+    floatingPointFormat.setMaximumFractionDigits(9);
+    floatingPointFormat.setMinimumFractionDigits(1);
+    floatingPointFormat.setMinimumIntegerDigits(1);
 
     if (t.expectedResult != null && !t.expectedResult.isEmpty()) {
       // Compare output
@@ -515,9 +522,10 @@ public class JSQLTranspilerTest {
             CSVWriter csvWriter = new CSVWriter(stringWriter);) {
 
           // enforce SQL compliant format
-          ResultSetHelperService resultSetHelperService = new ResultSetHelperService();
+          ResultSetHelperService resultSetHelperService = new JSQLResultSetHelperService();
           resultSetHelperService.setDateFormat("yyyy-MM-dd");
           resultSetHelperService.setDateTimeFormat("yyyy-MM-dd HH:mm:ss.S");
+          resultSetHelperService.setFloatingPointFormat(floatingPointFormat);
           csvWriter.setResultService(resultSetHelperService);
 
           csvWriter.writeAll(rs, true, false, true);

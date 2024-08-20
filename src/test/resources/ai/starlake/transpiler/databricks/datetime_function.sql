@@ -309,7 +309,7 @@ SELECT epoch(DATE '2016-04-08') AS s;
 
 -- result
 "s"
-"1.4600736E9"
+"1460073600.0"
 
 
 -- provided

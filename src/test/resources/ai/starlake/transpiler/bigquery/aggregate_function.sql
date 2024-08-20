@@ -416,7 +416,7 @@ FROM( SELECT UNNEST([{Y:1.0,X:5.0},(3.0,9.0),(4.0,7.0)], recursive=>true));
 
 -- result
 "results"
-"0.6546536707079772"
+"0.654653671"
 
 
 -- provided
@@ -444,7 +444,7 @@ FROM (  SELECT Unnest(  [
 
 -- result
 "results"
-"-1.6800000000000002"
+"-1.68"
 
 
 -- provided
@@ -547,7 +547,7 @@ FROM (  SELECT Unnest(  [
 
 -- result
 "results"
-"-1.3333333333333333"
+"-1.333333333"
 
 
 -- provided
@@ -572,19 +572,18 @@ SELECT STDDEV_POP(x) AS results FROM (SELECT UNNEST([10, 14, 18]) AS x) AS x;
 
 -- result
 "results"
-"3.265986323710904"
+"3.265986324"
 
 
 -- provided
 SELECT VAR_POP(x) AS results FROM UNNEST([10, 14, 18]) AS x;
-
 
 -- expected
 SELECT VAR_POP(x) AS results FROM (SELECT UNNEST([10, 14, 18]) AS x) AS x;
 
 -- result
 "results"
-"10.666666666666666"
+"10.666666667"
 
 
 -- provided

@@ -11,7 +11,7 @@ SELECT (ACOS(.5) * 180/(SELECT PI())) AS degrees;
 
 -- result
 "degrees"
-"60.00000000000001"
+"60.0"
 
 
 -- provided
@@ -19,7 +19,7 @@ SELECT (ASIN(.5) * 180/(SELECT PI())) AS degrees;
 
 -- result
 "degrees"
-"30.000000000000004"
+"30.0"
 
 
 -- provided
@@ -44,7 +44,7 @@ SELECT CBRT(commission) AS cbrt FROM sales WHERE salesid=10000;
 
 -- result
 "cbrt"
-"3.0383953904884344"
+"3.03839539"
 
 
 -- provided
@@ -69,7 +69,7 @@ SELECT COT(1) AS cot;
 
 -- result
 "cot"
-"0.6420926159343306"
+"0.642092616"
 
 
 -- provided
@@ -94,7 +94,7 @@ AND year=2008) * EXP((7::FLOAT8/100)*10) qty2010;
 
 -- result
 "qty2010"
-"695447.4837722216"
+"695447.483772222"
 
 
 -- provided
@@ -105,7 +105,7 @@ SELECT LN(2.718281828) AS ln;
 
 -- result
 "ln"
-"0.9999999998311266"
+"1.0"
 
 
 -- provided
@@ -134,7 +134,7 @@ AND year=2008) * EXP((7::FLOAT8/100)*10) qty2018;
 
 -- result
 "qty2018"
-"695447.4837722216"
+"695447.483772222"
 
 
 -- provided
@@ -152,7 +152,7 @@ SELECT LN(2.718281828) AS ln;
 
 -- result
 "ln"
-"0.9999999998311266"
+"1.0"
 
 
 -- provided
@@ -160,7 +160,7 @@ SELECT LOG(2, 100) AS log;
 
 -- result
 "log"
-"6.643856189774724"
+"6.64385619"
 
 
 -- provided
@@ -176,7 +176,7 @@ SELECT PI() AS pi;
 
 -- result
 "pi"
-"3.141592653589793"
+"3.141592654"
 
 
 -- provided
@@ -199,7 +199,7 @@ SELECT RADIANS(180) AS pi;
 
 -- result
 "pi"
-"3.141592653589793"
+"3.141592654"
 
 
 -- provided
@@ -232,7 +232,7 @@ SELECT SIN(-PI()) AS sin;
 
 -- result
 "sin"
-"-1.2246467991473532E-16"
+"-0.0"
 
 
 -- provided

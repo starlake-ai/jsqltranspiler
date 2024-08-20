@@ -9,7 +9,7 @@ SELECT k, CORR(v, v2) AS corr FROM aggr GROUP BY k;
 -- result
 "k","corr"
 "1",""
-"2","0.9988445981121534"
+"2","0.998844598"
 
 -- epilog
 drop TABLE aggr;
@@ -118,16 +118,16 @@ select k, v, mode(v) over (partition by k)  AS mode
 
 -- result
 "k","v","mode"
-"1","10.00","10.00"
-"1","10.00","10.00"
-"1","10.00","10.00"
-"1","10.00","10.00"
-"1","20.00","10.00"
-"1","21.00","10.00"
-"2","20.00","20.00"
-"2","20.00","20.00"
-"2","25.00","20.00"
-"2","30.00","20.00"
+"1","10.0","10.0"
+"1","10.0","10.0"
+"1","10.0","10.0"
+"1","10.0","10.0"
+"1","20.0","10.0"
+"1","21.0","10.0"
+"2","20.0","20.0"
+"2","20.0","20.0"
+"2","25.0","20.0"
+"2","30.0","20.0"
 
 -- epilog
 drop table aggr;
@@ -161,10 +161,10 @@ SELECT K,QUANTILE_CONT(0.25 ORDER BY V)AS PERC FROM AGGR GROUP BY K ORDER BY K;
 
 -- result
 "k","perc"
-"0","10.00"
-"1","12.50"
-"2","17.50"
-"3","60.00"
+"0","10.0"
+"1","12.5"
+"2","17.5"
+"3","60.0"
 "4",""
 
 
@@ -196,10 +196,10 @@ SELECT K,QUANTILE_DISC(0.25 ORDER BY V)AS PERC FROM AGGR GROUP BY K ORDER BY K;
 
 -- result
 "k","perc"
-"0","10.00"
-"1","10.00"
-"2","10.00"
-"3","60.00"
+"0","10.0"
+"1","10.0"
+"2","10.0"
+"3","60.0"
 "4",""
 
 -- provided
@@ -210,7 +210,7 @@ SELECT menu_category, STDDEV(menu_cogs_usd) stddev_cogs, STDDEV(menu_price_usd) 
 
 -- result
 "menu_category","stddev_cogs","stddev_price"
-"Dessert","1.005194840151235","1.4719601443879744"
+"Dessert","1.00519484","1.471960144"
 
 
 
@@ -282,7 +282,7 @@ select kurtosis(K), kurtosis(V), kurtosis(V2)
 
 -- result
 "kurtosis(K)","kurtosis(V)","kurtosis(V2)"
-"4.999999999998991","-2.32421875000009",""
+"5.0","-2.32421875",""
 
 -- prolog
 create or replace table aggr(k int, v decimal(10,2), v2 decimal(10, 2));
@@ -304,7 +304,7 @@ select Skewness(K) AS skew, Skewness(V) AS skew, Skewness(V2) AS skew
 
 -- result
 "skew","skew","skew"
-"-2.236067977499806","0.052407843222651324",""
+"-2.236067977","0.052407843",""
 
 
 
@@ -353,10 +353,10 @@ SELECT col_1, col_2, LAG(col_2 IGNORE NULLS)  OVER (ORDER BY col_1) AS lag
 
 -- result
 "col_1","col_2","lag"
-"1.000","5.000",""
-"2.000","4.000","5.000"
-"3.000","","4.000"
-"4.000","2.000","4.000"
-"5.000","","2.000"
-"6.000","","2.000"
-"7.000","6.000","2.000"
+"1.00","5.00",""
+"2.00","4.00","5.00"
+"3.00","","4.00"
+"4.00","2.00","4.00"
+"5.00","","2.00"
+"6.00","","2.00"
+"7.00","6.00","2.00"

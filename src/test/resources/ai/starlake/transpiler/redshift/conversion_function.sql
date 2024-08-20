@@ -28,7 +28,7 @@ SELECT CAST(IF(TYPEOF('-12,454.8')='VARCHAR',LIST_AGGREGATE(REGEXP_EXTRACT_ALL('
 
 -- result
 "number"
-"-12454.800"
+"-12454.80"
 
 -- provided
 select to_number('$ 12,454.88', 'L 99G999D99')  AS number;
@@ -38,7 +38,7 @@ SELECT CAST(IF(TYPEOF('$ 12,454.88')='VARCHAR',LIST_AGGREGATE(REGEXP_EXTRACT_ALL
 
 -- result
 "number"
-"12454.880"
+"12454.88"
 
 -- provided
 select to_number('$ 2,012,454.88', 'L 9,999,999.99')  AS number;
@@ -48,4 +48,4 @@ SELECT CAST(IF(TYPEOF('$ 2,012,454.88')='VARCHAR',LIST_AGGREGATE(REGEXP_EXTRACT_
 
 -- result
 "number"
-"2012454.880"
+"2012454.88"

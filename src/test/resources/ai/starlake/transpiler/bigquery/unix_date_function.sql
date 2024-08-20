@@ -106,5 +106,5 @@ SELECT EPOCH(TIMESTAMPTZ '2008-12-25 15:30:00+00') AS seconds;
 
 -- result
 "seconds"
-"1.230219E9"
+"1230219000.0"
 

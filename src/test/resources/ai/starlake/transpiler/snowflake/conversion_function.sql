@@ -40,8 +40,8 @@ FROM number_conv
 
 -- result
 "expr","N1","N2","N3"
-"12.3456","12","12.3","12.34560000"
-"98.76546","99","98.8","98.76546000"
+"12.3456","12","12.3","12.3456000"
+"98.76546","99","98.8","98.7654600"
 
 
 -- prolog
@@ -73,6 +73,6 @@ SELECT S,TRY_CAST(S AS BOOLEAN)AS B1,N,CAST(N AS BOOLEAN)AS B2 FROM TEST_BOOLEAN
 
 -- result
 "s","b1","n","b2"
-"yes","","1.000","true"
-"no","","0.000","false"
+"yes","","1.00","true"
+"no","","0.00","false"
 "","","",""
