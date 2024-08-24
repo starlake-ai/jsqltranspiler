@@ -46,8 +46,9 @@ configurations {
 dependencies {
     // temporarily use a pre-compiled binary
     // until SQLParser Snapshot publishing will work again
-    // implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
-    implementation fileTree(dir: "lib", include: ['*.jar'])
+    //implementation fileTree(dir: "lib", include: ['*.jar'])
+
+    implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:+'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:+'

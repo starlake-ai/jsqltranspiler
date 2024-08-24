@@ -8,12 +8,57 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **fix: support CTE referencing to previously defined CTEs**
+    
+    manticore-projects, 2024-08-20
+  * **feat: allow parsing BigQuery single pair quotes, e. g. "catalog.schema.tablename"**
+    
+    manticore-projects, 2024-08-20
+  * **build: add `workflow_dispatch` trigger**
+    
+    manticore-projects, 2024-08-20
+  * **build: add `workflow_dispatch` trigger**
+    
+    manticore-projects, 2024-08-20
+  * **build: add `workflow_dispatch` trigger**
+    
+    manticore-projects, 2024-08-20
+  * **test: fix the precision of BigDecimals in the CSV test output**
+    
+    manticore-projects, 2024-08-20
+  * **build: use pre-compiled JSQLParser (temporarily)**
+    
+    manticore-projects, 2024-08-19
+  * **doc: update change log**
+    
+    manticore-projects, 2024-08-19
+  * **doc: update change log**
+    
+    manticore-projects, 2024-08-19
   * **fix: better handling of quoted identifiers**
     
     manticore-projects, 2024-08-19
   * **chore: add Q/A tasks for verifying PRs**
     
     manticore-projects, 2024-08-19
+  * **add missing license header (#27)**
+    
+    manticore-projects, 2024-08-16
+  * **add missing license header**
+    
+    Stefan Bischof, 2024-08-16
+  * **add OSGi Manifest using bnd (#24)**
+    
+    manticore-projects, 2024-08-16
+  * **add OSGi Manifest using bnd**
+    
+    Stefan Bischof, 2024-08-16
+  * **remove javax.swing.Treenode (#22)**
+    
+    manticore-projects, 2024-08-16
+  * **remove javax.swing.Treenode**
+    
+    Stefan Bischof, 2024-08-16
   * **fix: syntax errors**
     
     manticore-projects, 2024-08-16

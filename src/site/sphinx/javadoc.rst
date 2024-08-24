@@ -83,7 +83,7 @@ JSQLColumResolver
 | **getResultSetMetaData** (sqlStr, metaDataDefinition) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 | Resolves the actual columns returned by a SELECT statement for an empty CURRENT_CATALOG and an empty CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
 |          :ref:`String<java.lang.String>` sqlStr  | sqlStr the `SELECT` statement text
-|          :ref:`String<java.lang.String>` metaDataDefinition  | metaDataDefinition the meta data definition as an array of Tables with Columns e.g. { TABLE_NAME, COLUMN1, COLUMN2 ... COLUMN10 }
+|          :ref:`String<java.lang.String>` metaDataDefinition  | metaDataDefinition the metadata definition as an array of Tables with Columns e.g. { TABLE_NAME, COLUMN1, COLUMN2 ... COLUMN10 }
 |          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`  | the ResultSetMetaData representing the actual columns returned by the `SELECT` statement
 
 
@@ -120,10 +120,27 @@ JSQLColumResolver
 
 
 
-| **getLineage** (treeBuilderClass, sqlStr) → T
+| **getLineage** (treeBuilderClass, select) → T
 |          :ref:`Class<java.lang.Class>` treeBuilderClass
-|          :ref:`String<java.lang.String>` sqlStr
+|          Select select
 |          returns T
+
+
+
+| **getQualifiedTableName** (catalogName, schemaName, tableName) → :ref:`String<java.lang.String>`
+|          :ref:`String<java.lang.String>` catalogName
+|          :ref:`String<java.lang.String>` schemaName
+|          :ref:`String<java.lang.String>` tableName
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **getQualifiedColumnName** (catalogName, schemaName, tableName, columName) → :ref:`String<java.lang.String>`
+|          :ref:`String<java.lang.String>` catalogName
+|          :ref:`String<java.lang.String>` schemaName
+|          :ref:`String<java.lang.String>` tableName
+|          :ref:`String<java.lang.String>` columName
+|          returns :ref:`String<java.lang.String>`
 
 
 
@@ -176,6 +193,12 @@ JSQLColumResolver
 |          PlainSelect plainSelect
 
 
+| **visit** (select) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
+|          Select select
+|          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
+
+
+
 | *@Override*
 | **visit** (setOperationList, context) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 |          SetOperationList setOperationList
@@ -186,7 +209,7 @@ JSQLColumResolver
 
 | *@Override*
 | **visit** (withItem, context) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
-|          WithItem withItem
+|          <any> withItem
 |          S context
 |          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 
@@ -269,6 +292,15 @@ JSQLExpressionColumnResolver
 
                 |          S context
 
+                |          returns :ref:`List<java.util.List>`
+
+
+                
+            
+                |          Expression expression
+
+                |          S context
+
                 |          :ref:`Collection<java.util.Collection>` subExpressions
 
                 |          returns :ref:`List<java.util.List>`
@@ -341,7 +373,7 @@ JSQLExpressionColumnResolver
 
 | *@Override*
 | **visit** (withItem, context) → :ref:`List<java.util.List>`
-|          WithItem withItem
+|          <any> withItem
 |          S context
 |          returns :ref:`List<java.util.List>`
 
@@ -1188,6 +1220,13 @@ CaseInsensitiveLinkedHashMap
 | **CaseInsensitiveLinkedHashMap** ()
 
 
+| **unquote** (quotedIdentifier) → :ref:`String<java.lang.String>`
+| Removes leading and trailing quotes from a SQL quoted identifier
+|          :ref:`String<java.lang.String>` quotedIdentifier  | quotedIdentifier the quoted identifier
+|          returns :ref:`String<java.lang.String>`  | the pure identifier without quotes
+
+
+
 | *@Override*
 | **put** (key, value) → V
 |          :ref:`String<java.lang.String>` key
@@ -1421,7 +1460,7 @@ JdbcCatalog
 JdbcColumn
 =======================================================================
 
-*extends:* :ref:`Object<java.lang.Object>` *implements:* :ref:`Comparable<java.lang.Comparable>`, :ref:`TreeNode<javax.swing.tree.TreeNode>` 
+*extends:* :ref:`Object<java.lang.Object>` *implements:* :ref:`Comparable<java.lang.Comparable>` 
 
 | **JdbcColumn** (tableCatalog, tableSchema, tableName, columnName, dataType, typeName, columnSize, decimalDigits, numericPrecisionRadix, nullable, remarks, columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog, scopeSchema, scopeTable, sourceDataType, isAutomaticIncrement, isGeneratedColumn, expression)
 |          :ref:`String<java.lang.String>` tableCatalog
@@ -1516,52 +1555,13 @@ JdbcColumn
 
 
 
-| *@Override*
-| **getChildAt** (childIndex) → :ref:`TreeNode<javax.swing.tree.TreeNode>`
-|          int childIndex
-|          returns :ref:`TreeNode<javax.swing.tree.TreeNode>`
+| **getParent** () → :ref:`JdbcColumn<ai.starlake.transpiler.schema.JdbcColumn>`
+|          returns :ref:`JdbcColumn<ai.starlake.transpiler.schema.JdbcColumn>`
 
 
 
-| *@Override*
-| **getChildCount** () → int
-|          returns int
-
-
-
-| *@Override*
-| **getParent** () → :ref:`TreeNode<javax.swing.tree.TreeNode>`
-|          returns :ref:`TreeNode<javax.swing.tree.TreeNode>`
-
-
-
-| *@Override*
-| **getIndex** (node) → int
-|          :ref:`TreeNode<javax.swing.tree.TreeNode>` node
-|          returns int
-
-
-
-| *@Override*
-| **getAllowsChildren** () → boolean
-|          returns boolean
-
-
-
-| *@Override*
-| **isLeaf** () → boolean
-|          returns boolean
-
-
-
-| *@Override*
-| **children** () → :ref:`Enumeration<java.util.Enumeration>`
-|          returns :ref:`Enumeration<java.util.Enumeration>`
-
-
-
-| **getChildNodes** () → :ref:`Collection<java.util.Collection>`
-|          returns :ref:`Collection<java.util.Collection>`
+| **getChildren** () → :ref:`List<java.util.List>`
+|          returns :ref:`List<java.util.List>`
 
 
 
@@ -1579,6 +1579,12 @@ JdbcColumn
 
 | **getExpression** () → Expression
 |          returns Expression
+
+
+
+| **setExpression** (expression) → :ref:`JdbcColumn<ai.starlake.transpiler.schema.JdbcColumn>`
+|          Expression expression
+|          returns :ref:`JdbcColumn<ai.starlake.transpiler.schema.JdbcColumn>`
 
 
 
@@ -1724,6 +1730,14 @@ JdbcMetaData
 
 | **put** (jdbcTable) → :ref:`JdbcTable<ai.starlake.transpiler.schema.JdbcTable>`
 |          :ref:`JdbcTable<ai.starlake.transpiler.schema.JdbcTable>` jdbcTable
+|          returns :ref:`JdbcTable<ai.starlake.transpiler.schema.JdbcTable>`
+
+
+
+| **put** (rsMetaData, name, errorMessage) → :ref:`JdbcTable<ai.starlake.transpiler.schema.JdbcTable>`
+|          :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>` rsMetaData
+|          :ref:`String<java.lang.String>` name
+|          :ref:`String<java.lang.String>` errorMessage
 |          returns :ref:`JdbcTable<ai.starlake.transpiler.schema.JdbcTable>`
 
 
@@ -3126,6 +3140,39 @@ JdbcMetaData
 
 
 
+| **getLeftUsingJoinedColumns** () → :ref:`CaseInsensitiveLinkedHashMap<ai.starlake.transpiler.schema.CaseInsensitiveLinkedHashMap>`
+|          returns :ref:`CaseInsensitiveLinkedHashMap<ai.starlake.transpiler.schema.CaseInsensitiveLinkedHashMap>`
+
+
+
+| **addLeftUsingJoinColumns** (columns) → :ref:`JdbcMetaData<ai.starlake.transpiler.schema.JdbcMetaData>`
+|          :ref:`Collection<java.util.Collection>` columns
+|          returns :ref:`JdbcMetaData<ai.starlake.transpiler.schema.JdbcMetaData>`
+
+
+
+| **getRightUsingJoinedColumns** () → :ref:`CaseInsensitiveLinkedHashMap<ai.starlake.transpiler.schema.CaseInsensitiveLinkedHashMap>`
+|          returns :ref:`CaseInsensitiveLinkedHashMap<ai.starlake.transpiler.schema.CaseInsensitiveLinkedHashMap>`
+
+
+
+| **addRightUsingJoinColumns** (columns) → :ref:`JdbcMetaData<ai.starlake.transpiler.schema.JdbcMetaData>`
+|          :ref:`Collection<java.util.Collection>` columns
+|          returns :ref:`JdbcMetaData<ai.starlake.transpiler.schema.JdbcMetaData>`
+
+
+
+| **getNaturalJoinedTables** () → :ref:`CaseInsensitiveLinkedHashMap<ai.starlake.transpiler.schema.CaseInsensitiveLinkedHashMap>`
+|          returns :ref:`CaseInsensitiveLinkedHashMap<ai.starlake.transpiler.schema.CaseInsensitiveLinkedHashMap>`
+
+
+
+| **addNaturalJoinedTable** (t) → :ref:`JdbcMetaData<ai.starlake.transpiler.schema.JdbcMetaData>`
+|          Table t
+|          returns :ref:`JdbcMetaData<ai.starlake.transpiler.schema.JdbcMetaData>`
+
+
+
 | **copyOf** (metaData, fromTables) → :ref:`JdbcMetaData<ai.starlake.transpiler.schema.JdbcMetaData>`
 |          :ref:`JdbcMetaData<ai.starlake.transpiler.schema.JdbcMetaData>` metaData
 |          :ref:`CaseInsensitiveLinkedHashMap<ai.starlake.transpiler.schema.CaseInsensitiveLinkedHashMap>` fromTables
@@ -3323,6 +3370,24 @@ JdbcResultSetMetaData
 
 
 
+| **getScopeTable** (column) → :ref:`String<java.lang.String>`
+|          int column
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **getScopeSchema** (column) → :ref:`String<java.lang.String>`
+|          int column
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **getScopeCatalog** (column) → :ref:`String<java.lang.String>`
+|          int column
+|          returns :ref:`String<java.lang.String>`
+
+
+
 | *@Override*
 | **getSchemaName** (column) → :ref:`String<java.lang.String>`
 |          int column
@@ -3411,12 +3476,6 @@ JdbcResultSetMetaData
 | **isWrapperFor** (iface) → boolean
 |          :ref:`Class<java.lang.Class>` iface
 |          returns boolean
-
-
-
-| **getLineage** (treeBuilderClass) → T
-|          :ref:`Class<java.lang.Class>` treeBuilderClass
-|          returns T
 
 
 
@@ -3909,7 +3968,8 @@ JsonTreeBuilder
 
 
 | *@Override*
-| **getConvertedTree** () → :ref:`String<java.lang.String>`
+| **getConvertedTree** (resolver) → :ref:`String<java.lang.String>`
+|          :ref:`JSQLColumResolver<ai.starlake.transpiler.JSQLColumResolver>` resolver
 |          returns :ref:`String<java.lang.String>`
 
 
@@ -3927,7 +3987,8 @@ TreeBuilder
 |          :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>` resultSetMetaData
 
 
-| **getConvertedTree** () → T
+| **getConvertedTree** (resolver) → T
+|          :ref:`JSQLColumResolver<ai.starlake.transpiler.JSQLColumResolver>` resolver
 |          returns T
 
 
@@ -3946,7 +4007,8 @@ XmlTreeBuilder
 
 
 | *@Override*
-| **getConvertedTree** () → :ref:`String<java.lang.String>`
+| **getConvertedTree** (resolver) → :ref:`String<java.lang.String>`
+|          :ref:`JSQLColumResolver<ai.starlake.transpiler.JSQLColumResolver>` resolver
 |          returns :ref:`String<java.lang.String>`
 
 
