@@ -182,6 +182,7 @@ shadowJar {
 
 test {
     useJUnitPlatform()
+    maxParallelForks=1
 
     // set heap size for the test JVM(s)
     minHeapSize = "128m"

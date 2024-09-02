@@ -8,6 +8,9 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **build: back to JSQLParser Snapshot artifacts**
+    
+    manticore-projects, 2024-08-24
   * **fix: support CTE referencing to previously defined CTEs**
     
     manticore-projects, 2024-08-20

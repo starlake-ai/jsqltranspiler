@@ -28,6 +28,9 @@ import org.apache.commons.io.IOUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -43,9 +46,11 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -71,7 +76,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 
-
+@Execution(ExecutionMode.SAME_THREAD)
 public class JSQLTranspilerTest {
   final static Logger LOGGER = Logger.getLogger(JSQLTranspilerTest.class.getName());
   private final static String EXTRACTION_PATH =
@@ -298,13 +303,11 @@ public class JSQLTranspilerTest {
               }
 
               // remove some silly '\N' entries since
-              // @todo: find a better way to clean those CSVs
               try {
-                ProcessBuilder processBuilder =
-                    new ProcessBuilder("sed", "-i", "s/\\\\N//g", outputFile.getAbsolutePath());
-                Process process = processBuilder.start();
-                int exitCode = process.waitFor();
-              } catch (InterruptedException e) {
+                List<String> lines = Files.readAllLines(outputFile.toPath(), StandardCharsets.UTF_8);
+                lines.replaceAll(s -> s.replace("\\N", ""));
+                Files.write(outputFile.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
+              } catch (IOException e) {
                 throw new RuntimeException(e);
               }
 
