@@ -28,7 +28,6 @@ import org.apache.commons.io.IOUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -304,9 +303,11 @@ public class JSQLTranspilerTest {
 
               // remove some silly '\N' entries since
               try {
-                List<String> lines = Files.readAllLines(outputFile.toPath(), StandardCharsets.UTF_8);
+                List<String> lines =
+                    Files.readAllLines(outputFile.toPath(), StandardCharsets.UTF_8);
                 lines.replaceAll(s -> s.replace("\\N", ""));
-                Files.write(outputFile.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
+                Files.write(outputFile.toPath(), lines, StandardCharsets.UTF_8,
+                    StandardOpenOption.TRUNCATE_EXISTING);
               } catch (IOException e) {
                 throw new RuntimeException(e);
               }
