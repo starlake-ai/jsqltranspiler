@@ -48,7 +48,7 @@ SELECT array_agg(DISTINCT col ORDER BY col) AS arr FROM VALUES (1), (2), (NULL),
 
 -- result
 "arr"
-"[1, 2, null]"
+"[null, 1, 2]"
 
 
 -- provided
@@ -107,7 +107,7 @@ SELECT list(DISTINCT col ORDER BY col) AS list FROM VALUES (1), (2), (NULL), (1)
 
 -- result
 "list"
-"[1, 2, null]"
+"[null, 1, 2]"
 
 
 -- provided
@@ -120,7 +120,7 @@ SELECT list(DISTINCT col1 ORDER BY col1) FILTER(WHERE col2 = 10) AS list
 
 -- result
 "list"
-"[1, 2, null]"
+"[null, 1, 2]"
 
 
 -- provided

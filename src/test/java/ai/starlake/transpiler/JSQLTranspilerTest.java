@@ -75,7 +75,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 
-@Execution(ExecutionMode.SAME_THREAD)
+@Execution(ExecutionMode.CONCURRENT)
 public class JSQLTranspilerTest {
   final static Logger LOGGER = Logger.getLogger(JSQLTranspilerTest.class.getName());
   private final static String EXTRACTION_PATH =
@@ -263,8 +263,9 @@ public class JSQLTranspilerTest {
         new File(EXTRACTION_PATH, JSQLTranspilerTest.class.getSimpleName() + ".duckdb");
     Properties info = new Properties();
     info.put("old_implicit_casting", "true");
-    // info.put("default_null_order", "NULLS FIRST");
-    // info.put("default_order", "ASC");
+    info.put("default_null_order", "NULLS FIRST");
+    info.put("default_order", "ASC");
+    info.put("memory_limit", "1GB");
     connDuck = DriverManager.getConnection("jdbc:duckdb:" + fileDuckDB.getAbsolutePath(), info);
 
     if (!isInitialised) {
