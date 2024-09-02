@@ -16,6 +16,7 @@
  */
 package ai.starlake.transpiler;
 
+import ai.starlake.transpiler.schema.CaseInsensitiveConcurrentSet;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
@@ -51,6 +52,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -62,13 +64,19 @@ public class JSQLColumResolver
     implements SelectVisitor<JdbcResultSetMetaData>, FromItemVisitor<JdbcResultSetMetaData> {
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
 
+  public enum ErrorMode {
+    FAIL, INSERT, IGNORE
+  }
 
+  public ErrorMode errorMode = ErrorMode.INSERT;
+
+  private final Set<String> unresolvedObjects = CaseInsensitiveConcurrentSet.newSet();
   private final JdbcMetaData metaData;
   private final JSQLExpressionColumnResolver expressionColumnResolver;
 
 
   /**
-   * Instantiates a new JSQLColumnResolver for the provided Database Meta Data
+   * Instantiates a new JSQLColumnResolver for the provided Database Metadata
    *
    * @param metaData the meta data
    */
@@ -79,7 +87,7 @@ public class JSQLColumResolver
 
 
   /**
-   * Instantiates a new JSQLColumnResolver for the provided simplified Meta Data, presented as an
+   * Instantiates a new JSQLColumnResolver for the provided simplified Metadata, presented as an
    * Array of Tables and Column Names only.
    *
    * @param currentCatalogName the current catalog name
@@ -92,10 +100,10 @@ public class JSQLColumResolver
   }
 
   /**
-   * Instantiates a new JSQLColumnResolver for the provided simplified Meta Data with an empty
+   * Instantiates a new JSQLColumnResolver for the provided simplified Metadata with an empty
    * CURRENT_SCHEMA and CURRENT_CATALOG
    *
-   * @param metaDataDefinition the meta data definition as n Array of Tablename and Column Names
+   * @param metaDataDefinition the metadata definition as n Array of Table name and Column Names
    */
   public JSQLColumResolver(String[][] metaDataDefinition) {
     this("", "", metaDataDefinition);
@@ -138,7 +146,7 @@ public class JSQLColumResolver
    * CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
    *
    * @param sqlStr the `SELECT` statement text
-   * @param metaDataDefinition the meta data definition as an array of Tables with Columns e.g. {
+   * @param metaDataDefinition the metadata definition as an array of Tables with Columns e.g. {
    *        TABLE_NAME, COLUMN1, COLUMN2 ... COLUMN10 }
    * @param currentCatalogName the CURRENT_CATALOG name (which is the default catalog for accessing
    *        the schemas)
@@ -563,6 +571,14 @@ public class JSQLColumResolver
   @Override
   public <S> JdbcResultSetMetaData visit(TableStatement tableStatement, S context) {
     return null;
+  }
+
+  public void addUnresolved(String unquotedQualifiedName) {
+    unresolvedObjects.add(unquotedQualifiedName);
+  }
+
+  public Set<String> getUnresolvedObjects() {
+    return unresolvedObjects;
   }
 
 }

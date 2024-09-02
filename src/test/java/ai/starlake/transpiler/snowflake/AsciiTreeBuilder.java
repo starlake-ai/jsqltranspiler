@@ -97,8 +97,10 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
       }
 
       return b.toString();
-    } else {
+    } else if (expression != null) {
       b.append(expression.getClass().getSimpleName()).append(": ").append(expression);
+    } else {
+      b.append("unresolvable");
     }
 
     return b.toString();

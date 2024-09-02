@@ -414,6 +414,13 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
+  void testUnresolvableColumn() throws JSQLParserException, SQLException {
+    String sqlStr = "SELECT (SELECT undefinedColumn AS test FROM b) col2 FROM a";
+    String[][] expected = new String[][] {{null, "undefinedColumn", "col2"}};
+    assertThatResolvesInto(sqlStr, expected);
+  }
+
+  @Test
   void lineage() throws JSQLParserException, SQLException, InvocationTargetException,
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     String[][] schemaDefinition = {
@@ -577,6 +584,46 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
+
+  @Test
+  void testUnresolvableTable() throws JSQLParserException, SQLException, InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
+    JdbcMetaData metaData =
+        new JdbcMetaData("", "").addTable("sales", "orders", new JdbcColumn("customer_id"),
+            new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
+            .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
+                new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
+                new JdbcColumn("name2"), new JdbcColumn("id1"));
+    //@formatter:off
+    String sqlStr =
+            "with \"mycte\" as (\n"
+            + "    select invalidColumn, \"c\".\"id\", CURRENT_TIMESTAMP() as \"timestamp\"\n"
+            + "    from nonExistingTable \"o\", \"sales\".\"customers\" \"c\"\n"
+            + "    where \"o\".\"customer_id\" = \"c\".\"id\"\n"
+            + ")\n"
+            + "select \"id\", sum(\"amount\") as sum, \"timestamp\"\n"
+            + "from \"mycte\"\n"
+            + "group by \"mycte\".\"id\", \"mycte\".\"timestamp\"";
+    //@formatter:on
+
+    ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
+
+    String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
+    assertThatResolvesInto(res, expected);
+
+    //@formatter:off
+    String lineage =
+            "SELECT\n"
+            + " ├─mycte.id → sales.customers.id : Other\n"
+            + " ├─sum AS Function sum\n"
+            + " │  └─unresolvable\n"
+            + " └─mycte.timestamp → timestamp : Other\n";
+    //@formatter:on
+    assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
+  }
+
+
 
   @Test
   void testWithAllBackTickQuoted()

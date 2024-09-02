@@ -40,6 +40,7 @@ import net.sf.jsqlparser.statement.select.TableStatement;
 import net.sf.jsqlparser.statement.select.Values;
 import net.sf.jsqlparser.statement.select.WithItem;
 
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -205,18 +206,26 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
 
         Table actualTable = metaData.getFromTables().get(columnTablename);
         if (actualTable == null) {
-          throw new RuntimeException("Table " + columnTablename + " not found in tables "
-              + Arrays.deepToString(metaData.getFromTables().keySet().toArray(new String[0])));
-        }
-        String tableSchemaName = actualTable.getSchemaName();
-        String tableCatalogName =
-            actualTable.getDatabase() != null ? actualTable.getDatabase().getDatabaseName() : null;
+          switch (columResolver.errorMode) {
+            case FAIL:
+              throw new RuntimeException("Table " + columnTablename + " not found in tables "
+                  + Arrays.deepToString(metaData.getFromTables().keySet().toArray(new String[0])));
+            case INSERT:
+            case IGNORE:
+              columResolver.addUnresolved(columnTablename);
+          }
+        } else {
+          String tableSchemaName = actualTable.getSchemaName();
+          String tableCatalogName =
+              actualTable.getDatabase() != null ? actualTable.getDatabase().getDatabaseName()
+                  : null;
 
-        for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
-            actualTable.getName(), null)) {
+          for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
+              actualTable.getName(), null)) {
 
-          if (!excepts.contains(jdbcColumn)) {
-            columns.add(jdbcColumn);
+            if (!excepts.contains(jdbcColumn)) {
+              columns.add(jdbcColumn);
+            }
           }
         }
       }
@@ -292,8 +301,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
           if (!excepts.contains(jdbcColumn)) {
 
             if (metaData.getNaturalJoinedTables().containsValue(t)) {
-              for (int i = 0; i < columns.size(); i++) {
-                if (columns.get(i).columnName.equalsIgnoreCase(jdbcColumn.columnName)) {
+              for (JdbcColumn column : columns) {
+                if (column.columnName.equalsIgnoreCase(jdbcColumn.columnName)) {
                   inserted = true;
                   break;
                 }
@@ -301,8 +310,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
             }
 
             if (metaData.getLeftUsingJoinedColumns().containsKey(jdbcColumn.columnName)) {
-              for (int i = 0; i < columns.size(); i++) {
-                if (columns.get(i).columnName.equalsIgnoreCase(jdbcColumn.columnName)) {
+              for (JdbcColumn column : columns) {
+                if (column.columnName.equalsIgnoreCase(jdbcColumn.columnName)) {
                   inserted = true;
                   break;
                 }
@@ -340,11 +349,22 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       JdbcColumn jdbcColumn = getJdbcColumn(metaData, column);
 
       if (jdbcColumn == null) {
-        throw new RuntimeException("Column " + column + " not found in tables "
-            + Arrays.deepToString(metaData.getFromTables().values().toArray()));
-      }
+        switch (columResolver.errorMode) {
+          case FAIL:
+            throw new RuntimeException("Column " + column + " not found in tables "
+                + Arrays.deepToString(metaData.getFromTables().values().toArray()));
+          case INSERT:
+            columns
+                .add(new JdbcColumn(column.getUnquotedCatalogName(), column.getUnquotedSchemaName(),
+                    column.getUnquotedTableName(), column.getUnquotedColumnName(), Types.OTHER,
+                    "Unknown", 0, 0, 0, "Not found in schema", null));
+          case IGNORE:
+            columResolver.addUnresolved(column.getFullyQualifiedName(true));
+        }
+      } else {
 
-      columns.add(jdbcColumn);
+        columns.add(jdbcColumn);
+      }
     }
 
     return columns;

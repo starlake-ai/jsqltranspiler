@@ -313,8 +313,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
       if (jdbcTable == null) {
         LOGGER.info("Available tables: "
             + Arrays.deepToString(jdbcSchema.tables.keySet().toArray(new String[0])));
-        throw new RuntimeException(
-            "Table " + tableName + " does not exist in the given Schema " + schemaName);
+        // throw new RuntimeException(
+        // "Table " + tableName + " does not exist in the given Schema " + schemaName);
       } else {
         jdbcColumn = jdbcTable.columns.get(columnName.replaceAll("^\"|\"$", ""));
       }
