@@ -29,6 +29,7 @@ import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.ThrowableAssert;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.Arguments;
@@ -414,13 +415,6 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
-  void testUnresolvableColumn() throws JSQLParserException, SQLException {
-    String sqlStr = "SELECT (SELECT undefinedColumn AS test FROM b) col2 FROM a";
-    String[][] expected = new String[][] {{null, "undefinedColumn", "col2"}};
-    assertThatResolvesInto(sqlStr, expected);
-  }
-
-  @Test
   void lineage() throws JSQLParserException, SQLException, InvocationTargetException,
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     String[][] schemaDefinition = {
@@ -606,8 +600,21 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + "group by \"mycte\".\"id\", \"mycte\".\"timestamp\"";
     //@formatter:on
 
-    ResultSetMetaData res =
-        JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
+    // STRICT MODE
+    Assertions.assertThatException().isThrownBy(new ThrowableAssert.ThrowingCallable() {
+      @Override
+      public void call() throws Throwable {
+        ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
+            JdbcMetaData.copyOf(metaData.setErrorMode(JdbcMetaData.ErrorMode.STRICT)));
+
+        String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
+        assertThatResolvesInto(res, expected);
+      }
+    });
+
+    // LENIENT MODE
+    ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
+        JdbcMetaData.copyOf(metaData.setErrorMode(JdbcMetaData.ErrorMode.LENIENT)));
 
     String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
     assertThatResolvesInto(res, expected);
@@ -618,6 +625,22 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + " ├─mycte.id → sales.customers.id : Other\n"
             + " ├─sum AS Function sum\n"
             + " │  └─unresolvable\n"
+            + " └─mycte.timestamp → timestamp : Other\n";
+    //@formatter:on
+    assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
+
+    // IGNORE
+    res = JSQLColumResolver.getResultSetMetaData(sqlStr,
+        JdbcMetaData.copyOf(metaData.setErrorMode(JdbcMetaData.ErrorMode.IGNORE)));
+
+    expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
+    assertThatResolvesInto(res, expected);
+
+    //@formatter:off
+    lineage =
+            "SELECT\n"
+            + " ├─mycte.id → sales.customers.id : Other\n"
+            + " ├─sum AS Function sum\n"
             + " └─mycte.timestamp → timestamp : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);

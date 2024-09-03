@@ -16,7 +16,6 @@
  */
 package ai.starlake.transpiler;
 
-import ai.starlake.transpiler.schema.CaseInsensitiveConcurrentSet;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
@@ -63,14 +62,6 @@ import java.util.logging.Logger;
 public class JSQLColumResolver
     implements SelectVisitor<JdbcResultSetMetaData>, FromItemVisitor<JdbcResultSetMetaData> {
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
-
-  public enum ErrorMode {
-    FAIL, INSERT, IGNORE
-  }
-
-  public ErrorMode errorMode = ErrorMode.INSERT;
-
-  private final Set<String> unresolvedObjects = CaseInsensitiveConcurrentSet.newSet();
   private final JdbcMetaData metaData;
   private final JSQLExpressionColumnResolver expressionColumnResolver;
 
@@ -92,7 +83,7 @@ public class JSQLColumResolver
    *
    * @param currentCatalogName the current catalog name
    * @param currentSchemaName the current schema name
-   * @param metaDataDefinition the meta data definition as n Array of Tablename and Column Names
+   * @param metaDataDefinition the metadata definition as n Array of Tablename and Column Names
    */
   public JSQLColumResolver(String currentCatalogName, String currentSchemaName,
       String[][] metaDataDefinition) {
@@ -573,12 +564,42 @@ public class JSQLColumResolver
     return null;
   }
 
+  /**
+   * Gets the error mode.
+   *
+   * @return the error mode
+   */
+  public JdbcMetaData.ErrorMode getErrorMode() {
+    return metaData.getErrorMode();
+  }
+
+
+  /**
+   * Sets the error mode.
+   *
+   * @param errorMode the error mode
+   * @return the error mode
+   */
+  public JSQLColumResolver setErrorMode(JdbcMetaData.ErrorMode errorMode) {
+    this.metaData.setErrorMode(errorMode);
+    return this;
+  }
+
+  /**
+   * Add the name of an unresolvable column or table to the list.
+   *
+   * @param unquotedQualifiedName the unquoted qualified name of the table or column
+   */
   public void addUnresolved(String unquotedQualifiedName) {
-    unresolvedObjects.add(unquotedQualifiedName);
+    this.metaData.addUnresolved(unquotedQualifiedName);
   }
 
+  /**
+   * Gets unresolved column or table names, not existing in the schema
+   *
+   * @return the unresolved column or table names
+   */
   public Set<String> getUnresolvedObjects() {
-    return unresolvedObjects;
+    return this.metaData.getUnresolvedObjects();
   }
-
 }

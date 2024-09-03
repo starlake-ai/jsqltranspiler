@@ -206,11 +206,11 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
 
         Table actualTable = metaData.getFromTables().get(columnTablename);
         if (actualTable == null) {
-          switch (columResolver.errorMode) {
-            case FAIL:
+          switch (columResolver.getErrorMode()) {
+            case STRICT:
               throw new RuntimeException("Table " + columnTablename + " not found in tables "
                   + Arrays.deepToString(metaData.getFromTables().keySet().toArray(new String[0])));
-            case INSERT:
+            case LENIENT:
             case IGNORE:
               columResolver.addUnresolved(columnTablename);
           }
@@ -349,11 +349,11 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       JdbcColumn jdbcColumn = getJdbcColumn(metaData, column);
 
       if (jdbcColumn == null) {
-        switch (columResolver.errorMode) {
-          case FAIL:
+        switch (columResolver.getErrorMode()) {
+          case STRICT:
             throw new RuntimeException("Column " + column + " not found in tables "
                 + Arrays.deepToString(metaData.getFromTables().values().toArray()));
-          case INSERT:
+          case LENIENT:
             columns
                 .add(new JdbcColumn(column.getUnquotedCatalogName(), column.getUnquotedSchemaName(),
                     column.getUnquotedTableName(), column.getUnquotedColumnName(), Types.OTHER,

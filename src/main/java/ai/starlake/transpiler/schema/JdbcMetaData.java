@@ -41,6 +41,9 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
+/**
+ * The type Jdbc metadata.
+ */
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public final class JdbcMetaData implements DatabaseMetaData {
   public final static Logger LOGGER = Logger.getLogger(JdbcMetaData.class.getName());
@@ -62,6 +65,24 @@ public final class JdbcMetaData implements DatabaseMetaData {
       new CaseInsensitiveLinkedHashMap<>();
   private final CaseInsensitiveLinkedHashMap<Column> rightUsingJoinedColumns =
       new CaseInsensitiveLinkedHashMap<>();
+
+  public enum ErrorMode {
+    /**
+     * STRICT error mode will fail when an object can't be resolved against schema.
+     */
+    STRICT,
+    /**
+     * LENIENT error mode will show a virtual column, when the physical column can't be resolved.
+     */
+    LENIENT,
+    /**
+     * IGNORE error mode will ignore an object which can't be resolved.
+     */
+    IGNORE
+  }
+
+  private final Set<String> unresolvedObjects = CaseInsensitiveConcurrentSet.newSet();
+  private ErrorMode errorMode = ErrorMode.STRICT;
 
   static {
     for (Field field : Types.class.getFields()) {
@@ -238,8 +259,14 @@ public final class JdbcMetaData implements DatabaseMetaData {
       if (jdbcTable == null) {
         LOGGER.info("Available tables: "
             + Arrays.deepToString(jdbcSchema.tables.keySet().toArray(new String[0])));
-        throw new RuntimeException(
-            "Table " + tableName + " does not exist in the given Schema " + schemaName);
+        switch (errorMode) {
+          case STRICT:
+            throw new RuntimeException(
+                "Table " + tableName + " does not exist in the given Schema " + schemaName);
+          case LENIENT:
+          case IGNORE:
+            addUnresolved(tableName);
+        }
       } else {
         // @todo: implement a GLOB based column name filter
         for (JdbcColumn column : jdbcTable.columns.values()) {
@@ -1487,6 +1514,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
       metaData1.put(catalog1);
     }
 
+    metaData1.errorMode = metaData.getErrorMode();
+
     return metaData1;
   }
 
@@ -1521,6 +1550,45 @@ public final class JdbcMetaData implements DatabaseMetaData {
 
   public JdbcMetaData setCatalogSeparator(String catalogSeparator) {
     this.catalogSeparator = catalogSeparator;
+    return this;
+  }
+
+  /**
+   * Add the name of an unresolvable column or table to the list.
+   *
+   * @param unquotedQualifiedName the unquoted qualified name of the table or column
+   */
+  public void addUnresolved(String unquotedQualifiedName) {
+    unresolvedObjects.add(unquotedQualifiedName);
+  }
+
+  /**
+   * Gets unresolved column or table names, not existing in the schema
+   *
+   * @return the unresolved column or table names
+   */
+  public Set<String> getUnresolvedObjects() {
+    return unresolvedObjects;
+  }
+
+  /**
+   * Gets the error mode.
+   *
+   * @return the error mode
+   */
+  public ErrorMode getErrorMode() {
+    return errorMode;
+  }
+
+
+  /**
+   * Sets the error mode.
+   *
+   * @param errorMode the error mode
+   * @return the error mode
+   */
+  public JdbcMetaData setErrorMode(ErrorMode errorMode) {
+    this.errorMode = errorMode;
     return this;
   }
 }

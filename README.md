@@ -249,6 +249,53 @@ String actual =
 
 Assertions.assertThat(actual).isEqualTo(expected);
 ```
+### Error Handling
+
+In case the query refers to objects not existing in the provided database schema, the `JSQLColumnResolver` offers three modes:
+
+- `STRICT` will let the resolution and lineage fail with an error message, which (first) object were not resolved
+- `IGNORE` will simply ignore the node of the unresolvable object
+- `LENIENT` will insert a "virtual" column node pointing on the unresolvable column of an unknown type
+
+`STRICT` is the default error mode. It can be changed for the `JdbcMetaData` before passing it to the `JSQLColumnResolver` as shown in the code example below:
+
+```java
+
+String sqlStr =
+            "with \"mycte\" as (\n"
+            + "    select invalidColumn, \"c\".\"id\", CURRENT_TIMESTAMP() as \"timestamp\"\n"
+            + "    from nonExistingTable \"o\", \"sales\".\"customers\" \"c\"\n"
+            + "    where \"o\".\"customer_id\" = \"c\".\"id\"\n"
+            + ")\n"
+            + "select \"id\", sum(\"amount\") as sum, \"timestamp\"\n"
+            + "from \"mycte\"\n"
+            + "group by \"mycte\".\"id\", \"mycte\".\"timestamp\"";
+
+// STRICT MODE will throw an Exception
+ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData.setErrorMode(JdbcMetaData.ErrorMode.STRICT)));
+
+// LENIENT MODE will show an unresolvable node
+ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData.setErrorMode(JdbcMetaData.ErrorMode.LENIENT)));
+String lineage =
+        "SELECT\n"
+        + " ├─mycte.id → sales.customers.id : Other\n"
+        + " ├─sum AS Function sum\n"
+        + " │  └─unresolvable\n"
+        + " └─mycte.timestamp → timestamp : Other\n";
+
+// IGNORE will skip and supress the unresolvable node
+ResultSetMetaData res =
+        JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData.setErrorMode(JdbcMetaData.ErrorMode.IGNORE)));
+String lineage =
+        "SELECT\n"
+        + " ├─mycte.id → sales.customers.id : Other\n"
+        + " ├─sum AS Function sum\n"
+        + " └─mycte.timestamp → timestamp : Other\n";
+```
+[More Details at JSQLColumnResolverTest](https://github.com/starlake-ai/jsqltranspiler/blob/f964a3e69e583abb637baa569cf96dd4b0350043/src/test/java/ai/starlake/transpiler/JSQLColumnResolverTest.java#L590)
+
 
 ### Unsupported features
 
