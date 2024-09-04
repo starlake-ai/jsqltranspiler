@@ -109,11 +109,11 @@ SELECT ARRAY_CONTAINS( array['hello', 'hi'], 'hello'::varchar) AS contains;
 SELECT ARRAY_DISTINCT(['A', 'A', 'B', NULL, NULL]) AS arr;
 
 -- expected
-SELECT ARRAY_DISTINCT(['A', 'A', 'B', NULL, NULL]) AS arr;
+SELECT LIST_SORT(ARRAY_DISTINCT(['A', 'A', 'B', NULL, NULL])) AS arr;
 
 -- result
 "arr"
-"[B, A]"
+"[A, B]"
 
 
 -- provided

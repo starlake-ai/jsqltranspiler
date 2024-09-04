@@ -694,8 +694,10 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
           if (paramCount == 2) {
             function.setParameters(parameters.get(1), parameters.get(0));
           }
+          break;
         case ARRAY_DISTINCT:
-          warning("Removes NULL and shuffles elements.");
+          function.setName("List_Sort");
+          function.setParameters(new Function("Array_Distinct$$").withParameters(parameters));
           break;
         case ARRAY_EXCEPT:
           // list_filter(['A', 'B', 'C'], x -> not list_contains(['B', 'C'],x) )
