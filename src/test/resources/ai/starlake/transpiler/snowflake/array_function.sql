@@ -165,8 +165,8 @@ SELECT array_intersection(ARRAY_CONSTRUCT('A', 'B', 'C'),
                           ARRAY_CONSTRUCT('B', 'C')) AS array;
 
 -- expected
-SELECT array_intersect(ARRAY['A', 'B', 'C'],
-                          ARRAY['B', 'C'])  AS array;
+SELECT list_sort(array_intersect(ARRAY['A', 'B', 'C'],
+                          ARRAY['B', 'C']))  AS array;
 
 -- result
 "array"
@@ -291,9 +291,7 @@ SELECT ARRAYS_OVERLAP(array_construct('hello', 'aloha'),
   AS Overlap;
 
 -- expected
-SELECT len(Array_Intersect(ARRAY['hello', 'aloha'],
-                      array['hello', 'hi', 'hey']))>0
-  AS Overlap;
+SELECT LEN(LIST_SORT(ARRAY_INTERSECT(ARRAY['hello','aloha'],ARRAY['hello','hi','hey'])))>0 AS OVERLAP;
 
 -- result
 "Overlap"

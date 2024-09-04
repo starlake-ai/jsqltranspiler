@@ -145,7 +145,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
     , SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY, SAFE_NEGATE, SAFE_SUBTRACT, TRUNC
 
-    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR, ARRAY, ARRAY_CONCAT, ARRAY_TO_STRING, GENERATE_ARRAY, GENERATE_DATE_ARRAY, GENERATE_TIMESTAMP_ARRAY, ARRAY_DISTINCT
+    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR, ARRAY, ARRAY_CONCAT, ARRAY_TO_STRING, GENERATE_ARRAY, GENERATE_DATE_ARRAY, GENERATE_TIMESTAMP_ARRAY, ARRAY_DISTINCT, ARRAY_INTERSECT
 
     , FIRST_VALUE, LAST_VALUE, PERCENTILE_CONT, PERCENTILE_DISC
 
@@ -965,9 +965,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               Concat.concat(parameters.toArray(new Expression[parameters.size()]));
           break;
 
+
+        case ARRAY_INTERSECT:
         case ARRAY_DISTINCT:
           function.setName("List_Sort");
-          function.setParameters(new Function("Array_Distinct$$").withParameters(parameters));
+          function.setParameters(new Function(functionName + "$$").withParameters(parameters));
           break;
 
         case ARRAY_TO_STRING:
