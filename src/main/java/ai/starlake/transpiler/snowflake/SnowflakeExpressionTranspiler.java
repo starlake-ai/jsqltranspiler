@@ -92,7 +92,7 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
 
     , STRTOK_TO_ARRAY, UUID_STRING, CHARINDEX, POSITION, EDITDISTANCE, ENDSWITH, STARTSWITH, JAROWINKLER_SIMILARITY
 
-    , ARRAYAGG, ARRAY_CONSTRUCT, ARRAY_COMPACT, ARRAY_CONSTRUCT_COMPACT, ARRAY_CONTAINS, ARRAY_DISTINCT, ARRAY_EXCEPT
+    , ARRAYAGG, ARRAY_CONSTRUCT, ARRAY_COMPACT, ARRAY_CONSTRUCT_COMPACT, ARRAY_CONTAINS, ARRAY_EXCEPT
 
     , ARRAY_FLATTEN, ARRAY_GENERATE_RANGE, ARRAY_INSERT, ARRAY_INTERSECTION, ARRAY_MAX, ARRAY_MIN, ARRAY_POSITION
 
@@ -694,10 +694,6 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
           if (paramCount == 2) {
             function.setParameters(parameters.get(1), parameters.get(0));
           }
-          break;
-        case ARRAY_DISTINCT:
-          function.setName("List_Sort");
-          function.setParameters(new Function("Array_Distinct$$").withParameters(parameters));
           break;
         case ARRAY_EXCEPT:
           // list_filter(['A', 'B', 'C'], x -> not list_contains(['B', 'C'],x) )

@@ -53,9 +53,12 @@ SELECT array_contains([1, 2, 3], 2) AS b;
 -- provided
 SELECT array_distinct([1, 2, 3, NULL, 3]) AS arr;
 
+-- expected
+SELECT LIST_SORT(ARRAY_DISTINCT([1,2,3,NULL,3]))AS ARR;
+
 -- result
 "arr"
-"[3, 2, 1]"
+"[1, 2, 3]"
 
 
 -- provided
