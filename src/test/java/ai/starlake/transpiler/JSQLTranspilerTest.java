@@ -28,8 +28,6 @@ import org.apache.commons.io.IOUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -75,7 +73,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 
-@Execution(ExecutionMode.CONCURRENT)
 public class JSQLTranspilerTest {
   final static Logger LOGGER = Logger.getLogger(JSQLTranspilerTest.class.getName());
   private final static String EXTRACTION_PATH =
@@ -353,6 +350,26 @@ public class JSQLTranspilerTest {
           LOGGER.fine("execute: " + s);
           st.execute(s);
         }
+      }
+
+      LOGGER.info("Preparing JSON Extension");
+      try (Statement st = connDuck.createStatement()) {
+        for (String s : new String[] {"INSTALL json;", "LOAD json;"}) {
+          LOGGER.fine("execute: " + s);
+          st.execute(s);
+        }
+      } catch (Exception ex) {
+        LOGGER.log(Level.FINE, "Failed to INSTALL/LOAD the JSON extension", ex);
+      }
+
+      LOGGER.info("Preparing Spatial Extension");
+      try (Statement st = connDuck.createStatement()) {
+        for (String s : new String[] {"INSTALL spatial;", "LOAD spatial;"}) {
+          LOGGER.fine("execute: " + s);
+          st.execute(s);
+        }
+      } catch (Exception ex) {
+        LOGGER.log(Level.FINE, "Failed to INSTALL/LOAD the SPATIAL extension", ex);
       }
 
       LOGGER.info("Fetching the MetaData");

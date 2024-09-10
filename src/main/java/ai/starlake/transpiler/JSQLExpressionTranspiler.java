@@ -137,9 +137,17 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
     , LAST_DAY
 
-    , PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP, DATE_FROM_UNIX_DATE, UNIX_DATE, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS, UNIX_MICROS, UNIX_MILLIS, UNIX_SECONDS
+    , PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP, DATE_FROM_UNIX_DATE, UNIX_DATE
 
-    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING, COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD, OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPEAT, REPLACE, REVERSE, RPAD, SAFE_CONVERT_BYTES_TO_STRING, TO_CODE_POINTS, TO_HEX, UNICODE
+    , TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS, UNIX_MICROS, UNIX_MILLIS, UNIX_SECONDS
+
+    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING
+
+    , COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD
+
+    , OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR
+
+    , REPEAT, REPLACE, REVERSE, RPAD, SAFE_CONVERT_BYTES_TO_STRING, TO_CODE_POINTS, TO_HEX, UNICODE
 
     , DIV, IEEE_DIVIDE, IS_INF, IS_NAN, LOG, RAND, RANGE_BUCKET, ROUND
 
@@ -151,7 +159,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
     , GENERATE_UUID
 
-    , NVL, UNNEST;
+    , BOOL, FLOAT64, INT64, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY, JSON_EXTRACT_ARRAY
+
+    , NVL, UNNEST
+
+    ;
     // @FORMATTER:ON
 
 
@@ -1017,6 +1029,32 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
         case GENERATE_UUID:
           function.setName("UUID");
+          break;
+        case BOOL:
+          if (parameters.size() == 1) {
+            rewrittenExpression = new CastExpression("Cast", parameters.get(0), "Boolean");
+          }
+          break;
+        case FLOAT64:
+          switch (parameters.size()) {
+            case 2:
+              warning("WIDE_NUMBER_MODE is not supported.");
+            case 1:
+              rewrittenExpression = new CastExpression("Cast", parameters.get(0), "Double");
+          }
+          break;
+        case INT64:
+          if (parameters.size() == 1) {
+            rewrittenExpression = new CastExpression("Cast", parameters.get(0), "HugeInt");
+          }
+          break;
+        case JSON_QUERY:
+        case JSON_EXTRACT_ARRAY:
+        case JSON_QUERY_ARRAY:
+          function.setName("JSon_Extract");
+          break;
+        case JSON_VALUE:
+        case JSON_VALUE_ARRAY:
           break;
       }
     }

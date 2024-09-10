@@ -79,7 +79,7 @@ public class JSQLTranspiler extends StatementDeParser {
   protected final HashMap<String, Object> parameters = new LinkedHashMap<>();
 
   private final static Pattern DOUBLE_QUOTES_PATTERN =
-      Pattern.compile("(?<=^|[^\"'])(\"(?!.*\").*?\"|\".*?(?<![\"'])(\"))(?![\"'])");
+      Pattern.compile("(?=(?:[^']*'[^']*')*[^']*$)\"");
 
   protected JSQLTranspiler(Class<? extends JSQLSelectTranspiler> selectTranspilerClass,
       Class<? extends JSQLExpressionTranspiler> expressionTranspilerClass)
@@ -141,6 +141,8 @@ public class JSQLTranspiler extends StatementDeParser {
           matcher.appendReplacement(sb, matcher.group().replaceAll("^\"|\"$", "'"));
         }
         matcher.appendTail(sb);
+        System.out.println(sb.toString());
+
         st = CCJSqlParserUtil.parse(sb.toString(), executorService, consumer);
         return transpileBigQuery(st, parameters);
       case DATABRICKS:
