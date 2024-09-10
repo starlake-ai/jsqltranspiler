@@ -153,13 +153,17 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
     , SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY, SAFE_NEGATE, SAFE_SUBTRACT, TRUNC
 
-    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR, ARRAY, ARRAY_CONCAT, ARRAY_TO_STRING, GENERATE_ARRAY, GENERATE_DATE_ARRAY, GENERATE_TIMESTAMP_ARRAY, ARRAY_DISTINCT, ARRAY_INTERSECT
+    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR, ARRAY, ARRAY_CONCAT, ARRAY_TO_STRING, GENERATE_ARRAY
+
+    , GENERATE_DATE_ARRAY, GENERATE_TIMESTAMP_ARRAY, ARRAY_DISTINCT, ARRAY_INTERSECT
 
     , FIRST_VALUE, LAST_VALUE, PERCENTILE_CONT, PERCENTILE_DISC
 
     , GENERATE_UUID
 
-    , BOOL, LAX_BOOL, FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY
+    , BOOL, LAX_BOOL, FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY
+
+    , JSON_VALUE_ARRAY, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING
 
     , NVL, UNNEST
 
@@ -1102,6 +1106,25 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("JSon_Extract_String");
           break;
         case JSON_VALUE_ARRAY:
+          break;
+        case PARSE_JSON:
+          switch (paramCount) {
+            case 2:
+              warning("WIDE_NUMBER_MODE is not supported.");
+            case 1:
+              rewrittenExpression = new CastExpression(parameters.get(0), "Json");
+              break;
+          }
+          break;
+        case TO_JSON_STRING:
+          switch (paramCount) {
+            case 2:
+              warning("PRETTY_PRINT is not supported.");
+            case 1:
+              rewrittenExpression =
+                  new CastExpression(new Function("To_Json", parameters.get(0)), "TEXT");
+              break;
+          }
           break;
       }
     }

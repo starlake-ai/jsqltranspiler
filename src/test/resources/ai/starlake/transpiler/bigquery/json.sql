@@ -259,3 +259,51 @@ SELECT CASE Typeof( JSON '"purple"' )
 -- result
 "color"
 "purple"
+
+
+-- provided
+SELECT PARSE_JSON('{"coordinates": [10, 20], "id": 1}') AS json_data;
+
+-- expected
+SELECT '{"coordinates":[10,20],"id":1}'::JSON AS JSON_DATA;
+
+-- result
+"json_data"
+"{""coordinates"": [10, 20], ""id"": 1}"
+
+
+-- provided
+With CoordinatesTable AS (
+    (SELECT 1 AS id, [10, 20] AS coordinates) UNION ALL
+    (SELECT 2 AS id, [30, 40] AS coordinates) UNION ALL
+    (SELECT 3 AS id, [50, 60] AS coordinates))
+SELECT TO_JSON(t) AS json_objects
+FROM CoordinatesTable AS t;
+
+-- expected
+With CoordinatesTable AS (
+    (SELECT 1 AS id, [10, 20] AS coordinates) UNION ALL
+    (SELECT 2 AS id, [30, 40] AS coordinates) UNION ALL
+    (SELECT 3 AS id, [50, 60] AS coordinates))
+SELECT TO_JSON(t) AS json_objects
+FROM CoordinatesTable AS t;
+
+-- result
+"json_objects"
+"{""id"":1,""coordinates"":[10,20]}"
+"{""id"":2,""coordinates"":[30,40]}"
+"{""id"":3,""coordinates"":[50,60]}"
+
+
+-- provided
+SELECT TO_JSON_STRING(STRUCT(1 AS id, [10,20] AS coordinates)) AS json_data;
+
+-- expected
+SELECT TO_JSON({ID:1,COORDINATES:[10,20]})::TEXT AS JSON_DATA;
+
+-- result
+"json_data"
+"{""id"":1,""coordinates"":[10,20]}"
+
+
+
