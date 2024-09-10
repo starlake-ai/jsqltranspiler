@@ -29,6 +29,7 @@ import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.merge.Merge;
 import net.sf.jsqlparser.statement.select.Select;
+import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
@@ -505,7 +506,7 @@ public class JSQLTranspiler extends StatementDeParser {
   }
 
   public <S> StringBuilder visit(Select select, S context) {
-    select.accept(selectTranspiler, context);
+    select.accept((SelectVisitor<StringBuilder>) selectTranspiler, context);
     return buffer;
   }
 

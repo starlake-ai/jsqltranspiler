@@ -395,7 +395,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       }
     }
 
-    for (JdbcColumn col : select.accept(columResolver, context).getColumns()) {
+    for (JdbcColumn col : select
+        .accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context).getColumns()) {
       columns.add(col.setExpression(select));
     }
 
@@ -407,7 +408,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     ArrayList<JdbcColumn> columns = new ArrayList<>();
     if (context instanceof JdbcMetaData) {
       JdbcResultSetMetaData resultSetMetaData =
-          plainSelect.accept(columResolver, JdbcMetaData.copyOf((JdbcMetaData) context));
+          plainSelect.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver,
+              JdbcMetaData.copyOf((JdbcMetaData) context));
       columns.addAll(resultSetMetaData.getColumns());
     }
     return columns;
@@ -418,7 +420,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     ArrayList<JdbcColumn> columns = new ArrayList<>();
     if (context instanceof JdbcMetaData) {
       JdbcResultSetMetaData resultSetMetaData =
-          setOperationList.accept(columResolver, JdbcMetaData.copyOf((JdbcMetaData) context));
+          setOperationList.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver,
+              JdbcMetaData.copyOf((JdbcMetaData) context));
       columns.addAll(resultSetMetaData.getColumns());
     }
     return columns;
@@ -464,7 +467,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     ArrayList<JdbcColumn> columns = new ArrayList<>();
     if (context instanceof JdbcMetaData) {
       JdbcResultSetMetaData resultSetMetaData =
-          tableStatement.accept(columResolver, JdbcMetaData.copyOf((JdbcMetaData) context));
+          tableStatement.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver,
+              JdbcMetaData.copyOf((JdbcMetaData) context));
       columns.addAll(resultSetMetaData.getColumns());
     }
     return columns;

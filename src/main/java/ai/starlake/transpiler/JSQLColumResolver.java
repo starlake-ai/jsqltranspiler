@@ -124,7 +124,8 @@ public class JSQLColumResolver
     Statement st = CCJSqlParserUtil.parse(sqlStr);
     if (st instanceof Select) {
       PlainSelect select = (PlainSelect) st;
-      return select.accept(resolver, JdbcMetaData.copyOf(metaData));
+      return select.accept((SelectVisitor<JdbcResultSetMetaData>) resolver,
+          JdbcMetaData.copyOf(metaData));
 
     } else {
       throw new RuntimeException(
@@ -186,7 +187,8 @@ public class JSQLColumResolver
     Statement st = CCJSqlParserUtil.parse(sqlStr);
     if (st instanceof Select) {
       Select select = (Select) st;
-      return select.accept(this, JdbcMetaData.copyOf(metaData));
+      return select.accept((SelectVisitor<JdbcResultSetMetaData>) this,
+          JdbcMetaData.copyOf(metaData));
     } else {
       throw new RuntimeException("Unsupported Statement");
     }
@@ -210,7 +212,7 @@ public class JSQLColumResolver
     Statement st = CCJSqlParserUtil.parse(sqlStr);
     if (st instanceof Select) {
       Select select = (Select) st;
-      select.accept(this, JdbcMetaData.copyOf(metaData));
+      select.accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
     }
     st.accept(deParser);
     return builder.toString();
@@ -247,7 +249,8 @@ public class JSQLColumResolver
   public <T> T getLineage(Class<? extends TreeBuilder<T>> treeBuilderClass, Select select)
       throws NoSuchMethodException, InvocationTargetException, InstantiationException,
       IllegalAccessException, SQLException {
-    JdbcResultSetMetaData resultSetMetaData = select.accept(this, JdbcMetaData.copyOf(metaData));
+    JdbcResultSetMetaData resultSetMetaData =
+        select.accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
     TreeBuilder<T> builder =
         treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
     return builder.getConvertedTree(this);
@@ -316,10 +319,16 @@ public class JSQLColumResolver
     return rsMetaData;
   }
 
+  @Override
+  public void visit(Table tableName) {
+    FromItemVisitor.super.visit(tableName);
+  }
+
   public JdbcResultSetMetaData visit(ParenthesedSelect parenthesedSelect, JdbcMetaData context) {
     JdbcResultSetMetaData rsMetaData = null;
     Alias alias = parenthesedSelect.getAlias();
-    rsMetaData = parenthesedSelect.getSelect().accept(this, JdbcMetaData.copyOf(context));
+    rsMetaData = parenthesedSelect.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this,
+        JdbcMetaData.copyOf(context));
     metaData.put(rsMetaData, alias != null ? alias.getUnquotedName() : "",
         "Error in ParenthesedSelect " + parenthesedSelect);
     return rsMetaData;
@@ -485,16 +494,23 @@ public class JSQLColumResolver
 
   // for visiting Column Sub-Selects
   public JdbcResultSetMetaData visit(Select select) {
-    return select.accept(this, JdbcMetaData.copyOf(metaData));
+    return select.accept((SelectVisitor<JdbcResultSetMetaData>) this,
+        JdbcMetaData.copyOf(metaData));
   }
 
   @Override
   public <S> JdbcResultSetMetaData visit(SetOperationList setOperationList, S context) {
     if (context instanceof JdbcMetaData) {
-      return setOperationList.getSelect(0).accept(this, (JdbcMetaData) context);
+      return setOperationList.getSelect(0).accept((SelectVisitor<JdbcResultSetMetaData>) this,
+          (JdbcMetaData) context);
     } else {
       return null;
     }
+  }
+
+  @Override
+  public void visit(SetOperationList setOpList) {
+    SelectVisitor.super.visit(setOpList);
   }
 
   @Override
@@ -508,6 +524,11 @@ public class JSQLColumResolver
       metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
     }
     return rsMetaData;
+  }
+
+  @Override
+  public void visit(WithItem<?> withItem) {
+    SelectVisitor.super.visit(withItem);
   }
 
   @Override
@@ -536,6 +557,11 @@ public class JSQLColumResolver
   }
 
   @Override
+  public void visit(TableFunction tableFunction) {
+    FromItemVisitor.super.visit(tableFunction);
+  }
+
+  @Override
   public <S> JdbcResultSetMetaData visit(ParenthesedFromItem parenthesedFromItem, S context) {
     JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
 
@@ -560,8 +586,18 @@ public class JSQLColumResolver
   }
 
   @Override
+  public void visit(ParenthesedFromItem parenthesedFromItem) {
+    FromItemVisitor.super.visit(parenthesedFromItem);
+  }
+
+  @Override
   public <S> JdbcResultSetMetaData visit(TableStatement tableStatement, S context) {
     return null;
+  }
+
+  @Override
+  public void visit(TableStatement tableStatement) {
+    SelectVisitor.super.visit(tableStatement);
   }
 
   /**
