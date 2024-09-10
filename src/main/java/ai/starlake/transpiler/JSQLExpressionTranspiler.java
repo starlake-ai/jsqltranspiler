@@ -159,7 +159,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
     , GENERATE_UUID
 
-    , BOOL, FLOAT64, INT64, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY, JSON_EXTRACT_ARRAY
+    , BOOL, LAX_BOOL, FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY
 
     , NVL, UNNEST
 
@@ -626,9 +626,6 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           rewriteFormatDateFunction(function, parameters,
               DateTimeLiteralExpression.DateTime.TIMESTAMP);
           break;
-        case STRING:
-          rewriteStringFunction(function, parameters);
-          break;
         case LAST_DAY:
           rewriteLastDayFunction(function, parameters);
           break;
@@ -1031,11 +1028,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("UUID");
           break;
         case BOOL:
+        case LAX_BOOL:
           if (parameters.size() == 1) {
             rewrittenExpression = new CastExpression("Cast", parameters.get(0), "Boolean");
           }
           break;
         case FLOAT64:
+        case LAX_FLOAT64:
           switch (parameters.size()) {
             case 2:
               warning("WIDE_NUMBER_MODE is not supported.");
@@ -1044,16 +1043,64 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           }
           break;
         case INT64:
+        case LAX_INT64:
           if (parameters.size() == 1) {
             rewrittenExpression = new CastExpression("Cast", parameters.get(0), "HugeInt");
           }
           break;
+        case STRING:
+        case LAX_STRING:
+          switch (paramCount) {
+            case 1:
+              rewrittenExpression =
+                  new CaseExpression(
+                      new WhenClause(new StringValue("JSON"),
+                          new CastExpression("Try_Cast",
+                              new Function("JSON_EXTRACT_STRING", parameters.get(0),
+                                  new StringValue("$")),
+                              "TEXT")),
+                      new WhenClause(new StringValue("DATE"),
+                          new Function("StrfTime",
+                              new CastExpression("Try_Cast", castDateTime(parameters.get(0)),
+                                  "DATE"),
+                              new StringValue("%c%z"))),
+                      new WhenClause(new StringValue("TIMESTAMP"),
+                          new Function("StrfTime",
+                              new CastExpression("Try_Cast", castDateTime(parameters.get(0)),
+                                  "TIMESTAMP"),
+                              new StringValue("%c%z"))),
+                      new WhenClause(new StringValue("TIMESTAMPTZ"),
+                          new Function("StrfTime",
+                              new CastExpression("Try_Cast", castDateTime(parameters.get(0)),
+                                  "TIMESTAMPTZ"),
+                              new StringValue("%c%z"))))
+                      .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+              break;
+
+            case 2:
+              TimezoneExpression timezoneExpression =
+                  new TimezoneExpression(castDateTime(parameters.get(0)), parameters.get(1));
+              rewrittenExpression =
+                  new Function("StrfTime", timezoneExpression, new StringValue("%c%z"));
+              break;
+          }
+          break;
+
+        case JSON_EXTRACT_STRING_ARRAY:
         case JSON_QUERY:
         case JSON_EXTRACT_ARRAY:
         case JSON_QUERY_ARRAY:
+          if (paramCount == 2 && parameters.get(1) instanceof StringValue) {
+            String jsonPath = ((StringValue) parameters.get(1)).getValue();
+            jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "/$1");
+            function.setParameters(parameters.get(0), new StringValue(jsonPath));
+          }
           function.setName("JSon_Extract");
           break;
+        case JSON_EXTRACT_SCALAR:
         case JSON_VALUE:
+          function.setName("JSon_Extract_String");
+          break;
         case JSON_VALUE_ARRAY:
           break;
       }
@@ -1508,25 +1555,6 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         function.setName("StrfTime");
         function.setParameters(reversedParameters);
         break;
-    }
-  }
-
-  private static void rewriteStringFunction(Function function, ExpressionList<?> parameters) {
-    ExpressionList<Expression> newParameters = new ExpressionList<>();
-    switch (parameters.size()) {
-      case 1:
-        newParameters.add(
-            rewriteDateLiteral(parameters.get(0), DateTimeLiteralExpression.DateTime.TIMESTAMP));
-      case 2:
-        TimezoneExpression timezoneExpression = new TimezoneExpression(
-            rewriteDateLiteral(parameters.get(0), DateTimeLiteralExpression.DateTime.TIMESTAMPTZ),
-            parameters.get(1));
-        newParameters.add(timezoneExpression);
-      default:
-        newParameters.add(new StringValue("%c%z"));
-        function.setName("StrfTime");
-        function.setParameters(newParameters);
-
     }
   }
 
