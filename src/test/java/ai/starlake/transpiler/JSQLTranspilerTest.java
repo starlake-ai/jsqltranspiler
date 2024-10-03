@@ -323,9 +323,9 @@ public class JSQLTranspilerTest {
 
               // Execute the copyCommand with DuckDB
               String fileName = EXTRACTION_PATH + File.separator + entry.getName();
-              String copyCommand = entry.getName().contains("tab")
-                  ? "COPY " + tableName + " FROM '" + fileName
-                      + "' WITH(timestampformat '%m/%d/%Y %I:%M:%S', ignore_errors 'true');"
+              String copyCommand = entry.getName().contains("tab") ? "COPY " + tableName + " FROM '"
+                  + fileName
+                  + "' (FORMAT CSV, AUTO_DETECT true, DELIMITER '\t', TIMESTAMPFORMAT '%m/%d/%Y %I:%M:%S', IGNORE_ERRORS true);"
                   : "COPY " + tableName + " FROM '" + fileName + "';";
 
               try (Statement st = connDuck.createStatement()) {

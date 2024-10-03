@@ -1943,6 +1943,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   @Override
   public <S> StringBuilder visit(CastExpression castExpression, S context) {
+    if ("SAFE_CAST".equalsIgnoreCase(castExpression.keyword)) {
+      castExpression.keyword = "Try_Cast";
+    }
+
     // same cast
     if (castExpression.getLeftExpression() instanceof CastExpression) {
       CastExpression leftExpression = (CastExpression) castExpression.getLeftExpression();
