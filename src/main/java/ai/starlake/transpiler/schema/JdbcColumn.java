@@ -26,8 +26,18 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonIncludeProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
 import static java.sql.DatabaseMetaData.columnNullableUnknown;
 
+@JsonPropertyOrder({"name","type","typeID","size","decimalDigits","isNullable"})
+@JsonIncludeProperties({"name","type","typeID","size","decimalDigits","isNullable"})
+//@JsonIgnoreProperties(ignoreUnknown = true)
 public class JdbcColumn implements Comparable<JdbcColumn> {
 
   public String tableCatalog;
@@ -156,6 +166,11 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
   public JdbcColumn(String columnName) {
     this(columnName, new Column(columnName));
   }
+  
+  public JdbcColumn() {
+	  this("dummy"); //name changed later during JSON deserialization
+  }
+  
 
   @Override
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
@@ -269,10 +284,12 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     return result;
   }
 
+  @JsonIgnore
   public JdbcColumn getParent() {
     return parent;
   }
 
+  @JsonIgnore
   public List<JdbcColumn> getChildren() {
     return childNodes;
   }
@@ -291,6 +308,7 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     return add(Arrays.asList(children));
   }
 
+  @JsonIgnore
   public Expression getExpression() {
     return expression;
   }
@@ -298,6 +316,69 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
   public JdbcColumn setExpression(Expression expression) {
     this.expression = expression;
     return this;
+  }
+
+  @JsonProperty("name") 
+  public String getColumnName() {
+	  return columnName;
+  }
+
+  public void setColumnName(String columnName) {
+	  this.columnName = columnName;
+  }
+
+  @JsonProperty("typeID") 
+  public Integer getDataType() {
+	  return dataType;
+  }
+
+  public void setDataType(Integer dataType) {
+	  this.dataType = dataType;
+  }
+
+  @JsonProperty("type") 
+  public String getTypeName() {
+	  return typeName;
+  }
+
+  public void setTypeName(String typeName) {
+	  this.typeName = typeName;
+  }
+
+  @JsonProperty("size") 
+  public Integer getColumnSize() {
+	  return columnSize;
+  }
+
+  public void setColumnSize(Integer columnSize) {
+	  this.columnSize = columnSize;
+  }
+
+  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  public Integer getDecimalDigits() {
+	  return decimalDigits;
+  }
+
+  public void setDecimalDigits(Integer decimalDigits) {
+	  this.decimalDigits = decimalDigits;
+  }
+
+  @JsonProperty("nullable") 
+  public Integer getNullable() {
+	  return nullable;
+  }
+
+  public void setNullable(Integer nullable) {
+	  this.nullable = nullable;
+  }
+
+  @JsonProperty("isNullable") 
+  public Boolean getIsNullable() {
+	  return isNullable.equalsIgnoreCase("YES");
+  }
+
+  public void setIsNullable(Boolean isNullable) {
+	  this.isNullable = isNullable ? "YES" : "NO";
   }
 
 }

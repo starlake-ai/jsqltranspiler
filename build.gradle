@@ -60,7 +60,7 @@ dependencies {
     // for the ASCII Trees
     testImplementation 'hu.webarticum:tree-printer:+'
 
-    testImplementation 'org.duckdb:duckdb_jdbc:1.0.0'
+    testImplementation 'org.duckdb:duckdb_jdbc:+'
     testImplementation 'org.apache.commons:commons-compress:+'
     testImplementation 'com.opencsv:opencsv:+'
 
@@ -69,6 +69,16 @@ dependencies {
 
     // Java Doc in XML Format
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
+    
+     // Jackson Core
+    implementation 'com.fasterxml.jackson.core:jackson-core:+'
+
+    // Jackson Databind (includes jackson-core and jackson-annotations)
+    implementation 'com.fasterxml.jackson.core:jackson-databind:+'
+
+    // Jackson Annotations (if needed separately)
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:+'
+    
 }
 
 configurations.configureEach {

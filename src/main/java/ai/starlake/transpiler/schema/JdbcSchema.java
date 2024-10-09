@@ -21,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -29,6 +30,14 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIncludeProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonPropertyOrder({"name","tables"})
+@JsonIncludeProperties({"name","tables"})
 public class JdbcSchema implements Comparable<JdbcSchema> {
 
   public static final Logger LOGGER = Logger.getLogger(JdbcSchema.class.getName());
@@ -43,6 +52,10 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
     this.tableCatalog = tableCatalog != null ? tableCatalog : "";
   }
 
+  public JdbcSchema() {
+  }
+
+  
   public static Collection<JdbcSchema> getSchemas(DatabaseMetaData metaData) throws SQLException {
     ArrayList<JdbcSchema> jdbcSchemas = new ArrayList<>();
 
@@ -50,16 +63,17 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
 
       while (rs.next()) {
         // TABLE_SCHEM String => schema name
-        String tableSchema = rs.getString("TABLE_SCHEM");
+        String tableSchema = JdbcUtils.getStringSafe(rs, "TABLE_SCHEM");
         // TABLE_CATALOG String => catalog name (may be null)
-        String tableCatalog = rs.getString("TABLE_CATALOG");
-        JdbcSchema jdbcSchema = new JdbcSchema(tableSchema, tableCatalog);
-
-        jdbcSchemas.add(jdbcSchema);
+        String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CATALOG","");
+        if (tableSchema!=null && !tableSchema.isBlank()) {
+        	JdbcSchema jdbcSchema = new JdbcSchema(tableSchema, tableCatalog);
+        	jdbcSchemas.add(jdbcSchema);
+        }
       }
-      if (jdbcSchemas.isEmpty()) {
-        jdbcSchemas.add(new JdbcSchema("", "."));
-      }
+     //add <empty> schema as some DBs don't have the concept of catalog for tables
+      jdbcSchemas.add(new JdbcSchema("", ""));
+      
 
     }
     return jdbcSchemas;
@@ -205,5 +219,31 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
     return tables.keySet();
   }
 
+  /*
+   * following for JSON (de)serialization
+   */
+  
+  
+  @JsonProperty("tables") 
+  public List<JdbcTable> getTables() {
+	  return new ArrayList<JdbcTable>(this.tables.values());
+  }
+  
+  public void setTables(List<JdbcTable> tables) {
+	  for(JdbcTable item:tables) {
+		  item.tableCatalog=this.tableCatalog;
+		  item.tableSchema=this.tableSchema;
+		  put(item);
+	  }
+  }
+  
+  @JsonProperty("name") 
+  public String getSchemaName() {
+	  return this.tableSchema;
+  }
 
+  public void setSchemaName(String schemaName) {
+	  this.tableSchema=schemaName;
+  }
+    
 }

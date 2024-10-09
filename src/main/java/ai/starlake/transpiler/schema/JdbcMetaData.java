@@ -19,6 +19,9 @@ package ai.starlake.transpiler.schema;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -41,31 +44,48 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIncludeProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import ai.starlake.transpiler.schema.JdbcUtils.DatabaseSpecific;
+
 /**
  * The type Jdbc metadata.
  */
+@JsonPropertyOrder({"databaseType","currentCatalog","currentSchema","catalogSeparator","catalogs"})
+@JsonIncludeProperties({"currentCatalog","currentSchema","catalogSeparator","databaseType","catalogs"})
+@JsonIgnoreProperties(ignoreUnknown = true)
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public final class JdbcMetaData implements DatabaseMetaData {
   public final static Logger LOGGER = Logger.getLogger(JdbcMetaData.class.getName());
   public static final Map<Integer, String> SQL_TYPE_NAME_MAP = new HashMap<>();
 
-  private final CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs =
+  private CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs =
       new CaseInsensitiveLinkedHashMap<>();
-  private final String currentCatalogName;
-  private final String currentSchemaName;
+  private String currentCatalogName;
+  private String currentSchemaName;
   private String catalogSeparator = ".";
 
+  @JsonIgnore 
   private final CaseInsensitiveLinkedHashMap<Table> fromTables =
       new CaseInsensitiveLinkedHashMap<>() {};
 
+  @JsonIgnore 
   private final CaseInsensitiveLinkedHashMap<Table> naturalJoinedTables =
       new CaseInsensitiveLinkedHashMap<>();
-
+  @JsonIgnore 
   private final CaseInsensitiveLinkedHashMap<Column> leftUsingJoinedColumns =
       new CaseInsensitiveLinkedHashMap<>();
+  @JsonIgnore 
   private final CaseInsensitiveLinkedHashMap<Column> rightUsingJoinedColumns =
       new CaseInsensitiveLinkedHashMap<>();
 
+  private DatabaseSpecific databaseType = DatabaseSpecific.OTHER;
+  
   public enum ErrorMode {
     /**
      * STRICT error mode will fail when an object can't be resolved against schema.
@@ -164,14 +184,16 @@ public final class JdbcMetaData implements DatabaseMetaData {
    * @throws SQLException when the database fails to return CURRENT_CATALOG or CURRENT_SCHEMA
    */
   public JdbcMetaData(Connection con) throws SQLException {
-    // todo: customise this for various databases, e. g. Oracle would need a "FROM DUAL"
+	DatabaseMetaData metaData = con.getMetaData();
+	this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
+	
     try (Statement statement = con.createStatement();
-        ResultSet rs = statement.executeQuery("SELECT current_database(), current_schema()")) {
+        ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
       rs.next();
       currentCatalogName = rs.getString(1);
       currentSchemaName = rs.getString(2);
     }
-    DatabaseMetaData metaData = con.getMetaData();
+    
     for (JdbcCatalog jdbcCatalog : JdbcCatalog.getCatalogs(metaData)) {
       put(jdbcCatalog);
     }
@@ -180,7 +202,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
       put(jdbcSchema);
     }
 
-    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData)) {
+    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData,this.currentCatalogName,this.currentSchemaName)) {
       put(jdbcTable);
       jdbcTable.getColumns(metaData);
       if (jdbcTable.tableType.contains("TABLE")) {
@@ -204,9 +226,20 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   public JdbcTable put(JdbcTable jdbcTable) {
-    JdbcCatalog jdbcCatalog = catalogs.get(jdbcTable.tableCatalog.toUpperCase());
+    /*different DBs don't return correct catalog+schema info/hierarchy in getSchemas()
+     *it is fixed here by adding missing catalogs and/or schemas
+     */
+	  
+	JdbcCatalog jdbcCatalog = catalogs.get(jdbcTable.tableCatalog.toUpperCase());
+    if (jdbcCatalog==null) {
+    	jdbcCatalog = new JdbcCatalog(jdbcTable.tableCatalog, null);
+    	catalogs.put(jdbcCatalog.tableCatalog, jdbcCatalog);
+    }
     JdbcSchema jdbcSchema = jdbcCatalog.get(jdbcTable.tableSchema.toUpperCase());
-
+    if (jdbcSchema==null) {
+    	jdbcSchema = new JdbcSchema(jdbcTable.tableSchema, jdbcCatalog.tableCatalog);
+    	jdbcCatalog.put(jdbcSchema);
+    }
     return jdbcSchema.put(jdbcTable);
   }
 
@@ -1540,10 +1573,12 @@ public final class JdbcMetaData implements DatabaseMetaData {
     return table1;
   }
 
+  @JsonProperty("currentCatalog") 
   public String getCurrentCatalogName() {
     return currentCatalogName;
   }
 
+  @JsonProperty("currentSchema") 
   public String getCurrentSchemaName() {
     return currentSchemaName;
   }
@@ -1591,4 +1626,71 @@ public final class JdbcMetaData implements DatabaseMetaData {
     this.errorMode = errorMode;
     return this;
   }
+
+  @JsonProperty("databaseType") 
+  public String getDatabaseType() {
+	  return databaseType.name();
+  }
+
+  public void setDatabaseType(String databaseType) {
+	  this.databaseType = DatabaseSpecific.valueOf(databaseType);
+  }
+
+  @JsonProperty("catalogs") 
+  public List<JdbcCatalog> getCatalogsList(){
+	  return new ArrayList<JdbcCatalog>(this.catalogs.values());
+  }
+
+  public void setCatalogsList(List<JdbcCatalog> catalogs) {
+	  for(JdbcCatalog item:catalogs) {
+		  this.put(item);
+	  }
+  }
+
+
+  public void setCurrentCatalogName(String currentCatalogName) {
+	  this.currentCatalogName = currentCatalogName;
+  }
+
+  public void setCurrentSchemaName(String currentSchemaName) {
+	  this.currentSchemaName = currentSchemaName;
+  }
+  
+  public String toJson() {
+	  // Use Jackson's ObjectMapper to serialize to JSON
+	  ObjectMapper objectMapper = new ObjectMapper();
+	  // Serialize the department object to JSON
+	  return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(this);
+
+
+  }
+
+  public void toJson(Writer writer) {
+	  // Use Jackson's ObjectMapper to serialize to JSON
+	  ObjectMapper objectMapper = new ObjectMapper();
+
+	  // Serialize the department object to JSON
+	  objectMapper.writeValue(writer, this);
+
+
+  }
+
+
+  public static JdbcMetaData fromJson(String jsonString) {
+	  // Use Jackson's ObjectMapper to deserialize JSON back into a Department object
+	  ObjectMapper objectMapper = new ObjectMapper();
+
+	  return objectMapper.readValue(jsonString, JdbcMetaData.class);
+
+  }
+
+  public static JdbcMetaData fromJson(Reader json) {
+	  // Use Jackson's ObjectMapper to deserialize JSON back into a Department object
+	  ObjectMapper objectMapper = new ObjectMapper();
+
+	  return objectMapper.readValue(json, JdbcMetaData.class);
+
+  }
+
+  
 }
