@@ -1656,6 +1656,11 @@ public final class JdbcMetaData implements DatabaseMetaData {
 	  this.currentSchemaName = currentSchemaName;
   }
   
+  /**
+   * Serialize this MetaData object (and all its children) to JSON
+   * 
+   * @return String containing JSON
+   */
   public String toJson() {
 	  // Use Jackson's ObjectMapper to serialize to JSON
 	  ObjectMapper objectMapper = new ObjectMapper();
@@ -1664,32 +1669,39 @@ public final class JdbcMetaData implements DatabaseMetaData {
 
 
   }
+  
 
+  /**
+   *  Serialize this MetaData object (and all its children) to JSON
+   * 
+   * @param writer the Writer object through which the JSON should be output
+   */
   public void toJson(Writer writer) {
-	  // Use Jackson's ObjectMapper to serialize to JSON
 	  ObjectMapper objectMapper = new ObjectMapper();
-
-	  // Serialize the department object to JSON
 	  objectMapper.writeValue(writer, this);
-
-
   }
 
 
+  /**
+   * Read/deserialize JdbcMetaData object from JSON
+   * 
+   * @param jsonString representing the metadata
+   * @return
+   */
   public static JdbcMetaData fromJson(String jsonString) {
-	  // Use Jackson's ObjectMapper to deserialize JSON back into a Department object
 	  ObjectMapper objectMapper = new ObjectMapper();
-
 	  return objectMapper.readValue(jsonString, JdbcMetaData.class);
-
   }
 
+  /**
+   * Read/deserialize JdbcMetaData object from JSON
+   * 
+   * @param json the Reader object through which to read JSON data
+   * @return
+   */
   public static JdbcMetaData fromJson(Reader json) {
-	  // Use Jackson's ObjectMapper to deserialize JSON back into a Department object
 	  ObjectMapper objectMapper = new ObjectMapper();
-
 	  return objectMapper.readValue(json, JdbcMetaData.class);
-
   }
 
   

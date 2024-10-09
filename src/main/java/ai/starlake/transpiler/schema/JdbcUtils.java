@@ -11,12 +11,6 @@ import java.util.List;
 public class JdbcUtils {
 
 
-	public static abstract class SchemaHandler {
-		
-		abstract List<String[]> getCatalogSchemas(Connection con);
-		
-	}
-	
 	/**
 	 * Used for detecting RDBMS type and DB specific handling 
 	 */
@@ -88,7 +82,15 @@ public class JdbcUtils {
 			  return -1;
 		  }
 	  }
-
+	  
+	/**
+	 * Retrieves column's value from ResultSet safely (does not throw SQLException
+	 * if column (name) not present in ResultSet.
+	 * 
+	 * @param rs
+	 * @param columnName
+	 * @return column's value or NULL if column not found
+	 */
 	static String getStringSafe(ResultSet rs,String columnName) {
 		  try {
 			  return rs.getString(columnName);
@@ -97,6 +99,15 @@ public class JdbcUtils {
 		  }
 	  }
 	
+	/**
+	 * Retrieves column's value from ResultSet safely (does not throw SQLException
+	 * if column (name) not present in ResultSet.
+	 * 
+	 * @param rs
+	 * @param columnName
+	 * @param defaultValue
+	 * @return column's value or passed-in defaultValue if column not found or has NULL value
+	 */
 	static String getStringSafe(ResultSet rs,String columnName, String defaultValue) {
 		  try {
 			  final String val=rs.getString(columnName);

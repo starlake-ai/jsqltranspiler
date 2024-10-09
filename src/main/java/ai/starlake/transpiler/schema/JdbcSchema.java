@@ -71,7 +71,7 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
         	jdbcSchemas.add(jdbcSchema);
         }
       }
-     //add <empty> schema as some DBs don't have the concept of catalog for tables
+     //add <empty> schema as some DBs don't have the concept of schema for tables
       jdbcSchemas.add(new JdbcSchema("", ""));
       
 

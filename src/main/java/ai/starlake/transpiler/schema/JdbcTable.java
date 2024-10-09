@@ -92,7 +92,6 @@ public class JdbcTable implements Comparable<JdbcTable> {
   @JsonIgnore
   public static Collection<JdbcTable> getTables(DatabaseMetaData metaData,String currentCatalog,String currentSchema) throws SQLException {
     ArrayList<JdbcTable> jdbcTables = new ArrayList<>();
-    ArrayList<String> tableTypes = new ArrayList<>();
     
     JdbcUtils.DatabaseSpecific dbSpecific = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
     
