@@ -58,6 +58,7 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
   public String scopeCatalog;
   public String scopeSchema;
   public String scopeTable;
+  public String scopeColumn;
   public Short sourceDataType;
   public String isAutomaticIncrement;
   public String isGeneratedColumn;
@@ -96,6 +97,7 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     SCOPE_CATALOG String => catalog of table that is the scope of a reference attribute (null if DATA_TYPE isn't REF)
     SCOPE_SCHEMA String => schema of table that is the scope of a reference attribute (null if the DATA_TYPE isn't REF)
     SCOPE_TABLE String => table name that this the scope of a reference attribute (null if the DATA_TYPE isn't REF)
+    SCOPE_COLUMN String => column name that this the scope of a reference attribute (null if the DATA_TYPE isn't REF)
     SOURCE_DATA_TYPE short => source type of a distinct type or user-generated Ref type, SQL type from java.sql.Types (null if DATA_TYPE isn't DISTINCT or user-generated REF)
     IS_AUTOINCREMENT String => Indicates whether this column is auto incremented
         YES --- if the column is auto incremented
@@ -111,7 +113,7 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
       Integer dataType, String typeName, Integer columnSize, Integer decimalDigits,
       Integer numericPrecisionRadix, Integer nullable, String remarks, String columnDefinition,
       Integer characterOctetLength, Integer ordinalPosition, String isNullable, String scopeCatalog,
-      String scopeSchema, String scopeTable, Short sourceDataType, String isAutomaticIncrement,
+      String scopeSchema, String scopeTable, String scopeColumn, Short sourceDataType, String isAutomaticIncrement,
       String isGeneratedColumn, Expression expression) {
     this.tableCatalog = tableCatalog;
     this.tableSchema = tableSchema;
@@ -131,6 +133,7 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     this.scopeCatalog = scopeCatalog;
     this.scopeSchema = scopeSchema;
     this.scopeTable = scopeTable;
+    this.scopeColumn = scopeColumn;
     this.sourceDataType = sourceDataType;
     this.isAutomaticIncrement = isAutomaticIncrement;
     this.isGeneratedColumn = isGeneratedColumn;
@@ -141,26 +144,26 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
       Integer dataType, String typeName, Integer columnSize, Integer decimalDigits,
       Integer nullable, String remarks, Expression expression) {
     this(tableCatalog, tableSchema, tableName, columnName, dataType, typeName, columnSize,
-        decimalDigits, 10, nullable, remarks, "", 0, 0, "", tableCatalog, tableSchema, tableName,
+        decimalDigits, 10, nullable, remarks, "", 0, 0, "", tableCatalog, tableSchema, tableName, columnName,
         (short) 0, "", "", expression);
   }
 
   public JdbcColumn(String columnName, Integer dataType, String typeName, Integer columnSize,
       Integer decimalDigits, Integer nullable, String remarks, Expression expression) {
     this("", "", "", columnName, dataType, typeName, columnSize, decimalDigits, 10, nullable,
-        remarks, "", 0, 0, "", "", "", "", (short) 0, "", "", expression);
+        remarks, "", 0, 0, "", "", "", "","", (short) 0, "", "", expression);
   }
 
   public JdbcColumn(String tableCatalog, String tableSchema, String tableName, String columnName,
       Expression expression) {
     this(tableCatalog, tableSchema, tableName, columnName, Types.OTHER, "Other", 0, 0, 10,
-        columnNullableUnknown, "", "", 0, 0, "", tableCatalog, tableSchema, tableName, (short) 0,
+        columnNullableUnknown, "", "", 0, 0, "", tableCatalog, tableSchema, tableName, columnName, (short) 0,
         "", "", expression);
   }
 
   public JdbcColumn(String columnName, Expression expression) {
     this("", "", "", columnName, Types.OTHER, "Other", 0, 0, 10, columnNullableUnknown, "", "", 0,
-        0, "", "", "", "", (short) 0, "", "", expression);
+        0, "", "", "", "", "", (short) 0, "", "", expression);
   }
 
   public JdbcColumn(String columnName) {
@@ -237,7 +240,7 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
         } else if (scopeSchema != null && !scopeSchema.isEmpty()) {
           b.append(scopeSchema).append(".");
         }
-        b.append(scopeTable).append(".").append(columnName);
+        b.append(scopeTable).append(".").append(scopeColumn);
       }
 
       b.append(" : ").append(typeName);
@@ -278,6 +281,7 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     result = 31 * result + (scopeCatalog != null ? scopeCatalog.hashCode() : 0);
     result = 31 * result + (scopeSchema != null ? scopeSchema.hashCode() : 0);
     result = 31 * result + (scopeTable != null ? scopeTable.hashCode() : 0);
+    result = 31 * result + (scopeColumn != null ? scopeColumn.hashCode() : 0);
     result = 31 * result + (sourceDataType != null ? sourceDataType.hashCode() : 0);
     result = 31 * result + (isAutomaticIncrement != null ? isAutomaticIncrement.hashCode() : 0);
     result = 31 * result + (isGeneratedColumn != null ? isGeneratedColumn.hashCode() : 0);

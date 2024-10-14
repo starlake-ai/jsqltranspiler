@@ -209,6 +209,10 @@ public class JdbcTable implements Comparable<JdbcTable> {
         // (null if the DATA_TYPE isn't REF)
         String scopeTable = JdbcUtils.getStringSafe(rs,"SCOPE_TABLE");
 
+        // SCOPE_COLUMNT String => table name that this the scope of a reference attribute
+        // (null if the DATA_TYPE isn't REF)
+        String scopeColumn = JdbcUtils.getStringSafe(rs,"SCOPE_COLUMN");
+        
         // SOURCE_DATA_TYPE short => source type of a distinct type or user-generated Ref type,
         // SQL type from java.sql.Types (null if DATA_TYPE isn't DISTINCT or user-generated REF)
         Short sourceDataType = JdbcUtils.getShortSafe(rs,"SOURCE_DATA_TYPE");
@@ -222,7 +226,7 @@ public class JdbcTable implements Comparable<JdbcTable> {
         JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
             dataType, typeName, columnSize, decimalDigits, numericPrecicionRadix, nullable, remarks,
             columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
-            scopeSchema, scopeTable, sourceDataType, isAutoIncrement, isGeneratedColumn,
+            scopeSchema, scopeTable, scopeColumn, sourceDataType, isAutoIncrement, isGeneratedColumn,
             new Column(columnName));
 
         columns.put(jdbcColumn.columnName, jdbcColumn);
@@ -377,12 +381,12 @@ public class JdbcTable implements Comparable<JdbcTable> {
       String columnName, Integer dataType, String typeName, Integer columnSize,
       Integer decimalDigits, Integer numericPrecisionRadix, Integer nullable, String remarks,
       String columnDefinition, Integer characterOctetLength, Integer ordinalPosition,
-      String isNullable, String scopeCatalog, String scopeSchema, String scopeTable,
+      String isNullable, String scopeCatalog, String scopeSchema, String scopeTable, String scopeColumn,
       Short sourceDataType, String isAutomaticIncrement, String isGeneratedColumn) {
     JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
         dataType, typeName, columnSize, decimalDigits, numericPrecisionRadix, nullable, remarks,
         columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
-        scopeSchema, scopeTable, sourceDataType, isAutomaticIncrement, isGeneratedColumn,
+        scopeSchema, scopeTable, scopeColumn, sourceDataType, isAutomaticIncrement, isGeneratedColumn,
         new Column(columnName));
     return add(jdbcColumn);
   }

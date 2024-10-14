@@ -254,8 +254,20 @@ public final class JdbcMetaData implements DatabaseMetaData {
                 : rsMetaData.getColumnName(i),
             rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
             rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
-            "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getScopeCatalog(i),
-            rsMetaData.getScopeSchema(i), rsMetaData.getScopeTable(i), null, "", "");
+            "", rsMetaData.getColumnDisplaySize(i), i, "", 
+            rsMetaData.getScopeCatalog(i) !=null && !rsMetaData.getScopeCatalog(i).isEmpty() ? rsMetaData.getScopeCatalog(i) : rsMetaData.getCatalogName(i),
+            rsMetaData.getScopeSchema(i) != null && !rsMetaData.getScopeSchema(i).isEmpty() ? rsMetaData.getScopeSchema(i) : rsMetaData.getSchemaName(i),
+            rsMetaData.getScopeTable(i) !=null && !rsMetaData.getScopeTable(i).isEmpty() ? rsMetaData.getScopeTable(i) : rsMetaData.getTableName(i),
+            rsMetaData.getColumnName(i),
+            null, "", "");
+        /*
+         * String tableCatalog, String tableSchema, String tableName,
+      String columnName, Integer dataType, String typeName, Integer columnSize,
+      Integer decimalDigits, Integer numericPrecisionRadix, Integer nullable, String remarks,
+      String columnDefinition, Integer characterOctetLength, Integer ordinalPosition,
+      String isNullable, String scopeCatalog, String scopeSchema, String scopeTable, String scopeColumn,
+      Short sourceDataType, String isAutomaticIncrement, String isGeneratedColumn)
+         */
       }
       put(t);
       return t;
@@ -1565,7 +1577,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
           column.columnName, column.dataType, column.typeName, column.columnSize,
           column.decimalDigits, column.numericPrecisionRadix, column.nullable, column.remarks,
           column.columnDefinition, column.characterOctetLength, column.ordinalPosition,
-          column.isNullable, column.scopeCatalog, column.scopeSchema, column.scopeTable,
+          column.isNullable, column.scopeCatalog, column.scopeSchema, column.scopeTable, column.scopeColumn,
           column.sourceDataType, column.isAutomaticIncrement, column.isGeneratedColumn,
           column.getExpression());
       table1.add(column1);

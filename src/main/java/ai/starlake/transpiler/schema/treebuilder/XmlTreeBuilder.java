@@ -77,7 +77,7 @@ public class XmlTreeBuilder extends TreeBuilder<String> {
       if (column.scopeTable != null && !column.scopeTable.isEmpty()) {
         xmlBuilder.append(" scope='")
             .append(JSQLColumResolver.getQualifiedColumnName(column.scopeCatalog,
-                column.scopeSchema, column.scopeTable, column.columnName))
+                column.scopeSchema, column.scopeTable, column.scopeColumn))
             .append("'");
       }
       xmlBuilder.append(" dataType='java.sql.Types.")

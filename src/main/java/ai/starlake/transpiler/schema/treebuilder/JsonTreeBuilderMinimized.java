@@ -63,7 +63,7 @@ public class JsonTreeBuilderMinimized extends TreeBuilder<String> {
       if (column.scopeTable != null && !column.scopeTable.isEmpty()) {
         jsonBuilder.append("\"scope\":\"")
             .append(JSQLColumResolver.getQualifiedColumnName(column.scopeCatalog,
-                column.scopeSchema, column.scopeTable, column.columnName))
+                column.scopeSchema, column.scopeTable, column.scopeColumn))
             .append("\",");
       }
 
