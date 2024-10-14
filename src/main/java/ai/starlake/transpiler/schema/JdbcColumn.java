@@ -96,8 +96,8 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
         empty string --- if the nullability for the column is unknown
     SCOPE_CATALOG String => catalog of table that is the scope of a reference attribute (null if DATA_TYPE isn't REF)
     SCOPE_SCHEMA String => schema of table that is the scope of a reference attribute (null if the DATA_TYPE isn't REF)
-    SCOPE_TABLE String => table name that this the scope of a reference attribute (null if the DATA_TYPE isn't REF)
-    SCOPE_COLUMN String => column name that this the scope of a reference attribute (null if the DATA_TYPE isn't REF)
+    SCOPE_TABLE String => table name that is the scope of a reference attribute (null if the DATA_TYPE isn't REF)
+    SCOPE_COLUMN String => column name (original) within the SCOPE_TABLE
     SOURCE_DATA_TYPE short => source type of a distinct type or user-generated Ref type, SQL type from java.sql.Types (null if DATA_TYPE isn't DISTINCT or user-generated REF)
     IS_AUTOINCREMENT String => Indicates whether this column is auto incremented
         YES --- if the column is auto incremented

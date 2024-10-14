@@ -260,14 +260,6 @@ public final class JdbcMetaData implements DatabaseMetaData {
             rsMetaData.getScopeTable(i) !=null && !rsMetaData.getScopeTable(i).isEmpty() ? rsMetaData.getScopeTable(i) : rsMetaData.getTableName(i),
             rsMetaData.getColumnName(i),
             null, "", "");
-        /*
-         * String tableCatalog, String tableSchema, String tableName,
-      String columnName, Integer dataType, String typeName, Integer columnSize,
-      Integer decimalDigits, Integer numericPrecisionRadix, Integer nullable, String remarks,
-      String columnDefinition, Integer characterOctetLength, Integer ordinalPosition,
-      String isNullable, String scopeCatalog, String scopeSchema, String scopeTable, String scopeColumn,
-      Short sourceDataType, String isAutomaticIncrement, String isGeneratedColumn)
-         */
       }
       put(t);
       return t;

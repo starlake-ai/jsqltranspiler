@@ -28,10 +28,10 @@ public class JdbcUtils {
 		  String[] excludedSchemas;
 
 		  /**
-		   * Enum type constructor.
+		   * DB specific "configuration" for extracting metadata through JDBC connection
 		   * 
 		   * @param identString an unique string which identifying this DB type - will be compared to {@link java.sql.DatabaseMetaData#getDatabaseProductName()} value to identify the DB specific variant
-		   * @param tableTypes which table types are considered when processing DB's schema to extract metadata information used for parsing&analyzing SQL statement
+		   * @param tableTypes which table types are considered when processing DB's schema to extract metadata information used for parsing&analyzing SQL statement (usualy TABLE, VIEW)
 		   * @param excludedSchemas which schemas should be excluded/ignored when processing particular DB's catalog&schemas
 		   * @param schemaQuery query to execute against particular DB type to get information about current catalog/db & schema.
 		   */
@@ -57,9 +57,11 @@ public class JdbcUtils {
 		  }
 		  
 		  /**
-		 * @param schema
-		 * @return true if the passed-
-		 */
+		   * Filtering out certain schemas(usually system)
+		   * 
+		   * @param schema
+		   * @return true if the passed-
+		   */
 		  public boolean processSchema(String schema) {
 			  if (excludedSchemas!=null) {  
 				  for(String itm:excludedSchemas) {
@@ -70,7 +72,7 @@ public class JdbcUtils {
 			  }
 			  return true;
 		  }
-		  
+
 		  public String[] getTableTypes() {
 			  return tableTypes;
 		  }
@@ -116,12 +118,6 @@ public class JdbcUtils {
 	 * @param columnName
 	 * @param defaultValue
 	 * @return column's value or passed-in defaultValue if column not found or has NULL value
-	 */
-	/**
-	 * @param rs
-	 * @param columnName
-	 * @param defaultValue
-	 * @return
 	 */
 	static String getStringSafe(ResultSet rs,String columnName, String defaultValue) {
 		  try {
