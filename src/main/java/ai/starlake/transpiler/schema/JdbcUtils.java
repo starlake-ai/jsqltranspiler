@@ -19,14 +19,23 @@ public class JdbcUtils {
 		  POSTGRESQL("POSTGRESQL",new String[] {"TABLE","VIEW","FOREIGN TABLE","MATERIALIZED VIEW","PARTITIONED TABLE","SYSTEM TABLE","TEMPORARY TABLE","TEMPORARY VIEW"}, null,"SELECT current_database(), current_schema()"),
 		  MSSQL("MICROSOFT SQL SERVER",new String[] {"SYSTEM TABLE", "TABLE", "VIEW"},null,"SELECT DB_NAME(), SCHEMA_NAME()"),
 		  MYSQL("MYSQL",new String[] {"TABLE","VIEW"},null,"SELECT DATABASE(), DATABASE()"),
+		  SNOWFLAKE("SNOWFLAKE",new String[] {"TABLE","VIEW"},null,"SELECT CURRENT_DATABASE(), CURRENT_SCHEMA()"),
 		  OTHER("OTHER",new String[] {"TABLE","VIEW"},null,"SELECT current_database(), current_schema()");
 		  
 		  String identString;
 		  String currentSchemaQuery;
 		  String[] tableTypes;
 		  String[] excludedSchemas;
-		  
-		  DatabaseSpecific(String identString,String[] tableTypes, String[] excludedSchemas, String schemaQuery){
+
+		  /**
+		   * Enum type constructor.
+		   * 
+		   * @param identString an unique string which identifying this DB type - will be compared to {@link java.sql.DatabaseMetaData#getDatabaseProductName()} value to identify the DB specific variant
+		   * @param tableTypes which table types are considered when processing DB's schema to extract metadata information used for parsing&analyzing SQL statement
+		   * @param excludedSchemas which schemas should be excluded/ignored when processing particular DB's catalog&schemas
+		   * @param schemaQuery query to execute against particular DB type to get information about current catalog/db & schema.
+		   */
+		DatabaseSpecific(String identString,String[] tableTypes, String[] excludedSchemas, String schemaQuery){
 			  this.identString=identString;
 			  this.tableTypes=tableTypes;
 			  this.excludedSchemas=excludedSchemas;
@@ -107,6 +116,12 @@ public class JdbcUtils {
 	 * @param columnName
 	 * @param defaultValue
 	 * @return column's value or passed-in defaultValue if column not found or has NULL value
+	 */
+	/**
+	 * @param rs
+	 * @param columnName
+	 * @param defaultValue
+	 * @return
 	 */
 	static String getStringSafe(ResultSet rs,String columnName, String defaultValue) {
 		  try {

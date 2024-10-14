@@ -111,7 +111,7 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
 
       jsonBuilder.append("\n");
       addIndentation(indent + 2);
-      jsonBuilder.append("\"nullable\": ").append(column.isNullable);
+      jsonBuilder.append("\"nullable\": ").append(column.isNullable.equalsIgnoreCase("YES") ? true : false);
     }
 
     Expression expression = column.getExpression();
