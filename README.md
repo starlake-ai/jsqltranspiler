@@ -1,7 +1,3 @@
-# *Changes implemented to the original JSQLTranspiler*
-Changes made are focused on the lineage aspect. Added support to extract schemas through JDBC connection from popular DBs (Oracle,PostgreSQL,MySQL,MSSQL).
-Added ability to (de)serialize schemas (metadata) to JSON for faster/repeated runs.
-
 # [JSQLTranspiler](https://starlake.ai/starlake/index.html#sql-transpiler) - Transpile Dialect, Resolve Columns, Show Lineage
 
 [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/ai.starlake.jsqltranspiler/jsqltranspiler?server=https%3A%2F%2Fs01.oss.sonatype.org)](https://s01.oss.sonatype.org/#nexus-search;quick~ai.starlake.jsqltranspiler/jsqltranspiler)

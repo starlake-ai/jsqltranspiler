@@ -29,14 +29,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonIncludeProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
-@JsonPropertyOrder({"name","separator","schemas"})
-@JsonIncludeProperties({"name","separator","schemas"})
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class JdbcCatalog implements Comparable<JdbcCatalog> {
 
   public static final Logger LOGGER = Logger.getLogger(JdbcCatalog.class.getName());
@@ -51,10 +43,8 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
     this.catalogSeparator = catalogSeparator != null ? catalogSeparator : ".";
   }
 
-  public JdbcCatalog() {
-	  
-  }
-  
+  public JdbcCatalog() {}
+
   public static Collection<JdbcCatalog> getCatalogs(DatabaseMetaData metaData) throws SQLException {
     ArrayList<JdbcCatalog> jdbcCatalogs = new ArrayList<>();
 
@@ -63,12 +53,12 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
       String catalogSeparator = metaData.getCatalogSeparator();
       while (rs.next()) {
         String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT");
-        if (tableCatalog!=null && !tableCatalog.isEmpty()) {
-        	JdbcCatalog jdbcCatalog = new JdbcCatalog(tableCatalog, catalogSeparator);
-        	jdbcCatalogs.add(jdbcCatalog);
+        if (tableCatalog != null && !tableCatalog.isEmpty()) {
+          JdbcCatalog jdbcCatalog = new JdbcCatalog(tableCatalog, catalogSeparator);
+          jdbcCatalogs.add(jdbcCatalog);
         }
       }
-      //add <empty> catalog as some DBs don't have the concept of catalog for tables
+      // add <empty> catalog as some DBs don't have the concept of catalog for tables
       jdbcCatalogs.add(new JdbcCatalog("", "."));
 
     }
@@ -180,7 +170,6 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
     return schemas.merge(key, value, remappingFunction);
   }
 
-
   public boolean containsKey(String key) {
     return schemas.containsKey(key);
   }
@@ -201,33 +190,30 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
     return schemas.keySet();
   }
 
-  @JsonProperty("name") 
   public String getTableCatalog() {
-	  return tableCatalog;
+    return tableCatalog;
   }
 
   public void setTableCatalog(String tableCatalog) {
-	  this.tableCatalog = tableCatalog;
+    this.tableCatalog = tableCatalog;
   }
 
-  @JsonProperty("separator") 
   public String getCatalogSeparator() {
-	  return catalogSeparator;
+    return catalogSeparator;
   }
 
   public void setCatalogSeparator(String catalogSeparator) {
-	  this.catalogSeparator = catalogSeparator;
+    this.catalogSeparator = catalogSeparator;
   }
 
-  @JsonProperty("schemas") 
   public List<JdbcSchema> getSchemas() {
-	  return new ArrayList<JdbcSchema>(schemas.values());
+    return new ArrayList<JdbcSchema>(schemas.values());
   }
 
   public void setSchemas(List<JdbcSchema> schemas) {
-	  for(JdbcSchema item:schemas) {
-		  item.tableCatalog=this.tableCatalog;
-		  put(item);
-	  }
+    for (JdbcSchema item : schemas) {
+      item.tableCatalog = this.tableCatalog;
+      put(item);
+    }
   }
 }

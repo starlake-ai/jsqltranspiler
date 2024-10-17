@@ -19,9 +19,6 @@ package ai.starlake.transpiler.schema;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -44,48 +41,33 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonIncludeProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import ai.starlake.transpiler.schema.JdbcUtils.DatabaseSpecific;
 
 /**
  * The type Jdbc metadata.
  */
-@JsonPropertyOrder({"databaseType","currentCatalog","currentSchema","catalogSeparator","catalogs"})
-@JsonIncludeProperties({"currentCatalog","currentSchema","catalogSeparator","databaseType","catalogs"})
-@JsonIgnoreProperties(ignoreUnknown = true)
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public final class JdbcMetaData implements DatabaseMetaData {
   public final static Logger LOGGER = Logger.getLogger(JdbcMetaData.class.getName());
   public static final Map<Integer, String> SQL_TYPE_NAME_MAP = new HashMap<>();
 
-  private CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs =
-      new CaseInsensitiveLinkedHashMap<>();
+  private CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs = new CaseInsensitiveLinkedHashMap<>();
   private String currentCatalogName;
   private String currentSchemaName;
   private String catalogSeparator = ".";
 
-  @JsonIgnore 
   private final CaseInsensitiveLinkedHashMap<Table> fromTables =
       new CaseInsensitiveLinkedHashMap<>() {};
 
-  @JsonIgnore 
   private final CaseInsensitiveLinkedHashMap<Table> naturalJoinedTables =
       new CaseInsensitiveLinkedHashMap<>();
-  @JsonIgnore 
   private final CaseInsensitiveLinkedHashMap<Column> leftUsingJoinedColumns =
       new CaseInsensitiveLinkedHashMap<>();
-  @JsonIgnore 
   private final CaseInsensitiveLinkedHashMap<Column> rightUsingJoinedColumns =
       new CaseInsensitiveLinkedHashMap<>();
 
   private DatabaseSpecific databaseType = DatabaseSpecific.OTHER;
-  
+
   public enum ErrorMode {
     /**
      * STRICT error mode will fail when an object can't be resolved against schema.
@@ -115,7 +97,6 @@ public final class JdbcMetaData implements DatabaseMetaData {
       }
     }
   }
-
 
   /**
    * Instantiates a new virtual JDBC MetaData object with an empty CURRENT_CATALOG and an empty
@@ -184,16 +165,16 @@ public final class JdbcMetaData implements DatabaseMetaData {
    * @throws SQLException when the database fails to return CURRENT_CATALOG or CURRENT_SCHEMA
    */
   public JdbcMetaData(Connection con) throws SQLException {
-	DatabaseMetaData metaData = con.getMetaData();
-	this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
-	
+    DatabaseMetaData metaData = con.getMetaData();
+    this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
+
     try (Statement statement = con.createStatement();
         ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
       rs.next();
       currentCatalogName = rs.getString(1);
       currentSchemaName = rs.getString(2);
     }
-    
+
     for (JdbcCatalog jdbcCatalog : JdbcCatalog.getCatalogs(metaData)) {
       put(jdbcCatalog);
     }
@@ -202,7 +183,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
       put(jdbcSchema);
     }
 
-    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData,this.currentCatalogName,this.currentSchemaName)) {
+    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, this.currentCatalogName,
+        this.currentSchemaName)) {
       put(jdbcTable);
       jdbcTable.getColumns(metaData);
       if (jdbcTable.tableType.contains("TABLE")) {
@@ -226,19 +208,20 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   public JdbcTable put(JdbcTable jdbcTable) {
-    /*different DBs don't return correct catalog+schema info/hierarchy in getSchemas()
-     *it is fixed here by adding missing catalogs and/or schemas
+    /*
+     * different DBs don't return correct catalog+schema info/hierarchy in
+     * getSchemas() it is fixed here by adding missing catalogs and/or schemas
      */
-	  
-	JdbcCatalog jdbcCatalog = catalogs.get(jdbcTable.tableCatalog.toUpperCase());
-    if (jdbcCatalog==null) {
-    	jdbcCatalog = new JdbcCatalog(jdbcTable.tableCatalog, null);
-    	catalogs.put(jdbcCatalog.tableCatalog, jdbcCatalog);
+
+    JdbcCatalog jdbcCatalog = catalogs.get(jdbcTable.tableCatalog.toUpperCase());
+    if (jdbcCatalog == null) {
+      jdbcCatalog = new JdbcCatalog(jdbcTable.tableCatalog, null);
+      catalogs.put(jdbcCatalog.tableCatalog, jdbcCatalog);
     }
     JdbcSchema jdbcSchema = jdbcCatalog.get(jdbcTable.tableSchema.toUpperCase());
-    if (jdbcSchema==null) {
-    	jdbcSchema = new JdbcSchema(jdbcTable.tableSchema, jdbcCatalog.tableCatalog);
-    	jdbcCatalog.put(jdbcSchema);
+    if (jdbcSchema == null) {
+      jdbcSchema = new JdbcSchema(jdbcTable.tableSchema, jdbcCatalog.tableCatalog);
+      jdbcCatalog.put(jdbcSchema);
     }
     return jdbcSchema.put(jdbcTable);
   }
@@ -254,12 +237,17 @@ public final class JdbcMetaData implements DatabaseMetaData {
                 : rsMetaData.getColumnName(i),
             rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
             rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
-            "", rsMetaData.getColumnDisplaySize(i), i, "", 
-            rsMetaData.getScopeCatalog(i) !=null && !rsMetaData.getScopeCatalog(i).isEmpty() ? rsMetaData.getScopeCatalog(i) : rsMetaData.getCatalogName(i),
-            rsMetaData.getScopeSchema(i) != null && !rsMetaData.getScopeSchema(i).isEmpty() ? rsMetaData.getScopeSchema(i) : rsMetaData.getSchemaName(i),
-            rsMetaData.getScopeTable(i) !=null && !rsMetaData.getScopeTable(i).isEmpty() ? rsMetaData.getScopeTable(i) : rsMetaData.getTableName(i),
-            rsMetaData.getColumnName(i),
-            null, "", "");
+            "", rsMetaData.getColumnDisplaySize(i), i, "",
+            rsMetaData.getScopeCatalog(i) != null && !rsMetaData.getScopeCatalog(i).isEmpty()
+                ? rsMetaData.getScopeCatalog(i)
+                : rsMetaData.getCatalogName(i),
+            rsMetaData.getScopeSchema(i) != null && !rsMetaData.getScopeSchema(i).isEmpty()
+                ? rsMetaData.getScopeSchema(i)
+                : rsMetaData.getSchemaName(i),
+            rsMetaData.getScopeTable(i) != null && !rsMetaData.getScopeTable(i).isEmpty()
+                ? rsMetaData.getScopeTable(i)
+                : rsMetaData.getTableName(i),
+            rsMetaData.getColumnName(i), null, "", "");
       }
       put(t);
       return t;
@@ -320,7 +308,6 @@ public final class JdbcMetaData implements DatabaseMetaData {
           if (column.scopeTable == null || column.scopeTable.isEmpty()) {
             column.scopeTable = jdbcTable.tableName;
           }
-
 
           jdbcColumns.add(column);
         }
@@ -1569,20 +1556,18 @@ public final class JdbcMetaData implements DatabaseMetaData {
           column.columnName, column.dataType, column.typeName, column.columnSize,
           column.decimalDigits, column.numericPrecisionRadix, column.nullable, column.remarks,
           column.columnDefinition, column.characterOctetLength, column.ordinalPosition,
-          column.isNullable, column.scopeCatalog, column.scopeSchema, column.scopeTable, column.scopeColumn,
-          column.sourceDataType, column.isAutomaticIncrement, column.isGeneratedColumn,
-          column.getExpression());
+          column.isNullable, column.scopeCatalog, column.scopeSchema, column.scopeTable,
+          column.scopeColumn, column.sourceDataType, column.isAutomaticIncrement,
+          column.isGeneratedColumn, column.getExpression());
       table1.add(column1);
     }
     return table1;
   }
 
-  @JsonProperty("currentCatalog") 
   public String getCurrentCatalogName() {
     return currentCatalogName;
   }
 
-  @JsonProperty("currentSchema") 
   public String getCurrentSchemaName() {
     return currentSchemaName;
   }
@@ -1619,7 +1604,6 @@ public final class JdbcMetaData implements DatabaseMetaData {
     return errorMode;
   }
 
-
   /**
    * Sets the error mode.
    *
@@ -1631,82 +1615,30 @@ public final class JdbcMetaData implements DatabaseMetaData {
     return this;
   }
 
-  @JsonProperty("databaseType") 
   public String getDatabaseType() {
-	  return databaseType.name();
+    return databaseType.name();
   }
 
   public void setDatabaseType(String databaseType) {
-	  this.databaseType = DatabaseSpecific.valueOf(databaseType);
+    this.databaseType = DatabaseSpecific.valueOf(databaseType);
   }
 
-  @JsonProperty("catalogs") 
-  public List<JdbcCatalog> getCatalogsList(){
-	  return new ArrayList<JdbcCatalog>(this.catalogs.values());
+  public List<JdbcCatalog> getCatalogsList() {
+    return new ArrayList<JdbcCatalog>(this.catalogs.values());
   }
 
   public void setCatalogsList(List<JdbcCatalog> catalogs) {
-	  for(JdbcCatalog item:catalogs) {
-		  this.put(item);
-	  }
+    for (JdbcCatalog item : catalogs) {
+      this.put(item);
+    }
   }
 
-
   public void setCurrentCatalogName(String currentCatalogName) {
-	  this.currentCatalogName = currentCatalogName;
+    this.currentCatalogName = currentCatalogName;
   }
 
   public void setCurrentSchemaName(String currentSchemaName) {
-	  this.currentSchemaName = currentSchemaName;
-  }
-  
-  /**
-   * Serialize this MetaData object (and all its children) to JSON
-   * 
-   * @return String containing JSON
-   */
-  public String toJson() {
-	  // Use Jackson's ObjectMapper to serialize to JSON
-	  ObjectMapper objectMapper = new ObjectMapper();
-	  // Serialize the department object to JSON
-	  return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(this);
-
-
-  }
-  
-
-  /**
-   *  Serialize this MetaData object (and all its children) to JSON
-   * 
-   * @param writer the Writer object through which the JSON should be output
-   */
-  public void toJson(Writer writer) {
-	  ObjectMapper objectMapper = new ObjectMapper();
-	  objectMapper.writeValue(writer, this);
+    this.currentSchemaName = currentSchemaName;
   }
 
-
-  /**
-   * Read/deserialize JdbcMetaData object from JSON
-   * 
-   * @param jsonString representing the metadata
-   * @return
-   */
-  public static JdbcMetaData fromJson(String jsonString) {
-	  ObjectMapper objectMapper = new ObjectMapper();
-	  return objectMapper.readValue(jsonString, JdbcMetaData.class);
-  }
-
-  /**
-   * Read/deserialize JdbcMetaData object from JSON
-   * 
-   * @param json the Reader object through which to read JSON data
-   * @return
-   */
-  public static JdbcMetaData fromJson(Reader json) {
-	  ObjectMapper objectMapper = new ObjectMapper();
-	  return objectMapper.readValue(json, JdbcMetaData.class);
-  }
-
-  
 }

@@ -26,18 +26,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonIncludeProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
 import static java.sql.DatabaseMetaData.columnNullableUnknown;
 
-@JsonPropertyOrder({"name","type","typeID","size","decimalDigits","isNullable"})
-@JsonIncludeProperties({"name","type","typeID","size","decimalDigits","isNullable"})
-//@JsonIgnoreProperties(ignoreUnknown = true)
 public class JdbcColumn implements Comparable<JdbcColumn> {
 
   public String tableCatalog;
@@ -70,51 +60,51 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
 
   /* Each column description has the following columns:
   
-    TABLE_CAT String => table catalog (may be null)
-    TABLE_SCHEM String => table schema (may be null)
-    TABLE_NAME String => table name
-    COLUMN_NAME String => column name
-    DATA_TYPE int => SQL type from java.sql.Types
-    TYPE_NAME String => Data source dependent type name, for a UDT the type name is fully qualified
-    COLUMN_SIZE int => column size.
-    BUFFER_LENGTH is not used.
-    DECIMAL_DIGITS int => the number of fractional digits. Null is returned for data types where DECIMAL_DIGITS is not applicable.
-    NUM_PREC_RADIX int => Radix (typically either 10 or 2)
-    NULLABLE int => is NULL allowed.
-        columnNoNulls - might not allow NULL values
-        columnNullable - definitely allows NULL values
-        columnNullableUnknown - nullability unknown
-    REMARKS String => comment describing column (may be null)
-    COLUMN_DEF String => default value for the column, which should be interpreted as a string when the value is enclosed in single quotes (may be null)
-    SQL_DATA_TYPE int => unused
-    SQL_DATETIME_SUB int => unused
-    CHAR_OCTET_LENGTH int => for char types the maximum number of bytes in the column
-    ORDINAL_POSITION int => index of column in table (starting at 1)
-    IS_NULLABLE String => ISO rules are used to determine the nullability for a column.
-        YES --- if the column can include NULLs
-        NO --- if the column cannot include NULLs
-        empty string --- if the nullability for the column is unknown
-    SCOPE_CATALOG String => catalog of table that is the scope of a reference attribute (null if DATA_TYPE isn't REF)
-    SCOPE_SCHEMA String => schema of table that is the scope of a reference attribute (null if the DATA_TYPE isn't REF)
-    SCOPE_TABLE String => table name that is the scope of a reference attribute (null if the DATA_TYPE isn't REF)
-    SCOPE_COLUMN String => column name (original) within the SCOPE_TABLE
-    SOURCE_DATA_TYPE short => source type of a distinct type or user-generated Ref type, SQL type from java.sql.Types (null if DATA_TYPE isn't DISTINCT or user-generated REF)
-    IS_AUTOINCREMENT String => Indicates whether this column is auto incremented
-        YES --- if the column is auto incremented
-        NO --- if the column is not auto incremented
-        empty string --- if it cannot be determined whether the column is auto incremented
-    IS_GENERATEDCOLUMN String => Indicates whether this is a generated column
-        YES --- if this a generated column
-        NO --- if this not a generated column
-        empty string --- if it cannot be determined whether this is a generated column
-  */
+  TABLE_CAT String => table catalog (may be null)
+  TABLE_SCHEM String => table schema (may be null)
+  TABLE_NAME String => table name
+  COLUMN_NAME String => column name
+  DATA_TYPE int => SQL type from java.sql.Types
+  TYPE_NAME String => Data source dependent type name, for a UDT the type name is fully qualified
+  COLUMN_SIZE int => column size.
+  BUFFER_LENGTH is not used.
+  DECIMAL_DIGITS int => the number of fractional digits. Null is returned for data types where DECIMAL_DIGITS is not applicable.
+  NUM_PREC_RADIX int => Radix (typically either 10 or 2)
+  NULLABLE int => is NULL allowed.
+      columnNoNulls - might not allow NULL values
+      columnNullable - definitely allows NULL values
+      columnNullableUnknown - nullability unknown
+  REMARKS String => comment describing column (may be null)
+  COLUMN_DEF String => default value for the column, which should be interpreted as a string when the value is enclosed in single quotes (may be null)
+  SQL_DATA_TYPE int => unused
+  SQL_DATETIME_SUB int => unused
+  CHAR_OCTET_LENGTH int => for char types the maximum number of bytes in the column
+  ORDINAL_POSITION int => index of column in table (starting at 1)
+  IS_NULLABLE String => ISO rules are used to determine the nullability for a column.
+      YES --- if the column can include NULLs
+      NO --- if the column cannot include NULLs
+      empty string --- if the nullability for the column is unknown
+  SCOPE_CATALOG String => catalog of table that is the scope of a reference attribute (null if DATA_TYPE isn't REF)
+  SCOPE_SCHEMA String => schema of table that is the scope of a reference attribute (null if the DATA_TYPE isn't REF)
+  SCOPE_TABLE String => table name that is the scope of a reference attribute (null if the DATA_TYPE isn't REF)
+  SCOPE_COLUMN String => column name (original) within the SCOPE_TABLE
+  SOURCE_DATA_TYPE short => source type of a distinct type or user-generated Ref type, SQL type from java.sql.Types (null if DATA_TYPE isn't DISTINCT or user-generated REF)
+  IS_AUTOINCREMENT String => Indicates whether this column is auto incremented
+      YES --- if the column is auto incremented
+      NO --- if the column is not auto incremented
+      empty string --- if it cannot be determined whether the column is auto incremented
+  IS_GENERATEDCOLUMN String => Indicates whether this is a generated column
+      YES --- if this a generated column
+      NO --- if this not a generated column
+      empty string --- if it cannot be determined whether this is a generated column
+   */
 
   public JdbcColumn(String tableCatalog, String tableSchema, String tableName, String columnName,
       Integer dataType, String typeName, Integer columnSize, Integer decimalDigits,
       Integer numericPrecisionRadix, Integer nullable, String remarks, String columnDefinition,
       Integer characterOctetLength, Integer ordinalPosition, String isNullable, String scopeCatalog,
-      String scopeSchema, String scopeTable, String scopeColumn, Short sourceDataType, String isAutomaticIncrement,
-      String isGeneratedColumn, Expression expression) {
+      String scopeSchema, String scopeTable, String scopeColumn, Short sourceDataType,
+      String isAutomaticIncrement, String isGeneratedColumn, Expression expression) {
     this.tableCatalog = tableCatalog;
     this.tableSchema = tableSchema;
     this.tableName = tableName;
@@ -144,21 +134,21 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
       Integer dataType, String typeName, Integer columnSize, Integer decimalDigits,
       Integer nullable, String remarks, Expression expression) {
     this(tableCatalog, tableSchema, tableName, columnName, dataType, typeName, columnSize,
-        decimalDigits, 10, nullable, remarks, "", 0, 0, "", tableCatalog, tableSchema, tableName, columnName,
-        (short) 0, "", "", expression);
+        decimalDigits, 10, nullable, remarks, "", 0, 0, "", tableCatalog, tableSchema, tableName,
+        columnName, (short) 0, "", "", expression);
   }
 
   public JdbcColumn(String columnName, Integer dataType, String typeName, Integer columnSize,
       Integer decimalDigits, Integer nullable, String remarks, Expression expression) {
     this("", "", "", columnName, dataType, typeName, columnSize, decimalDigits, 10, nullable,
-        remarks, "", 0, 0, "", "", "", "","", (short) 0, "", "", expression);
+        remarks, "", 0, 0, "", "", "", "", "", (short) 0, "", "", expression);
   }
 
   public JdbcColumn(String tableCatalog, String tableSchema, String tableName, String columnName,
       Expression expression) {
     this(tableCatalog, tableSchema, tableName, columnName, Types.OTHER, "Other", 0, 0, 10,
-        columnNullableUnknown, "", "", 0, 0, "", tableCatalog, tableSchema, tableName, columnName, (short) 0,
-        "", "", expression);
+        columnNullableUnknown, "", "", 0, 0, "", tableCatalog, tableSchema, tableName, columnName,
+        (short) 0, "", "", expression);
   }
 
   public JdbcColumn(String columnName, Expression expression) {
@@ -169,11 +159,11 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
   public JdbcColumn(String columnName) {
     this(columnName, new Column(columnName));
   }
-  
+
   public JdbcColumn() {
-	  this("dummy"); //name changed later during JSON deserialization
+    this("dummy"); // name changed later during JSON deserialization
   }
-  
+
 
   @Override
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
@@ -288,12 +278,10 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     return result;
   }
 
-  @JsonIgnore
   public JdbcColumn getParent() {
     return parent;
   }
 
-  @JsonIgnore
   public List<JdbcColumn> getChildren() {
     return childNodes;
   }
@@ -312,7 +300,6 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     return add(Arrays.asList(children));
   }
 
-  @JsonIgnore
   public Expression getExpression() {
     return expression;
   }
@@ -322,67 +309,60 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
     return this;
   }
 
-  @JsonProperty("name") 
   public String getColumnName() {
-	  return columnName;
+    return columnName;
   }
 
   public void setColumnName(String columnName) {
-	  this.columnName = columnName;
+    this.columnName = columnName;
   }
 
-  @JsonProperty("typeID") 
   public Integer getDataType() {
-	  return dataType;
+    return dataType;
   }
 
   public void setDataType(Integer dataType) {
-	  this.dataType = dataType;
+    this.dataType = dataType;
   }
 
-  @JsonProperty("type") 
   public String getTypeName() {
-	  return typeName;
+    return typeName;
   }
 
   public void setTypeName(String typeName) {
-	  this.typeName = typeName;
+    this.typeName = typeName;
   }
 
-  @JsonProperty("size") 
   public Integer getColumnSize() {
-	  return columnSize;
+    return columnSize;
   }
 
   public void setColumnSize(Integer columnSize) {
-	  this.columnSize = columnSize;
+    this.columnSize = columnSize;
   }
 
-  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
   public Integer getDecimalDigits() {
-	  return decimalDigits;
+    return decimalDigits;
   }
 
   public void setDecimalDigits(Integer decimalDigits) {
-	  this.decimalDigits = decimalDigits;
+    this.decimalDigits = decimalDigits;
   }
 
-  @JsonProperty("nullable") 
   public Integer getNullable() {
-	  return nullable;
+    return nullable;
   }
 
   public void setNullable(Integer nullable) {
-	  this.nullable = nullable;
+    this.nullable = nullable;
   }
 
-  @JsonProperty("isNullable") 
   public Boolean getIsNullable() {
-	  return isNullable.equalsIgnoreCase("YES");
+    return isNullable.equalsIgnoreCase("YES");
   }
 
   public void setIsNullable(Boolean isNullable) {
-	  this.isNullable = isNullable ? "YES" : "NO";
+    this.isNullable = isNullable ? "YES" : "NO";
   }
 
 }

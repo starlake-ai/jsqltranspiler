@@ -196,27 +196,29 @@ public class JSQLColumResolver
   }
 
   /**
-   *  Resolves the actual columns returned by a SELECT
-   * 
+   * Resolves the actual columns returned by a SELECT statement for an empty CURRENT_CATALOG and an
+   * empty CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
+   *
    * @param sqlStr the `SELECT` statement text
-   * @param consumer the parser configuration - for details, @see <a gref="https://jsqlparser.github.io/JSqlParser/usage.html">JSQLParser</a>  
+   * @param consumer the parser configuration - for details, @see
+   *        <a gref="https://jsqlparser.github.io/JSqlParser/usage.html">JSQLParser</a>
    * @return the ResultSetMetaData representing the actual columns returned by the `SELECT`
    *         statement
-   * @throws JSQLParserException
+   * @throws JSQLParserException when the `SELECT` statement text can not be parsed
    */
-  public JdbcResultSetMetaData getResultSetMetaData(String sqlStr,  Consumer<CCJSqlParser> consumer) throws JSQLParserException {
 
-	  Statement st = CCJSqlParserUtil.parse(sqlStr, consumer);
-	  if (st instanceof Select) {
-		  Select select = (Select) st;
-		  return select.accept((SelectVisitor<JdbcResultSetMetaData>) this,
-				  JdbcMetaData.copyOf(metaData));
-	  } else {
-		  throw new RuntimeException("Unsupported Statement");
-	  }
+  public JdbcResultSetMetaData getResultSetMetaData(String sqlStr, Consumer<CCJSqlParser> consumer)
+      throws JSQLParserException {
+
+    Statement st = CCJSqlParserUtil.parse(sqlStr, consumer);
+    if (st instanceof Select) {
+      Select select = (Select) st;
+      return select.accept((SelectVisitor<JdbcResultSetMetaData>) this,
+          JdbcMetaData.copyOf(metaData));
+    } else {
+      throw new RuntimeException("Unsupported Statement");
+    }
   }
-
-
 
   /**
    * Gets the rewritten statement text with any AllColumns "*" or AllTableColumns "t.*" expression
@@ -289,21 +291,20 @@ public class JSQLColumResolver
     return builder.getConvertedTree(this);
   }
 
-  
-  //getting lineage and configuring parse behavior - @see <a gref="https://jsqlparser.github.io/JSqlParser/usage.html">JSQLParser</a>  
-  public <T> T getLineage(Class<? extends TreeBuilder<T>> treeBuilderClass, String sqlStr, Consumer<CCJSqlParser> consumer)
-	      throws NoSuchMethodException, InvocationTargetException, InstantiationException,
-	      IllegalAccessException, SQLException, JSQLParserException {
-	    JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr,consumer);
-	    TreeBuilder<T> builder =
-	        treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
-	    return builder.getConvertedTree(this);
-	  }
-  
-  
-  
 
-  
+  // getting lineage and configuring parse behavior - @see <a
+  // gref="https://jsqlparser.github.io/JSqlParser/usage.html">JSQLParser</a>
+  public <T> T getLineage(Class<? extends TreeBuilder<T>> treeBuilderClass, String sqlStr,
+      Consumer<CCJSqlParser> consumer) throws NoSuchMethodException, InvocationTargetException,
+      InstantiationException, IllegalAccessException, SQLException, JSQLParserException {
+    JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr, consumer);
+    TreeBuilder<T> builder =
+        treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
+    return builder.getConvertedTree(this);
+  }
+
+
+
   public static String getQualifiedTableName(String catalogName, String schemaName,
       String tableName) {
     StringBuilder builder = new StringBuilder();
@@ -487,7 +488,7 @@ public class JSQLColumResolver
     /* this is valid SQL:
     
     SELECT
-        main.sales.salesid
+    main.sales.salesid
     FROM main.sales
      */
 
