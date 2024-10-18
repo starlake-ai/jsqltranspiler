@@ -31,10 +31,6 @@ under the License.
 
 	<rule ref="category/java/bestpractices.xml/AvoidUsingHardCodedIP" />
 	<rule ref="category/java/bestpractices.xml/CheckResultSet" />
-    
-    <!-- this little fellow will complain about PACKAGE based imports -->
-    <!--<rule ref="category/java/bestpractices.xml/UnusedImports" /> -->
-
 	<rule ref="category/java/bestpractices.xml/UnusedFormalParameter" />
 	<rule ref="category/java/bestpractices.xml/UnusedLocalVariable" />
 	<rule ref="category/java/bestpractices.xml/UnusedPrivateField" />
@@ -66,21 +62,7 @@ under the License.
 	<rule ref="category/java/design.xml/SimplifiedTernary" />
 	<rule ref="category/java/design.xml/UselessOverridingMethod" />
 	<rule ref="category/java/design.xml/AvoidThrowingNullPointerException" />
-
-	<!--
-	<rule ref="category/java/design.xml/NPathComplexity">
-		<properties>
-			<property name="reportLevel" value="200" />
-		</properties>
-	</rule>
-	-->
-
-
-	<!-- for Codazy -->
 	<rule ref="category/java/design.xml/CyclomaticComplexity" />
-	<rule ref="category/java/design.xml/ExcessiveMethodLength" />
-	<!-- <rule ref="category/java/bestpractices.xml/SwitchStmtsShouldHaveDefault" /> -->
-
 	<rule ref="category/java/errorprone.xml/AvoidBranchingStatementAsLastInLoop" />
 	<rule ref="category/java/errorprone.xml/AvoidDecimalLiteralsInBigDecimalConstructor" />
 	<rule ref="category/java/errorprone.xml/AvoidMultipleUnaryOperators" />
@@ -90,15 +72,6 @@ under the License.
 	<rule ref="category/java/errorprone.xml/ClassCastExceptionWithToArray" />
 	<rule ref="category/java/errorprone.xml/DontUseFloatTypeForLoopIndices" />
 	<rule ref="category/java/errorprone.xml/EmptyCatchBlock" />
-	<rule ref="category/java/errorprone.xml/EmptyFinallyBlock" />
-	<rule ref="category/java/errorprone.xml/EmptyIfStmt" />
-	<rule ref="category/java/errorprone.xml/EmptyInitializer" />
-	<rule ref="category/java/errorprone.xml/EmptyStatementBlock" />
-	<rule ref="category/java/errorprone.xml/EmptyStatementNotInLoop" />
-	<rule ref="category/java/errorprone.xml/EmptySwitchStatements" />
-	<rule ref="category/java/errorprone.xml/EmptySynchronizedBlock" />
-	<rule ref="category/java/errorprone.xml/EmptyTryBlock" />
-	<rule ref="category/java/errorprone.xml/EmptyWhileStmt" />
 	<rule ref="category/java/errorprone.xml/JumbledIncrementer" />
 	<rule ref="category/java/errorprone.xml/MisplacedNullCheck" />
 	<rule ref="category/java/errorprone.xml/OverrideBothEqualsAndHashcode" />

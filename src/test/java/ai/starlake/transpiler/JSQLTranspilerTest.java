@@ -72,7 +72,7 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-
+@SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class JSQLTranspilerTest {
   final static Logger LOGGER = Logger.getLogger(JSQLTranspilerTest.class.getName());
   private final static String EXTRACTION_PATH =
@@ -97,7 +97,7 @@ public class JSQLTranspilerTest {
     @Override
     public boolean accept(File dir, String name) {
       String filename = name.toLowerCase().trim();
-      return name.endsWith(".sql") && !name.startsWith("disabled");
+      return filename.endsWith(".sql") && !filename.startsWith("disabled");
     }
   };
 
@@ -146,6 +146,7 @@ public class JSQLTranspilerTest {
         .map(row -> Arguments.of(row[0], row[1], row[2]));
   }
 
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   protected static Map<File, List<SQLTest>> getSqlTestMap(File[] testFiles,
       JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
     LinkedHashMap<File, List<SQLTest>> sqlMap = new LinkedHashMap<>();
@@ -250,10 +251,11 @@ public class JSQLTranspilerTest {
   @BeforeAll
   // setting up a TEST Database according to
   // https://docs.aws.amazon.com/redshift/latest/dg/c_sampledb.html
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   static synchronized void init()
       throws SQLException, IOException, JSQLParserException, InterruptedException {
     File extractionPathFolder = new File(EXTRACTION_PATH);
-    boolean mkdirs = extractionPathFolder.mkdirs();
+    extractionPathFolder.mkdirs();
 
     // Currently, Duck DB Home resolution in Java seems broken
     File fileDuckDB =
@@ -335,7 +337,7 @@ public class JSQLTranspilerTest {
 
               File f = new File(fileName);
               if (f.exists()) {
-                boolean delete = f.delete();
+                f.delete();
               }
             }
           }
@@ -451,18 +453,6 @@ public class JSQLTranspilerTest {
       // remove comments only
       return SQL_COMMENT_PATTERN.matcher(originalSql).replaceAll("");
     }
-  }
-
-  private static List<Object[]> resultSetToList(ResultSet resultSet) throws SQLException {
-    List<Object[]> records = new ArrayList<>();
-    while (resultSet.next()) {
-      Object[] record = new Object[resultSet.getMetaData().getColumnCount()];
-      for (int i = 0; i < record.length; i++) {
-        record[i] = resultSet.getObject(i + 1);
-      }
-      records.add(record);
-    }
-    return records;
   }
 
   @ParameterizedTest(name = "{index} {0} {1}: {2}")

@@ -39,6 +39,7 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
   }
 
 
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   private String getNodeText(JdbcColumn column, String alias) {
     StringBuilder b = new StringBuilder();
     if (alias != null && !alias.isEmpty()) {

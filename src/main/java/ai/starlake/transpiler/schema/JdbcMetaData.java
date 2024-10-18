@@ -167,9 +167,13 @@ public final class JdbcMetaData implements DatabaseMetaData {
     // todo: customise this for various databases, e. g. Oracle would need a "FROM DUAL"
     try (Statement statement = con.createStatement();
         ResultSet rs = statement.executeQuery("SELECT current_database(), current_schema()")) {
-      rs.next();
-      currentCatalogName = rs.getString(1);
-      currentSchemaName = rs.getString(2);
+      if (rs.next()) {
+        currentCatalogName = rs.getString(1);
+        currentSchemaName = rs.getString(2);
+      } else {
+        currentCatalogName = "";
+        currentSchemaName = "";
+      }
     }
     DatabaseMetaData metaData = con.getMetaData();
     for (JdbcCatalog jdbcCatalog : JdbcCatalog.getCatalogs(metaData)) {
@@ -1375,7 +1379,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
 
   @Override
   public int getSQLStateType() {
-    return DatabaseMetaData.sqlStateSQL;
+    return sqlStateSQL;
   }
 
   @Override

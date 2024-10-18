@@ -63,12 +63,8 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
       }
     }
 
-
     String[] valueArray = new String[metadata.getColumnCount()];
     for (int i = 1; i <= metadata.getColumnCount(); i++) {
-      int displaySize = metadata.getColumnDisplaySize(i);
-      int precision = metadata.getPrecision(i);
-      int scale = metadata.getScale(i);
       valueArray[i - 1] = getColumnValue(rs, metadata.getColumnType(i), i, trim, dateFormatString,
           timeFormatString);
     }
@@ -183,6 +179,7 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
     return value;
   }
 
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   private String getColumnValue(ResultSet rs, int colType, int colIndex, boolean trim,
       String dateFormatString, String timestampFormatString) throws SQLException, IOException {
 
