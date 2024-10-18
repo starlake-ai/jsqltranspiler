@@ -290,8 +290,6 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     String sqlStr =
         "SELECT Sum(colBA + colBB) AS total FROM a INNER JOIN (SELECT * FROM b) c ON a.col1 = c.col1";
-    String[][] expected = new String[][] {{"", "Sum", "total"}};
-
     /*
     SELECT
      └─total AS Function: Sum(colBA + colBB)
@@ -429,12 +427,9 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     // get the List of JdbcColumns, each holding its lineage using the TreeNode interface
     JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
-    JdbcResultSetMetaData resultSetMetaData = resolver.getResultSetMetaData(sqlStr);
 
     System.out.println(resolver.getLineage(AsciiTreeBuilder.class, sqlStr));
-
     System.out.println(resolver.getLineage(XmlTreeBuilder.class, sqlStr));
-
     System.out.println(resolver.getLineage(JsonTreeBuilder.class, sqlStr));
   }
 
@@ -781,6 +776,23 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + " └─amount2 AS yourcte.amount → sales.orders.amount : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
+  }
+
+  @Test
+  void testScopeColumn() throws JSQLParserException, SQLException, InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
+    String[][] schemaDefinition = {
+        // Table a
+        {"a", "id"},
+
+        // Table b
+        {"mytable", "id", "cola", "colb"}};
+
+    String sqlStr = "select * from a, (select cola id, colb b1 from mytable) b where a.id=b.id";
+
+    // get the List of JdbcColumns, each holding its lineage using the TreeNode interface
+    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
+    System.out.println(resolver.getLineage(AsciiTreeBuilder.class, sqlStr));
   }
 
 }

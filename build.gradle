@@ -3,7 +3,7 @@ import se.bjurr.gitchangelog.plugin.gradle.GitChangelogTask
 plugins {
     id 'java'
     id 'application'
-    id 'com.github.johnrengelman.shadow' version 'latest.release'
+    id 'com.gradleup.shadow' version 'latest.release'
     id 'maven-publish'
     id 'signing'
 
@@ -69,10 +69,6 @@ dependencies {
 
     // Java Doc in XML Format
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
-         
-    //for JSON (de)serialization
-    implementation 'org.json:json:+'
-    
 }
 
 configurations.configureEach {
@@ -213,7 +209,7 @@ license {
     includes(["**/*.properties", "**/*.java", "**/*.xml"])
 
     ext.year = Calendar.getInstance().get(Calendar.YEAR)
-    ext.name = 'Andreas Reichel'
+    ext.name = 'Starlake.AI'
     ext.email = 'andreas@manticore-projects.com'
 
     strictCheck = false
@@ -289,8 +285,10 @@ spotbugs {
 }
 
 pmd {
+    toolVersion = "7.6.0"
+
     consoleOutput = true
-    sourceSets = [sourceSets.main]
+    sourceSets = [ sourceSets.main, sourceSets.test]
 
     // clear the ruleset in order to use configured rules only
     ruleSets = []

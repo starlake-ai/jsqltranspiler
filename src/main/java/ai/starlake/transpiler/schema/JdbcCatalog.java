@@ -21,7 +21,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -43,8 +42,6 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
     this.catalogSeparator = catalogSeparator != null ? catalogSeparator : ".";
   }
 
-  public JdbcCatalog() {}
-
   public static Collection<JdbcCatalog> getCatalogs(DatabaseMetaData metaData) throws SQLException {
     ArrayList<JdbcCatalog> jdbcCatalogs = new ArrayList<>();
 
@@ -52,14 +49,14 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
 
       String catalogSeparator = metaData.getCatalogSeparator();
       while (rs.next()) {
-        String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT");
-        if (tableCatalog != null && !tableCatalog.isEmpty()) {
-          JdbcCatalog jdbcCatalog = new JdbcCatalog(tableCatalog, catalogSeparator);
-          jdbcCatalogs.add(jdbcCatalog);
-        }
+        String tableCatalog = rs.getString("TABLE_CAT");
+        JdbcCatalog jdbcCatalog = new JdbcCatalog(tableCatalog, catalogSeparator);
+
+        jdbcCatalogs.add(jdbcCatalog);
       }
-      // add <empty> catalog as some DBs don't have the concept of catalog for tables
-      jdbcCatalogs.add(new JdbcCatalog("", "."));
+      if (jdbcCatalogs.isEmpty()) {
+        jdbcCatalogs.add(new JdbcCatalog("", "."));
+      }
 
     }
     return jdbcCatalogs;
@@ -170,6 +167,7 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
     return schemas.merge(key, value, remappingFunction);
   }
 
+
   public boolean containsKey(String key) {
     return schemas.containsKey(key);
   }
@@ -188,32 +186,5 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
 
   public Set<String> keySet() {
     return schemas.keySet();
-  }
-
-  public String getTableCatalog() {
-    return tableCatalog;
-  }
-
-  public void setTableCatalog(String tableCatalog) {
-    this.tableCatalog = tableCatalog;
-  }
-
-  public String getCatalogSeparator() {
-    return catalogSeparator;
-  }
-
-  public void setCatalogSeparator(String catalogSeparator) {
-    this.catalogSeparator = catalogSeparator;
-  }
-
-  public List<JdbcSchema> getSchemas() {
-    return new ArrayList<JdbcSchema>(schemas.values());
-  }
-
-  public void setSchemas(List<JdbcSchema> schemas) {
-    for (JdbcSchema item : schemas) {
-      item.tableCatalog = this.tableCatalog;
-      put(item);
-    }
   }
 }

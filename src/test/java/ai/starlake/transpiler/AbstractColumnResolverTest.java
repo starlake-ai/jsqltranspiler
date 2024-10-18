@@ -126,8 +126,6 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
       IllegalAccessException, JSQLParserException {
 
     JSQLColumResolver resolver = new JSQLColumResolver(metaData);
-    JdbcResultSetMetaData resultSetMetaData = resolver.getResultSetMetaData(sqlStr);
-
     String actual = resolver.getLineage(AsciiTreeBuilder.class, sqlStr);
     Assertions.assertThat(actual).isEqualToIgnoringWhitespace(expected);
 
@@ -163,8 +161,7 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
       throws SQLException, JSQLParserException {
     JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
     String actual = resolver.getResolvedStatementText(sqlStr);
-    Assertions.assertThat(JSQLTranspilerTest.sanitize(actual))
-        .isEqualToIgnoringCase(JSQLTranspilerTest.sanitize(expected));
+    Assertions.assertThat(sanitize(actual)).isEqualToIgnoringCase(sanitize(expected));
     return actual;
   }
 

@@ -32,7 +32,7 @@ public class JSQLColumnResolverDebugTest extends AbstractColumnResolverTest {
     @Override
     public boolean accept(File dir, String name) {
       String filename = name.toLowerCase().trim();
-      return name.endsWith(".sql") && name.startsWith("debug");
+      return filename.endsWith(".sql") && filename.startsWith("debug");
     }
   };
 
