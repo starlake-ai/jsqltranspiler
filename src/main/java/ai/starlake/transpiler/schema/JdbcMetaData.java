@@ -41,8 +41,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
-import ai.starlake.transpiler.schema.JdbcUtils.DatabaseSpecific;
-
 /**
  * The type Jdbc metadata.
  */
@@ -51,9 +49,10 @@ public final class JdbcMetaData implements DatabaseMetaData {
   public final static Logger LOGGER = Logger.getLogger(JdbcMetaData.class.getName());
   public static final Map<Integer, String> SQL_TYPE_NAME_MAP = new HashMap<>();
 
-  private CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs = new CaseInsensitiveLinkedHashMap<>();
-  private String currentCatalogName;
-  private String currentSchemaName;
+  private final CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs =
+      new CaseInsensitiveLinkedHashMap<>();
+  private final String currentCatalogName;
+  private final String currentSchemaName;
   private String catalogSeparator = ".";
 
   private final CaseInsensitiveLinkedHashMap<Table> fromTables =
@@ -61,12 +60,11 @@ public final class JdbcMetaData implements DatabaseMetaData {
 
   private final CaseInsensitiveLinkedHashMap<Table> naturalJoinedTables =
       new CaseInsensitiveLinkedHashMap<>();
+
   private final CaseInsensitiveLinkedHashMap<Column> leftUsingJoinedColumns =
       new CaseInsensitiveLinkedHashMap<>();
   private final CaseInsensitiveLinkedHashMap<Column> rightUsingJoinedColumns =
       new CaseInsensitiveLinkedHashMap<>();
-
-  private DatabaseSpecific databaseType = DatabaseSpecific.OTHER;
 
   public enum ErrorMode {
     /**
@@ -97,6 +95,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
       }
     }
   }
+
 
   /**
    * Instantiates a new virtual JDBC MetaData object with an empty CURRENT_CATALOG and an empty
@@ -165,16 +164,14 @@ public final class JdbcMetaData implements DatabaseMetaData {
    * @throws SQLException when the database fails to return CURRENT_CATALOG or CURRENT_SCHEMA
    */
   public JdbcMetaData(Connection con) throws SQLException {
-    DatabaseMetaData metaData = con.getMetaData();
-    this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
-
+    // todo: customise this for various databases, e. g. Oracle would need a "FROM DUAL"
     try (Statement statement = con.createStatement();
-        ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
+        ResultSet rs = statement.executeQuery("SELECT current_database(), current_schema()")) {
       rs.next();
       currentCatalogName = rs.getString(1);
       currentSchemaName = rs.getString(2);
     }
-
+    DatabaseMetaData metaData = con.getMetaData();
     for (JdbcCatalog jdbcCatalog : JdbcCatalog.getCatalogs(metaData)) {
       put(jdbcCatalog);
     }
@@ -183,8 +180,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
       put(jdbcSchema);
     }
 
-    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, this.currentCatalogName,
-        this.currentSchemaName)) {
+    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData)) {
       put(jdbcTable);
       jdbcTable.getColumns(metaData);
       if (jdbcTable.tableType.contains("TABLE")) {
@@ -208,21 +204,9 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   public JdbcTable put(JdbcTable jdbcTable) {
-    /*
-     * different DBs don't return correct catalog+schema info/hierarchy in
-     * getSchemas() it is fixed here by adding missing catalogs and/or schemas
-     */
-
     JdbcCatalog jdbcCatalog = catalogs.get(jdbcTable.tableCatalog.toUpperCase());
-    if (jdbcCatalog == null) {
-      jdbcCatalog = new JdbcCatalog(jdbcTable.tableCatalog, null);
-      catalogs.put(jdbcCatalog.tableCatalog, jdbcCatalog);
-    }
     JdbcSchema jdbcSchema = jdbcCatalog.get(jdbcTable.tableSchema.toUpperCase());
-    if (jdbcSchema == null) {
-      jdbcSchema = new JdbcSchema(jdbcTable.tableSchema, jdbcCatalog.tableCatalog);
-      jdbcCatalog.put(jdbcSchema);
-    }
+
     return jdbcSchema.put(jdbcTable);
   }
 
@@ -237,17 +221,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
                 : rsMetaData.getColumnName(i),
             rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
             rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
-            "", rsMetaData.getColumnDisplaySize(i), i, "",
-            rsMetaData.getScopeCatalog(i) != null && !rsMetaData.getScopeCatalog(i).isEmpty()
-                ? rsMetaData.getScopeCatalog(i)
-                : rsMetaData.getCatalogName(i),
-            rsMetaData.getScopeSchema(i) != null && !rsMetaData.getScopeSchema(i).isEmpty()
-                ? rsMetaData.getScopeSchema(i)
-                : rsMetaData.getSchemaName(i),
-            rsMetaData.getScopeTable(i) != null && !rsMetaData.getScopeTable(i).isEmpty()
-                ? rsMetaData.getScopeTable(i)
-                : rsMetaData.getTableName(i),
-            rsMetaData.getColumnName(i), null, "", "");
+            "", rsMetaData.getColumnDisplaySize(i), i, "", rsMetaData.getScopeCatalog(i),
+            rsMetaData.getScopeSchema(i), rsMetaData.getScopeTable(i), null, "", "");
       }
       put(t);
       return t;
@@ -308,6 +283,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
           if (column.scopeTable == null || column.scopeTable.isEmpty()) {
             column.scopeTable = jdbcTable.tableName;
           }
+
 
           jdbcColumns.add(column);
         }
@@ -1557,8 +1533,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
           column.decimalDigits, column.numericPrecisionRadix, column.nullable, column.remarks,
           column.columnDefinition, column.characterOctetLength, column.ordinalPosition,
           column.isNullable, column.scopeCatalog, column.scopeSchema, column.scopeTable,
-          column.scopeColumn, column.sourceDataType, column.isAutomaticIncrement,
-          column.isGeneratedColumn, column.getExpression());
+          column.sourceDataType, column.isAutomaticIncrement, column.isGeneratedColumn,
+          column.getExpression());
       table1.add(column1);
     }
     return table1;
@@ -1604,6 +1580,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
     return errorMode;
   }
 
+
   /**
    * Sets the error mode.
    *
@@ -1614,31 +1591,4 @@ public final class JdbcMetaData implements DatabaseMetaData {
     this.errorMode = errorMode;
     return this;
   }
-
-  public String getDatabaseType() {
-    return databaseType.name();
-  }
-
-  public void setDatabaseType(String databaseType) {
-    this.databaseType = DatabaseSpecific.valueOf(databaseType);
-  }
-
-  public List<JdbcCatalog> getCatalogsList() {
-    return new ArrayList<JdbcCatalog>(this.catalogs.values());
-  }
-
-  public void setCatalogsList(List<JdbcCatalog> catalogs) {
-    for (JdbcCatalog item : catalogs) {
-      this.put(item);
-    }
-  }
-
-  public void setCurrentCatalogName(String currentCatalogName) {
-    this.currentCatalogName = currentCatalogName;
-  }
-
-  public void setCurrentSchemaName(String currentSchemaName) {
-    this.currentSchemaName = currentSchemaName;
-  }
-
 }
