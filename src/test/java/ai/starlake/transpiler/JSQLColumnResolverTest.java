@@ -783,4 +783,24 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
 
+  @Test
+  void testScopeColumn() throws JSQLParserException, SQLException, InvocationTargetException,
+          NoSuchMethodException, InstantiationException, IllegalAccessException {
+    String[][] schemaDefinition = {
+            // Table a
+            {"a", "id"},
+
+            // Table b
+            {"mytable", "id", "cola", "colb"}};
+
+    String sqlStr =
+            "select * from a, (select cola id, colb b1 from mytable) b where a.id=b.id";
+
+    // get the List of JdbcColumns, each holding its lineage using the TreeNode interface
+    JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
+    JdbcResultSetMetaData resultSetMetaData = resolver.getResultSetMetaData(sqlStr);
+
+    System.out.println(resolver.getLineage(AsciiTreeBuilder.class, sqlStr));
+  }
+
 }
