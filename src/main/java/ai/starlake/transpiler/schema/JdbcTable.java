@@ -35,6 +35,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
+@SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class JdbcTable implements Comparable<JdbcTable> {
   public static final Logger LOGGER = Logger.getLogger(JdbcTable.class.getName());
 
