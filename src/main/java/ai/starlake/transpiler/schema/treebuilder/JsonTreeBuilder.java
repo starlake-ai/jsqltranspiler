@@ -88,7 +88,7 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
         addIndentation(indent + 2);
         jsonBuilder.append("\"scope\": \"")
             .append(JSQLColumResolver.getQualifiedColumnName(column.scopeCatalog,
-                column.scopeSchema, column.scopeTable, column.columnName))
+                column.scopeSchema, column.scopeTable, column.scopeColumn))
             .append("\",");
       }
 
@@ -111,7 +111,7 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
 
       jsonBuilder.append("\n");
       addIndentation(indent + 2);
-      jsonBuilder.append("\"nullable\": ").append(column.isNullable);
+      jsonBuilder.append("\"nullable\": ").append(column.isNullable.equalsIgnoreCase("YES"));
     }
 
     Expression expression = column.getExpression();

@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -76,52 +77,58 @@ public class JdbcTable implements Comparable<JdbcTable> {
     this(catalog.tableCatalog, schema.tableSchema, tableName);
   }
 
-  public static Collection<JdbcTable> getTables(DatabaseMetaData metaData) throws SQLException {
+  public JdbcTable() {}
+
+  public static Collection<JdbcTable> getTables(DatabaseMetaData metaData, String currentCatalog,
+      String currentSchema) throws SQLException {
     ArrayList<JdbcTable> jdbcTables = new ArrayList<>();
-    ArrayList<String> tableTypes = new ArrayList<>();
 
-    try (ResultSet rs = metaData.getTableTypes();) {
-      while (rs.next()) {
-        tableTypes.add(rs.getString(1));
-      }
-    }
+    JdbcUtils.DatabaseSpecific dbSpecific =
+        JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
 
-    try (ResultSet rs =
-        metaData.getTables(null, null, "%", tableTypes.toArray(new String[tableTypes.size()]));) {
+    try (ResultSet rs = metaData.getTables(null, null, "%", dbSpecific.tableTypes);) {
       while (rs.next()) {
         // TABLE_CATALOG String => catalog name (may be null)
-        String tableCatalog = rs.getString("TABLE_CAT");
+        String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT", currentCatalog);
 
         // TABLE_SCHEM String => schema name
-        String tableSchema = rs.getString("TABLE_SCHEM");
+        String tableSchema = JdbcUtils.getStringSafe(rs, "TABLE_SCHEM", currentSchema);
+
+        // Should this schema be included or ignored ?
+        if (!dbSpecific.processSchema(tableSchema)) {
+          continue;
+        }
 
         // TABLE_NAME String => table name
-        String tableName = rs.getString("TABLE_NAME");
+        String tableName = JdbcUtils.getStringSafe(rs, "TABLE_NAME");
 
         // TABLE_TYPE String => table type. Typical
-        // types are "TABLE", "VIEW", "SYSTEM TABLE", "GLOBAL TEMPORARY", "LOCAL TEMPORARY",
+        // types are "TABLE", "VIEW", "SYSTEM TABLE", "GLOBAL TEMPORARY", "LOCAL
+        // TEMPORARY",
         // "ALIAS", "SYNONYM".
-        String tableType = rs.getString("TABLE_TYPE");
+        String tableType = JdbcUtils.getStringSafe(rs, "TABLE_TYPE");
 
         // REMARKS String => explanatory comment on the table(may be null)
-        String remarks = rs.getString("REMARKS");
+        String remarks = JdbcUtils.getStringSafe(rs, "REMARKS");
 
         // TYPE_CAT String => the types catalog (may be null)
-        String typeCatalog = rs.getString("TYPE_CAT");
+        String typeCatalog = JdbcUtils.getStringSafe(rs, "TYPE_CAT");
 
         // TYPE_SCHEM String => the types schema (may be null)
-        String typeSchema = rs.getString("TYPE_SCHEM");
+        String typeSchema = JdbcUtils.getStringSafe(rs, "TYPE_SCHEM");
 
         // TYPE_NAME String => type name (may be null)
-        String typeName = rs.getString("TYPE_NAME");
+        String typeName = JdbcUtils.getStringSafe(rs, "TYPE_NAME");
 
         // SELF_REFERENCING_COL_NAME
-        // String => name of the designated "identifier" column of a typed table (may be null)
-        String selfReferenceColName = rs.getString("SELF_REFERENCING_COL_NAME");
+        // String => name of the designated "identifier" column of a typed table (may be
+        // null)
+        String selfReferenceColName = JdbcUtils.getStringSafe(rs, "SELF_REFERENCING_COL_NAME");
 
-        // REF_GENERATION String => specifies how values in SELF_REFERENCING_COL_NAME are created.
+        // REF_GENERATION String => specifies how values in SELF_REFERENCING_COL_NAME
+        // are created.
         // Values are "SYSTEM", "USER", "DERIVED". (may be null)
-        String referenceGeneration = rs.getString("REF_GENERATION");
+        String referenceGeneration = JdbcUtils.getStringSafe(rs, "REF_GENERATION");
 
         JdbcTable jdbcTable = new JdbcTable(tableCatalog, tableSchema, tableName, tableType,
             remarks, typeCatalog, typeSchema, typeName, selfReferenceColName, referenceGeneration);
@@ -137,80 +144,93 @@ public class JdbcTable implements Comparable<JdbcTable> {
     try (ResultSet rs = metaData.getColumns(tableCatalog, tableSchema, tableName, "%");) {
       while (rs.next()) {
         // TABLE_CATALOG String => catalog name (may be null)
-        String tableCatalog = rs.getString("TABLE_CAT");
+        String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT", "");
 
         // TABLE_SCHEM String => schema name
-        String tableSchema = rs.getString("TABLE_SCHEM");
+        String tableSchema = JdbcUtils.getStringSafe(rs, "TABLE_SCHEM", "");
 
         // TABLE_NAME String => table name
-        String tableName = rs.getString("TABLE_NAME");
+        String tableName = JdbcUtils.getStringSafe(rs, "TABLE_NAME");
 
         // COLUMN_NAME String => column name
-        String columnName = rs.getString("COLUMN_NAME");
+        String columnName = JdbcUtils.getStringSafe(rs, "COLUMN_NAME");
 
         // DATA_TYPE int => SQL type from java.sql.Types
-        Integer dataType = rs.getInt("DATA_TYPE");
+        Integer dataType = JdbcUtils.getIntSafe(rs, "DATA_TYPE");
 
-        // TYPE_NAME String => Data source dependent type name, for a UDT the type name is fully
+        // TYPE_NAME String => Data source dependent type name, for a UDT the type name
+        // is fully
         // qualified
-        String typeName = rs.getString("TYPE_NAME");
+        String typeName = JdbcUtils.getStringSafe(rs, "TYPE_NAME");
 
         // COLUMN_SIZE int => column size.
-        Integer columnSize = rs.getInt("COLUMN_SIZE");
+        Integer columnSize = JdbcUtils.getIntSafe(rs, "COLUMN_SIZE");
 
         // DECIMAL_DIGITS int => the number of fractional digits.
         // Null is returned for data types where DECIMAL_DIGITS is not applicable.
-        Integer decimalDigits = rs.getInt("DECIMAL_DIGITS");
+        Integer decimalDigits = JdbcUtils.getIntSafe(rs, "DECIMAL_DIGITS");
 
         // NUM_PREC_RADIX int => Radix (typically either 10 or 2)
-        Integer numericPrecicionRadix = rs.getInt("NUM_PREC_RADIX");
+        Integer numericPrecicionRadix = JdbcUtils.getIntSafe(rs, "NUM_PREC_RADIX");
 
         // NULLABLE int => is NULL allowed.
-        Integer nullable = rs.getInt("NULLABLE");
+        Integer nullable = JdbcUtils.getIntSafe(rs, "NULLABLE");
 
         // REMARKS String => comment describing column (may be null)
-        String remarks = rs.getString("REMARKS");
+        String remarks = JdbcUtils.getStringSafe(rs, "REMARKS");
 
         // COLUMN_DEF String => default value for the column, which should be
-        // interpreted as a string when the value is enclosed in single quotes (may be null)
-        String columnDefinition = rs.getString("COLUMN_DEF");
+        // interpreted as a string when the value is enclosed in single quotes (may be
+        // null)
+        String columnDefinition = JdbcUtils.getStringSafe(rs, "COLUMN_DEF");
 
-        // CHAR_OCTET_LENGTH int => for char types the maximum number of bytes in the column
-        Integer characterOctetLength = rs.getInt("CHAR_OCTET_LENGTH");
+        // CHAR_OCTET_LENGTH int => for char types the maximum number of bytes in the
+        // column
+        Integer characterOctetLength = JdbcUtils.getIntSafe(rs, "CHAR_OCTET_LENGTH");
 
         // ORDINAL_POSITION int => index of column in table (starting at 1)
-        Integer ordinalPosition = rs.getInt("ORDINAL_POSITION");
+        Integer ordinalPosition = JdbcUtils.getIntSafe(rs, "ORDINAL_POSITION");
 
-        // IS_NULLABLE String => ISO rules are used to determine the nullability for a column.
-        String isNullable = rs.getString("IS_NULLABLE");
+        // IS_NULLABLE String => ISO rules are used to determine the nullability for a
+        // column.
+        String isNullable = JdbcUtils.getStringSafe(rs, "IS_NULLABLE");
 
-        // SCOPE_CATALOG String => catalog of table that is the scope of a reference attribute
+        // SCOPE_CATALOG String => catalog of table that is the scope of a reference
+        // attribute
         // (null if DATA_TYPE isn't REF)
-        String scopeCatalog = rs.getString("SCOPE_CATALOG");
+        String scopeCatalog = JdbcUtils.getStringSafe(rs, "SCOPE_CATALOG");
 
-        // SCOPE_SCHEMA String => schema of table that is the scope of a reference attribute
+        // SCOPE_SCHEMA String => schema of table that is the scope of a reference
+        // attribute
         // (null if the DATA_TYPE isn't REF)
-        String scopeSchema = rs.getString("SCOPE_SCHEMA");
+        String scopeSchema = JdbcUtils.getStringSafe(rs, "SCOPE_SCHEMA");
 
         // SCOPE_TABLE String => table name that this the scope of a reference attribute
         // (null if the DATA_TYPE isn't REF)
-        String scopeTable = rs.getString("SCOPE_TABLE");
+        String scopeTable = JdbcUtils.getStringSafe(rs, "SCOPE_TABLE");
 
-        // SOURCE_DATA_TYPE short => source type of a distinct type or user-generated Ref type,
-        // SQL type from java.sql.Types (null if DATA_TYPE isn't DISTINCT or user-generated REF)
-        Short sourceDataType = rs.getShort("SOURCE_DATA_TYPE");
+        // SCOPE_COLUMNT String => table name that this the scope of a reference
+        // attribute
+        // (null if the DATA_TYPE isn't REF)
+        String scopeColumn = JdbcUtils.getStringSafe(rs, "SCOPE_COLUMN");
+
+        // SOURCE_DATA_TYPE short => source type of a distinct type or user-generated
+        // Ref type,
+        // SQL type from java.sql.Types (null if DATA_TYPE isn't DISTINCT or
+        // user-generated REF)
+        Short sourceDataType = JdbcUtils.getShortSafe(rs, "SOURCE_DATA_TYPE");
 
         // IS_AUTOINCREMENT String => Indicates whether this column is auto incremented
-        String isAutoIncrement = rs.getString("IS_AUTOINCREMENT");
+        String isAutoIncrement = JdbcUtils.getStringSafe(rs, "IS_AUTOINCREMENT");
 
         // IS_GENERATEDCOLUMN String => Indicates whether this is a generated column
-        String isGeneratedColumn = rs.getString("IS_GENERATEDCOLUMN");
+        String isGeneratedColumn = JdbcUtils.getStringSafe(rs, "IS_GENERATEDCOLUMN");
 
         JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
             dataType, typeName, columnSize, decimalDigits, numericPrecicionRadix, nullable, remarks,
             columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
-            scopeSchema, scopeTable, sourceDataType, isAutoIncrement, isGeneratedColumn,
-            new Column(columnName));
+            scopeSchema, scopeTable, scopeColumn, sourceDataType, isAutoIncrement,
+            isGeneratedColumn, new Column(columnName));
 
         columns.put(jdbcColumn.columnName, jdbcColumn);
       }
@@ -225,41 +245,42 @@ public class JdbcTable implements Comparable<JdbcTable> {
 
       while (rs.next()) {
         // TABLE_CATALOG String => catalog name(may be null)
-        String tableCatalog = rs.getString("TABLE_CAT");
+        String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT", "");
 
         // TABLE_SCHEM String => schema name
-        String tableSchema = rs.getString("TABLE_SCHEM");
+        String tableSchema = JdbcUtils.getStringSafe(rs, "TABLE_SCHEM", "");
 
         // TABLE_NAME String => table name
-        String tableName = rs.getString("TABLE_NAME");
+        String tableName = JdbcUtils.getStringSafe(rs, "TABLE_NAME");
 
         // NON_UNIQUE boolean => Can index values be non-unique. false when TYPE is
         // tableIndexStatistic
-        Boolean nonUnique = rs.getBoolean("NON_UNIQUE");
+        Boolean nonUnique = JdbcUtils.getBooleanSafe(rs, "NON_UNIQUE");
 
         // INDEX_QUALIFIER String => index catalog (may be null); null when TYPE is
         // tableIndexStatistic
-        String indexQualifier = rs.getString("INDEX_QUALIFIER");
+        String indexQualifier = JdbcUtils.getStringSafe(rs, "INDEX_QUALIFIER");
 
         // INDEX_NAME String => index name; null when TYPE is tableIndexStatistic
-        String indexName = rs.getString("INDEX_NAME");
+        String indexName = JdbcUtils.getStringSafe(rs, "INDEX_NAME", "");
 
         // TYPE short => index type:
-        Short type = rs.getShort("TYPE");
+        Short type = JdbcUtils.getShortSafe(rs, "TYPE");
 
-        // ORDINAL_POSITION short => column sequence number within index; zero when TYPE is
+        // ORDINAL_POSITION short => column sequence number within index; zero when TYPE
+        // is
         // tableIndexStatistic
-        Short ordinalPosition = rs.getShort("ORDINAL_POSITION");
+        Short ordinalPosition = JdbcUtils.getShortSafe(rs, "ORDINAL_POSITION");
 
         // COLUMN_NAME String => column name; null when TYPE is tableIndexStatistic
-        String columnName = rs.getString("COLUMN_NAME");
+        String columnName = JdbcUtils.getStringSafe(rs, "COLUMN_NAME");
 
         // ASC_OR_DESC String => column sort sequence,
         // "A" => ascending,
         // "D" => descending,
         // may be null if sort sequence is not supported;
         // null when TYPE is tableIndexStatistic
-        String ascOrDesc = rs.getString("ASC_OR_DESC");
+        String ascOrDesc = JdbcUtils.getStringSafe(rs, "ASC_OR_DESC");
 
         // CARDINALITY long => When TYPE is
         // tableIndexStatistic, then this
@@ -274,7 +295,7 @@ public class JdbcTable implements Comparable<JdbcTable> {
         Long pages = rs.getLong("PAGES");
 
         // FILTER_CONDITION String => Filter condition, if any. (may be null)
-        String filterCondition = rs.getString("FILTER_CONDITION");
+        String filterCondition = JdbcUtils.getStringSafe(rs, "FILTER_CONDITION");
 
         JdbcIndex jdbcIndex = indices.get(indexName.toUpperCase());
         if (jdbcIndex == null) {
@@ -296,25 +317,26 @@ public class JdbcTable implements Comparable<JdbcTable> {
 
       while (rs.next()) {
         // TABLE_CATALOG String => catalog name (may be null)
-        String tableCatalog = rs.getString("TABLE_CAT");
+        String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT");
 
         // TABLE_SCHEM String => schema name
-        String tableSchema = rs.getString("TABLE_SCHEM");
+        String tableSchema = JdbcUtils.getStringSafe(rs, "TABLE_SCHEM");
 
         // TABLE_NAME String => table name
-        String tableName = rs.getString("TABLE_NAME");
+        String tableName = JdbcUtils.getStringSafe(rs, "TABLE_NAME");
 
         // COLUMN_NAME String => column name
-        String columnName = rs.getString("COLUMN_NAME");
+        String columnName = JdbcUtils.getStringSafe(rs, "COLUMN_NAME");
 
         // KEY_SEQ short => sequence number within
-        // primary key(a value of 1 represents the first column of the primary key, a value of 2
+        // primary key(a value of 1 represents the first column of the primary key, a
+        // value of 2
         // would
         // represent the second column within the primary key).
-        Short keySequence = rs.getShort("KEY_SEQ");
+        Short keySequence = JdbcUtils.getShortSafe(rs, "KEY_SEQ");
 
         // PK_NAME String => primary key name (may be null)
-        String primaryKeyName = rs.getString("PK_NAME");
+        String primaryKeyName = JdbcUtils.getStringSafe(rs, "PK_NAME");
 
         if (primaryKey == null) {
           primaryKey = new JdbcPrimaryKey(tableCatalog, tableSchema, tableName, primaryKeyName);
@@ -363,12 +385,13 @@ public class JdbcTable implements Comparable<JdbcTable> {
       Integer decimalDigits, Integer numericPrecisionRadix, Integer nullable, String remarks,
       String columnDefinition, Integer characterOctetLength, Integer ordinalPosition,
       String isNullable, String scopeCatalog, String scopeSchema, String scopeTable,
-      Short sourceDataType, String isAutomaticIncrement, String isGeneratedColumn) {
+      String scopeColumn, Short sourceDataType, String isAutomaticIncrement,
+      String isGeneratedColumn) {
     JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
         dataType, typeName, columnSize, decimalDigits, numericPrecisionRadix, nullable, remarks,
         columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
-        scopeSchema, scopeTable, sourceDataType, isAutomaticIncrement, isGeneratedColumn,
-        new Column(columnName));
+        scopeSchema, scopeTable, scopeColumn, sourceDataType, isAutomaticIncrement,
+        isGeneratedColumn, new Column(columnName));
     return add(jdbcColumn);
   }
 
@@ -550,4 +573,41 @@ public class JdbcTable implements Comparable<JdbcTable> {
   public Set<String> keySet() {
     return columns.keySet();
   }
+
+  /*
+   * following for JSON (de)serialization
+   */
+
+
+  public List<JdbcColumn> getColumns() {
+    return new ArrayList<JdbcColumn>(this.columns.values());
+  }
+
+  public void setColumns(List<JdbcColumn> columns) {
+    for (JdbcColumn item : columns) {
+      item.tableName = this.tableName;
+      item.tableCatalog = this.tableCatalog;
+      item.tableSchema = this.tableSchema;
+      add(item);
+    }
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
+  public void setTableName(String tableName) {
+    this.tableName = tableName;
+  }
+
+  public String getTableType() {
+    return tableType;
+  }
+
+  public void setTableType(String tableType) {
+    this.tableType = tableType;
+  }
+
+
+
 }
