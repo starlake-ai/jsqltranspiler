@@ -69,6 +69,10 @@ dependencies {
 
     // Java Doc in XML Format
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
+         
+    //for JSON (de)serialization
+    implementation 'org.json:json:+'
+    
 }
 
 configurations.configureEach {

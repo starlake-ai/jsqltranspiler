@@ -170,9 +170,12 @@ public final class JdbcMetaData implements DatabaseMetaData {
 
     try (Statement statement = con.createStatement();
         ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
-      rs.next();
-      currentCatalogName = JdbcUtils.getStringSafe(rs, 1, "");
-      currentSchemaName = JdbcUtils.getStringSafe(rs, 2, "");
+      if (rs.next()) {
+        currentCatalogName = JdbcUtils.getStringSafe(rs, 1, "");
+        currentSchemaName = JdbcUtils.getStringSafe(rs, 2, "");
+      } else {
+        throw new SQLException();
+      }
     } catch (SQLException ex) {
       currentCatalogName = "";
       currentSchemaName = "";
@@ -1402,7 +1405,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
 
   @Override
   public int getSQLStateType() {
-    return DatabaseMetaData.sqlStateSQL;
+    return sqlStateSQL;
   }
 
   @Override

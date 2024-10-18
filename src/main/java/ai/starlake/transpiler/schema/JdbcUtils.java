@@ -60,7 +60,7 @@ public class JdbcUtils {
 
     public static DatabaseSpecific getType(String productName) {
       final String name = productName.toUpperCase();
-      for (DatabaseSpecific type : DatabaseSpecific.values()) {
+      for (DatabaseSpecific type : values()) {
         if (name.contains(type.identString)) {
           return type;
         }
