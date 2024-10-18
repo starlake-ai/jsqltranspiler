@@ -1,4 +1,5 @@
 /**
+ * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
  * Copyright (C) 2024 Starlake.AI
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
