@@ -527,11 +527,11 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     //@formatter:off
     String lineage =
-            "SELECT\n"
-            + " ├─mycte.id → sales.customers.id : Other\n"
-            + " ├─sum AS Function sum\n"
-            + " │  └─mycte.amount → sales.orders.amount : Other\n"
-            + " └─mycte.timestamp1 → timestamp1 : Other\n";
+            "SELECT\n" +
+            " ├─mycte.id → sales.customers.id : Other\n" +
+            " ├─sum AS Function sum\n" +
+            " │  └─mycte.amount → sales.orders.amount : Other\n" +
+            " └─mycte.timestamp1 AS TimeKeyExpression: CURRENT_TIMESTAMP()\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -565,11 +565,11 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     //@formatter:off
     String lineage =
-            "SELECT\n"
-            + " ├─mycte.id → sales.customers.id : Other\n"
-            + " ├─sum AS Function sum\n"
-            + " │  └─mycte.amount → sales.orders.amount : Other\n"
-            + " └─mycte.timestamp → timestamp : Other\n";
+            "SELECT\n" +
+            " ├─mycte.id → sales.customers.id : Other\n" +
+            " ├─sum AS Function sum\n" +
+            " │  └─mycte.amount → sales.orders.amount : Other\n" +
+            " └─mycte.timestamp AS TimeKeyExpression: CURRENT_TIMESTAMP()\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -616,11 +616,11 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     //@formatter:off
     String lineage =
-            "SELECT\n"
-            + " ├─mycte.id → sales.customers.id : Other\n"
-            + " ├─sum AS Function sum\n"
-            + " │  └─unresolvable\n"
-            + " └─mycte.timestamp → timestamp : Other\n";
+            "SELECT\n" +
+            " ├─mycte.id → sales.customers.id : Other\n" +
+            " ├─sum AS Function sum\n" +
+            " │  └─unresolvable\n" +
+            " └─mycte.timestamp AS TimeKeyExpression: CURRENT_TIMESTAMP()\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
 
@@ -633,10 +633,10 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     //@formatter:off
     lineage =
-            "SELECT\n"
-            + " ├─mycte.id → sales.customers.id : Other\n"
-            + " ├─sum AS Function sum\n"
-            + " └─mycte.timestamp → timestamp : Other\n";
+        "SELECT\n" +
+        " ├─mycte.id → sales.customers.id : Other\n" +
+        " ├─sum AS Function sum\n" +
+        " └─mycte.timestamp AS TimeKeyExpression: CURRENT_TIMESTAMP()\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -673,11 +673,11 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     //@formatter:off
     String lineage =
-            "SELECT\n"
-            + " ├─mycte.id → sales.customers.id : Other\n"
-            + " ├─sum AS Function sum\n"
-            + " │  └─mycte.amount → sales.orders.amount : Other\n"
-            + " └─mycte.timestamp → timestamp : Other\n";
+            "SELECT\n" +
+            " ├─mycte.id → sales.customers.id : Other\n" +
+            " ├─sum AS Function sum\n" +
+            " │  └─mycte.amount → sales.orders.amount : Other\n" +
+            " └─mycte.timestamp AS TimeKeyExpression: CURRENT_TIMESTAMP()\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -712,11 +712,11 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     //@formatter:off
     String lineage =
-            "SELECT\n"
-            + " ├─mycte.id → sales.customers.id : Other\n"
-            + " ├─sum AS Function sum\n"
-            + " │  └─mycte.amount → sales.orders.amount : Other\n"
-            + " └─mycte.timestamp → timestamp : Other\n";
+            "SELECT\n" +
+            " ├─mycte.id → sales.customers.id : Other\n" +
+            " ├─sum AS Function sum\n" +
+            " │  └─mycte.amount → sales.orders.amount : Other\n" +
+            " └─mycte.timestamp AS TimeKeyExpression: CURRENT_TIMESTAMP()\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -768,12 +768,12 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     //@formatter:off
     String lineage =
-            "SELECT\n"
-            + " ├─yourcte.id → sales.customers.id : Other\n"
-            + " ├─sum AS Function Sum\n"
-            + " │  └─yourcte.amount → sales.orders.amount : Other\n"
-            + " ├─yourcte.timestamp1 → mycte.timestamp1 : Other\n"
-            + " └─amount2 AS yourcte.amount → sales.orders.amount : Other\n";
+            "SELECT\n" +
+            " ├─yourcte.id → sales.customers.id : Other\n" +
+            " ├─sum AS Function Sum\n" +
+            " │  └─yourcte.amount → sales.orders.amount : Other\n" +
+            " ├─yourcte.timestamp1 AS TimeKeyExpression: CURRENT_TIMESTAMP()\n" +
+            " └─amount2 AS yourcte.amount → sales.orders.amount : Other\n";
     //@formatter:on
     assertLineage(JdbcMetaData.copyOf(metaData), sqlStr, lineage);
   }
@@ -793,6 +793,35 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     // get the List of JdbcColumns, each holding its lineage using the TreeNode interface
     JSQLColumResolver resolver = new JSQLColumResolver(schemaDefinition);
     System.out.println(resolver.getLineage(AsciiTreeBuilder.class, sqlStr));
+  }
+
+  @Test
+  void testWithAndFunctionClauseIssue41()
+      throws JSQLParserException, SQLException, InvocationTargetException, NoSuchMethodException,
+      InstantiationException, IllegalAccessException {
+
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"a", "col1", "col2"}
+    };
+
+    String sqlStr =
+          " WITH d AS (\n"
+        + "        SELECT SUM(a.col1, a.col2) as colx\n"
+        + "        FROM a )\n" + " SELECT *\n"
+        + " FROM d\n"
+        + ";"
+        ;
+
+    String expected =
+          "SELECT\n"
+        + " └─d.colx AS Function SUM\n"
+        + "    ├─a.col1 : Other\n"
+        + "    └─a.col2 : Other"
+        ;
+    //@formatter:on
+
+    assertLineage(schemaDefinition, sqlStr, expected);
   }
 
 }

@@ -48,6 +48,17 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
 
     Expression expression = column.getExpression();
     if (expression instanceof Function) {
+      if (!StringUtils.isEmpty(column.columnName) && column.getChildren().size() > 1) {
+        if (column.tableCatalog != null && !column.tableCatalog.isEmpty()) {
+          b.append(column.tableCatalog).append(".")
+              .append(column.tableSchema != null ? column.tableSchema : "").append(".");
+        } else if (column.tableSchema != null && !column.tableSchema.isEmpty()) {
+          b.append(column.tableSchema).append(".");
+        }
+        b.append(column.tableName).append(".").append(column.columnName);
+        b.append(" AS ");
+      }
+
       Function f = (Function) expression;
       b.append("Function ").append(f.getName());
     } else if (expression instanceof Select) {
@@ -99,6 +110,17 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
 
       return b.toString();
     } else if (expression != null) {
+      if (!StringUtils.isEmpty(column.tableName)) {
+        if (column.tableCatalog != null && !column.tableCatalog.isEmpty()) {
+          b.append(column.tableCatalog).append(".")
+              .append(column.tableSchema != null ? column.tableSchema : "").append(".");
+        } else if (column.tableSchema != null && !column.tableSchema.isEmpty()) {
+          b.append(column.tableSchema).append(".");
+        }
+        b.append(column.tableName).append(".").append(column.columnName);
+        b.append(" AS ");
+      }
+
       b.append(expression.getClass().getSimpleName()).append(": ").append(expression);
     } else {
       b.append("unresolvable");

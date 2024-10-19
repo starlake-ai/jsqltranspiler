@@ -378,7 +378,8 @@ public class JdbcTable implements Comparable<JdbcTable> {
       jdbcColumn.columnName = jdbcColumn.columnName + "_" + i;
 
     }
-    return columns.put(jdbcColumn.columnName, jdbcColumn);
+    columns.put(jdbcColumn.columnName, jdbcColumn);
+    return jdbcColumn;
   }
 
   public JdbcColumn add(String tableCatalog, String tableSchema, String tableName,

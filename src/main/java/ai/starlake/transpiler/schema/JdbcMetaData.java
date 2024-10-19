@@ -237,7 +237,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
       JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName, name);
       int columnCount = rsMetaData.getColumnCount();
       for (int i = 1; i <= columnCount; i++) {
-        t.add(t.tableCatalog, t.tableSchema, t.tableName,
+        JdbcColumn col = t.add(t.tableCatalog, t.tableSchema, t.tableName,
             rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
                 ? rsMetaData.getColumnLabel(i)
                 : rsMetaData.getColumnName(i),
@@ -254,6 +254,10 @@ public final class JdbcMetaData implements DatabaseMetaData {
                 ? rsMetaData.getScopeTable(i)
                 : rsMetaData.getTableName(i),
             rsMetaData.getColumnName(i), null, "", "");
+
+        // add the Lineage Information, 0-Indexed
+        col.add(rsMetaData.columns.get(i - 1).getChildren());
+        col.setExpression(rsMetaData.columns.get(i - 1).getExpression());
       }
       put(t);
       return t;

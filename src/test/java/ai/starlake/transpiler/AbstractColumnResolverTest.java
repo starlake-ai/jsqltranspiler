@@ -121,6 +121,17 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
 
   }
 
+  static String assertLineage(String[][] schemaDefinition, String sqlStr, String expected)
+      throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException,
+      IllegalAccessException, JSQLParserException {
+
+    JSQLColumResolver resolver = new JSQLColumResolver(new JdbcMetaData(schemaDefinition));
+    String actual = resolver.getLineage(AsciiTreeBuilder.class, sqlStr);
+    Assertions.assertThat(actual).isEqualToIgnoringWhitespace(expected);
+
+    return actual;
+  }
+
   static String assertLineage(JdbcMetaData metaData, String sqlStr, String expected)
       throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException,
       IllegalAccessException, JSQLParserException {
