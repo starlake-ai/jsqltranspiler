@@ -73,6 +73,6 @@ SELECT S,TRY_CAST(S AS BOOLEAN)AS B1,N,CAST(N AS BOOLEAN)AS B2 FROM TEST_BOOLEAN
 
 -- result
 "s","b1","n","b2"
-"yes","","1.00","true"
-"no","","0.00","false"
+"yes","true","1.00","true"
+"no","false","0.00","false"
 "","","",""

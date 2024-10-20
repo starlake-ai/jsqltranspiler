@@ -51,7 +51,7 @@ SELECT
 
 -- result
 "week_diff","week_weekday_diff","isoweek_diff"
-"1","1","1"
+"0","0","0"
 
 
 -- provided

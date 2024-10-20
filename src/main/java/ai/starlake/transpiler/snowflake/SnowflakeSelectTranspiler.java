@@ -105,8 +105,17 @@ public class SnowflakeSelectTranspiler extends JSQLSelectTranspiler {
           } else if (fName.equalsIgnoreCase("GENERATOR")) {
             // select range AS seq4 FROM range(0,3);
             select.addSelectItem(new Column("range"), new Alias("seq4", true));
-            select.setFromItem(new TableFunction(
-                new Function("Range", new LongValue(0), f.getParameters().get(0))));
+
+            Expression stopExpression = f.getParameters().get(0);
+            if (stopExpression instanceof OracleNamedFunctionParameter) {
+              OracleNamedFunctionParameter namedFunctionParameter =
+                  (OracleNamedFunctionParameter) f.getParameters().get(0);
+              if ("rowCount".equalsIgnoreCase(namedFunctionParameter.getName())) {
+                stopExpression = namedFunctionParameter.getExpression();
+              }
+            }
+            select.setFromItem(
+                new TableFunction(new Function("Range", new LongValue(0), stopExpression)));
             alias = new Alias("value", true);
           }
         }
