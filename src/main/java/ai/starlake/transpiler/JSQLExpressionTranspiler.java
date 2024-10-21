@@ -167,6 +167,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
     , NVL, UNNEST
 
+    , ST_GEOGPOINT, ST_GEOGFROMTEXT, ST_GEOGFROMGEOJSON, ST_GEOGFROMWKB, ST_ASBINARY, ST_ASGEOJSON, ST_ASTEXT, ST_BUFFER, ST_NUMPOINTS
+
     ;
     // @FORMATTER:ON
 
@@ -194,6 +196,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
     , SEARCH, VECTOR_SEARCH, APPENDS, EXTERNAL_OBJECT_TRANSFORM, GAP_FILL
 
+    , ST_GEOGFROM, S2_CELLIDFROMPOINT, S2_COVERINGCELLIDS, ST_ANGLE, ST_AZIMUTH, ST_BOUNDINGBOX
     ;
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
@@ -1125,6 +1128,65 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                   new CastExpression(new Function("To_Json", parameters.get(0)), "TEXT");
               break;
           }
+          break;
+        case ST_GEOGPOINT:
+          function.setName("ST_POINT");
+          break;
+        case ST_GEOGFROMTEXT:
+          if (paramCount>1) {
+            warning("ORIENTED, PLANAR, MAKE_VALID parameters unsupported.");
+          }
+          function.setName("ST_GEOMFROMTEXT");
+          break;
+        case ST_GEOGFROMWKB:
+          if (paramCount>1) {
+            warning("ORIENTED, PLANAR, MAKE_VALID parameters unsupported.");
+          }
+          /*
+          if(
+          REGEXP_MATCHES('010200000002000000feffffffffffef3f000000000000f03f01000000000008400000000000000040', '^[0-9A-Fa-f]+$')
+          , ST_GeomFromHEXEWKB('010200000002000000feffffffffffef3f000000000000f03f01000000000008400000000000000040')
+          ,  ST_GeomFromWKB('010200000002000000feffffffffffef3f000000000000f03f01000000000008400000000000000040'::BLOB)
+          )
+          */
+          function.setName("If");
+          function.setParameters(
+                  new Function("REGEXP_MATCHES", parameters.get(0), new StringValue("^[0-9A-Fa-f]+$"))
+                  , new Function("ST_GeomFromHEXEWKB", parameters.get(0))
+                  , new Function("ST_GeomFromWKB", new CastExpression(parameters.get(0), "BLOB"))
+          );
+          break;
+        case ST_GEOGFROMGEOJSON:
+          function.setName("ST_GeomFromGeoJSON");
+          break;
+        case ST_ASBINARY:
+          // SELECT ST_AsWKB('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'::GEOMETRY)::BLOB;
+          rewrittenExpression = new CastExpression( new Function("ST_AsWKB", new CastExpression(parameters.get(0), "GEOMETRY")), "BLOB");
+          break;
+        case ST_ASGEOJSON:
+          // ST_AsGeoJSON('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'::GEOMETRY);
+          function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY"));
+          break;
+        case ST_ASTEXT:
+          // SELECT ST_AsText(ST_MakeEnvelope(0,0,1,1));
+          function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY"));
+          break;
+        case ST_BUFFER:
+          if (paramCount>3) {
+            warning("USE_SPHEROID, ENDCAP, SIDE are not supported.");
+          }
+          switch (paramCount) {
+            case 2:
+              function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY"), parameters.get(1) );
+              break;
+            case 3:
+              function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY"), parameters.get(1), parameters.get(2) );
+              break;
+          }
+          break;
+        case ST_NUMPOINTS:
+          function.setName("ST_NUMPOINTS");
+          function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY") );
           break;
       }
     }
