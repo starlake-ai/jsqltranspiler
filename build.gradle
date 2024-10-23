@@ -214,7 +214,7 @@ license {
 
     ext.year = Calendar.getInstance().get(Calendar.YEAR)
     ext.name = 'Starlake.AI'
-    ext.email = 'andreas@manticore-projects.com'
+    ext.email = 'hayssam.saleh@starlake.ai'
 
     strictCheck = false
     ignoreFailures = true
