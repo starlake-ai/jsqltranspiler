@@ -118,59 +118,25 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   };
 
   enum TranspiledFunction {
-    // @FORMATTER:OFF
-    CURRENT_DATE, CURRENT_DATETIME, CURRENT_TIME, CURRENT_TIMESTAMP
-
-    , DATE, DATETIME, TIME, TIMESTAMP
-
-    , DATE_ADD, DATETIME_ADD, TIME_ADD, TIMESTAMP_ADD
-
-    , DATE_DIFF, DATETIME_DIFF, TIME_DIFF, TIMESTAMP_DIFF
-
-    , DATE_SUB, DATETIME_SUB, TIME_SUB, TIMESTAMP_SUB
-
-    , DATE_TRUNC, DATETIME_TRUNC, TIME_TRUNC, TIMESTAMP_TRUNC
-
-    , EXTRACT
-
-    , FORMAT_DATE, FORMAT_DATETIME, FORMAT_TIME, FORMAT_TIMESTAMP
-
-    , LAST_DAY
-
-    , PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP, DATE_FROM_UNIX_DATE, UNIX_DATE
-
-    , TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS, UNIX_MICROS, UNIX_MILLIS, UNIX_SECONDS
-
-    , STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING
-
+    //@formatter:off
+    CURRENT_DATE, CURRENT_DATETIME, CURRENT_TIME, CURRENT_TIMESTAMP, DATE, DATETIME, TIME, TIMESTAMP, DATE_ADD
+    , DATETIME_ADD, TIME_ADD, TIMESTAMP_ADD, DATE_DIFF, DATETIME_DIFF, TIME_DIFF, TIMESTAMP_DIFF, DATE_SUB, DATETIME_SUB
+    , TIME_SUB, TIMESTAMP_SUB, DATE_TRUNC, DATETIME_TRUNC, TIME_TRUNC, TIMESTAMP_TRUNC, EXTRACT, FORMAT_DATE
+    , FORMAT_DATETIME, FORMAT_TIME, FORMAT_TIMESTAMP, LAST_DAY, PARSE_DATE, PARSE_DATETIME, PARSE_TIME, PARSE_TIMESTAMP
+    , DATE_FROM_UNIX_DATE, UNIX_DATE, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIMESTAMP_SECONDS, UNIX_MICROS, UNIX_MILLIS
+    , UNIX_SECONDS, STRING, BYTE_LENGTH, CHAR_LENGTH, CHARACTER_LENGTH, CODE_POINTS_TO_BYTES, CODE_POINTS_TO_STRING
     , COLLATE, CONTAINS_SUBSTR, EDIT_DISTANCE, FORMAT, INSTR, LENGTH, LPAD, NORMALIZE, NORMALIZE_AND_CASEFOLD
-
-    , OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR
-
-    , REPEAT, REPLACE, REVERSE, RPAD, SAFE_CONVERT_BYTES_TO_STRING, TO_CODE_POINTS, TO_HEX, UNICODE
-
-    , DIV, IEEE_DIVIDE, IS_INF, IS_NAN, LOG, RAND, RANGE_BUCKET, ROUND
-
-    , SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY, SAFE_NEGATE, SAFE_SUBTRACT, TRUNC
-
-    , ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR, ARRAY, ARRAY_CONCAT, ARRAY_TO_STRING, GENERATE_ARRAY
-
-    , GENERATE_DATE_ARRAY, GENERATE_TIMESTAMP_ARRAY, ARRAY_DISTINCT, ARRAY_INTERSECT
-
-    , FIRST_VALUE, LAST_VALUE, PERCENTILE_CONT, PERCENTILE_DISC
-
-    , GENERATE_UUID
-
-    , BOOL, LAX_BOOL, FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY
-
-    , JSON_VALUE_ARRAY, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING
-
-    , NVL, UNNEST
-
-    , ST_GEOGPOINT, ST_GEOGFROMTEXT, ST_GEOGFROMGEOJSON, ST_GEOGFROMWKB, ST_ASBINARY, ST_ASGEOJSON, ST_ASTEXT, ST_BUFFER, ST_NUMPOINTS
-
-    ;
-    // @FORMATTER:ON
+    , OCTET_LENGTH, REGEXP_CONTAINS, REGEXP_EXTRACT, REGEXP_EXTRACT_ALL, REGEXP_INSTR, REGEXP_REPLACE
+    , REGEXP_SUBSTR, REPEAT, REPLACE, REVERSE, RPAD, SAFE_CONVERT_BYTES_TO_STRING, TO_CODE_POINTS, TO_HEX, UNICODE
+    , DIV, IEEE_DIVIDE, IS_INF, IS_NAN, LOG, RAND, RANGE_BUCKET, ROUND, SAFE_ADD, SAFE_DIVIDE, SAFE_MULTIPLY
+    , SAFE_NEGATE, SAFE_SUBTRACT, TRUNC, ARRAY_CONCAT_AGG, COUNTIF, LOGICAL_AND, LOGICAL_OR, ARRAY, ARRAY_CONCAT
+    , ARRAY_TO_STRING, GENERATE_ARRAY, GENERATE_DATE_ARRAY, GENERATE_TIMESTAMP_ARRAY, ARRAY_DISTINCT
+    , ARRAY_INTERSECT, FIRST_VALUE, LAST_VALUE, PERCENTILE_CONT, PERCENTILE_DISC, GENERATE_UUID, BOOL, LAX_BOOL
+    , FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY
+    , JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING, NVL
+    , UNNEST, ST_GEOGPOINT, ST_GEOGFROMTEXT, ST_GEOGFROMGEOJSON, ST_GEOGFROMWKB, ST_ASBINARY, ST_ASGEOJSON, ST_ASTEXT
+    , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER;
+    //@formatter:on
 
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
@@ -190,14 +156,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   enum UnsupportedFunction {
-    ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH
-
-    , APPROX_QUANTILES, APPROX_TOP_COUNT, APPROX_TOP_SUM
-
-    , SEARCH, VECTOR_SEARCH, APPENDS, EXTERNAL_OBJECT_TRANSFORM, GAP_FILL
-
-    , ST_GEOGFROM, S2_CELLIDFROMPOINT, S2_COVERINGCELLIDS, ST_ANGLE, ST_AZIMUTH, ST_BOUNDINGBOX
-    ;
+    //@formatter:off
+    ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH, APPROX_QUANTILES
+    , APPROX_TOP_COUNT, APPROX_TOP_SUM, SEARCH, VECTOR_SEARCH, APPENDS, EXTERNAL_OBJECT_TRANSFORM, GAP_FILL
+    , S2_CELLIDFROMPOINT, S2_COVERINGCELLIDS, ST_ANGLE, ST_AZIMUTH, ST_BUFFERWITHTOLERANCE, ST_CENTROID_AGG
+    , ST_CLOSESTPOINT, ST_CLUSTERDBSCAN, ST_GEOGFROM, ST_GEOGPOINTFROMGEOHASH, ST_GEOHASH, ST_HAUSDORFFDISTANCE
+    , ST_INTERIORRINGS, ST_INTERSECTSBOX, ST_ISCOLLECTION, ST_LINEINTERPOLATEPOINT, ST_LINELOCATEPOINT, ST_LINESUBSTRING
+    , ST_MAKEPOLYGONORIENTED, ST_SNAPTOGRID;
+    //@formatter:on
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
     public static UnsupportedFunction from(String name) {
@@ -1133,13 +1099,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("ST_POINT");
           break;
         case ST_GEOGFROMTEXT:
-          if (paramCount>1) {
+          if (paramCount > 1) {
             warning("ORIENTED, PLANAR, MAKE_VALID parameters unsupported.");
           }
           function.setName("ST_GEOMFROMTEXT");
           break;
         case ST_GEOGFROMWKB:
-          if (paramCount>1) {
+          if (paramCount > 1) {
             warning("ORIENTED, PLANAR, MAKE_VALID parameters unsupported.");
           }
           /*
@@ -1151,43 +1117,63 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           */
           function.setName("If");
           function.setParameters(
-                  new Function("REGEXP_MATCHES", parameters.get(0), new StringValue("^[0-9A-Fa-f]+$"))
-                  , new Function("ST_GeomFromHEXEWKB", parameters.get(0))
-                  , new Function("ST_GeomFromWKB", new CastExpression(parameters.get(0), "BLOB"))
-          );
+              new Function("REGEXP_MATCHES", parameters.get(0), new StringValue("^[0-9A-Fa-f]+$")),
+              new Function("ST_GeomFromHEXEWKB", parameters.get(0)),
+              new Function("ST_GeomFromWKB", new CastExpression(parameters.get(0), "BLOB")));
           break;
         case ST_GEOGFROMGEOJSON:
           function.setName("ST_GeomFromGeoJSON");
           break;
         case ST_ASBINARY:
           // SELECT ST_AsWKB('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'::GEOMETRY)::BLOB;
-          rewrittenExpression = new CastExpression( new Function("ST_AsWKB", new CastExpression(parameters.get(0), "GEOMETRY")), "BLOB");
+          rewrittenExpression = new CastExpression(
+              new Function("ST_AsWKB", new CastExpression(parameters.get(0), "GEOMETRY")), "BLOB");
           break;
         case ST_ASGEOJSON:
           // ST_AsGeoJSON('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'::GEOMETRY);
-          function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY"));
+          function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
         case ST_ASTEXT:
           // SELECT ST_AsText(ST_MakeEnvelope(0,0,1,1));
-          function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY"));
+          function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
         case ST_BUFFER:
-          if (paramCount>3) {
+          if (paramCount > 3) {
             warning("USE_SPHEROID, ENDCAP, SIDE are not supported.");
           }
           switch (paramCount) {
             case 2:
-              function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY"), parameters.get(1) );
+              function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
+                  parameters.get(1));
               break;
             case 3:
-              function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY"), parameters.get(1), parameters.get(2) );
+              function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
+                  parameters.get(1), parameters.get(2));
               break;
           }
           break;
         case ST_NUMPOINTS:
           function.setName("ST_NUMPOINTS");
-          function.setParameters( new CastExpression(parameters.get(0), "GEOMETRY") );
+          function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
+        case ST_DISTANCE:
+          if (paramCount > 2) {
+            warning("USE_SPHEROID is not supported.");
+          }
+          break;
+        case ST_BOUNDINGBOX:
+          // not aggregated version of EXTEND
+          function.setName("ST_EXTENT");
+          break;
+        case ST_EXTENT:
+          // aggregated version of EXTEND
+          // function.setParameters( new Function("ST_UNION_AGG", parameters.get(0)));
+          function.setName("ST_Extent_Agg");
+          break;
+        case ST_PERIMETER:
+          if (paramCount > 3) {
+            warning("USE_SPHEROID is not supported.");
+          }
       }
     }
     if (rewrittenExpression == null) {
@@ -2481,4 +2467,5 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
     return buffer;
   }
+
 }

@@ -13,7 +13,7 @@ A pure Java stand-alone SQL Transpiler, Column- and Lineage Resolver for transla
 
 Supports `SELECT` queries as well as `INSERT`, `UPDATE`, `DELETE` and `MERGE` statements.
 
-Internal Functions will be rewritten based on the actual meaning and purpose of the function (since DuckDB `Any()` function does not necessarily behave like the RDBMS specific `Any()`). Respecting different function arguments count, order and type.
+Internal Functions will be rewritten based on the actual meaning and purpose of the function (since the DuckDB `Any()` function does not necessarily behaves like the RDBMS specific `Any()`). Respecting different function arguments count, order and type.
 
 Rewrite of Window- and Aggregate-Functions with full coverage of the RDBMS specific published samples.
 The [matrix of supported features and functions](https://docs.google.com/spreadsheets/d/1jK6E1s2c0CWcw9rFeDvALdZ5wCshztdtlAHuNDaKQt4/edit?usp=sharing) is shared on Google Sheets.

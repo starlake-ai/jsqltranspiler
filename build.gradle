@@ -395,7 +395,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.withType(Test).configureEach {
-    maxParallelForks = 100
+    maxParallelForks = 10
 }
 
 tasks.register('gitChangelogTask', GitChangelogTask) {

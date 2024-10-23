@@ -81,6 +81,8 @@ public class JSQLTranspiler extends StatementDeParser {
 
   private final static Pattern DOUBLE_QUOTES_PATTERN =
       Pattern.compile("(?=(?:[^']*'[^']*')*[^']*$)\"");
+  private final static Pattern SINGLE_QUOTES_PATTERN =
+      Pattern.compile("(?=(?:[^']*'[^']*')*[^']*$)`");
 
   protected JSQLTranspiler(Class<? extends JSQLSelectTranspiler> selectTranspilerClass,
       Class<? extends JSQLExpressionTranspiler> expressionTranspilerClass)
@@ -142,7 +144,14 @@ public class JSQLTranspiler extends StatementDeParser {
           matcher.appendReplacement(sb, matcher.group().replaceAll("^\"|\"$", "'"));
         }
         matcher.appendTail(sb);
-        System.out.println(sb.toString());
+
+        // Replace single quoted identifiers with double-quoted identifiers
+        matcher = SINGLE_QUOTES_PATTERN.matcher(sb.toString());
+        sb = new StringBuilder();
+        while (matcher.find()) {
+          matcher.appendReplacement(sb, matcher.group().replaceAll("^`|`$", "\""));
+        }
+        matcher.appendTail(sb);
 
         st = CCJSqlParserUtil.parse(sb.toString(), executorService, consumer);
         return transpileBigQuery(st, parameters);
