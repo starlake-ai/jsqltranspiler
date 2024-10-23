@@ -264,7 +264,7 @@ public class JSQLTranspilerTest {
     info.put("old_implicit_casting", "true");
     info.put("default_null_order", "NULLS FIRST");
     info.put("default_order", "ASC");
-    info.put("memory_limit", "1GB");
+    info.put("memory_limit", "250M");
     connDuck = DriverManager.getConnection("jdbc:duckdb:" + fileDuckDB.getAbsolutePath(), info);
 
     if (!isInitialised) {
