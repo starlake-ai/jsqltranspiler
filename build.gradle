@@ -205,6 +205,24 @@ test {
             onlyIfModified true
             tempAndMove true
         }
+
+        // Download Amazong Redshift geo-spatial example
+        // public datasets that correlate location data of rental accommodations with postal codes in Berlin, Germany.
+        download.run {
+            src 'https://s3.amazonaws.com/redshift-downloads/spatial-data/accommodations.csv'
+            dest "build/resources/test/ai/starlake/transpiler/accommodations.csv"
+            overwrite false
+            onlyIfModified true
+            tempAndMove true
+        }
+
+        download.run {
+            src 'https://s3.amazonaws.com/redshift-downloads/spatial-data/zipcode.csv'
+            dest "build/resources/test/ai/starlake/transpiler/zipcode.csv"
+            overwrite false
+            onlyIfModified true
+            tempAndMove true
+        }
     }
 }
 

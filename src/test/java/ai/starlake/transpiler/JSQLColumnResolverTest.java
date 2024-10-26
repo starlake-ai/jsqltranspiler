@@ -824,4 +824,29 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     assertLineage(schemaDefinition, sqlStr, expected);
   }
 
+  @Test
+  void testDiscussion2096() throws JSQLParserException, SQLException, InvocationTargetException,
+      NoSuchMethodException, InstantiationException, IllegalAccessException {
+
+    // provide minimum schema information,
+    // alternatively JSQLTranspiler can derive that from the Database itself when you provide a JDBC
+    // connection
+    String[][] schemaDefinition =
+        {{"projects", "employee_id"}, {"tasks", "employee_id"}, {"employees", "name"}};
+
+    // the SQL Query to resolve
+    String sqlStr = " SELECT e.name, \n"
+        + "       (SELECT COUNT(*) FROM projects AS p WHERE p.employee_id = e.employee_id) AS project_count,\n"
+        + "       (SELECT COUNT(*) FROM tasks AS p WHERE p.employee_id = e.employee_id) AS task_count\n"
+        + "FROM employees AS e";
+
+    // The expected output in ASCII (alternatively JSON and XML is available)
+    String expected = "SELECT\n" + " ├─employees.name : Other\n" + " ├─project_count AS SELECT\n"
+        + " │  └─Function COUNT\n" + " │     └─projects.employee_id : Other\n"
+        + " │  └─projects.employee_id : Other\n" + " └─task_count AS SELECT\n"
+        + "    └─Function COUNT\n" + "       └─tasks.employee_id : Other\n"
+        + "    └─tasks.employee_id : Other\n";
+    assertLineage(schemaDefinition, sqlStr, expected);
+  }
+
 }

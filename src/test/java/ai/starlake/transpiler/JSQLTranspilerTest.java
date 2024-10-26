@@ -24,6 +24,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statements;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -270,6 +272,26 @@ public class JSQLTranspilerTest {
     if (!isInitialised) {
       JSQLTranspiler.createMacros(connDuck);
 
+      LOGGER.info("Preparing JSON Extension");
+      try (Statement st = connDuck.createStatement()) {
+        for (String s : new String[] {"INSTALL json;", "LOAD json;"}) {
+          LOGGER.fine("execute: " + s);
+          st.execute(s);
+        }
+      } catch (Exception ex) {
+        LOGGER.log(Level.FINE, "Failed to INSTALL/LOAD the JSON extension", ex);
+      }
+
+      LOGGER.info("Preparing Spatial Extension");
+      try (Statement st = connDuck.createStatement()) {
+        for (String s : new String[] {"INSTALL spatial;", "LOAD spatial;"}) {
+          LOGGER.fine("execute: " + s);
+          st.execute(s);
+        }
+      } catch (Exception ex) {
+        LOGGER.log(Level.FINE, "Failed to INSTALL/LOAD the SPATIAL extension", ex);
+      }
+
       String sqlStr = IOUtils.resourceToString(
           JSQLTranspilerTest.class.getCanonicalName().replaceAll("\\.", "/") + "_DDL.sql",
           Charset.defaultCharset(), JSQLTranspilerTest.class.getClassLoader());
@@ -294,56 +316,53 @@ public class JSQLTranspilerTest {
         try (ZipArchiveInputStream zipIn = new ZipArchiveInputStream(in)) {
           ZipArchiveEntry entry;
           while ((entry = zipIn.getNextEntry()) != null) {
+            String fileName = EXTRACTION_PATH + File.separator + entry.getName();
             if (!entry.isDirectory() && entry.getName().endsWith(".txt")) {
               // Extract the text file
               File outputFile = new File(extractionPathFolder, entry.getName());
               try (OutputStream out = new FileOutputStream(outputFile)) {
                 IOUtils.copy(zipIn, out);
-              }
 
-              // remove some silly '\N' entries since
-              try {
+                // remove some silly '\N' entries since
                 List<String> lines =
                     Files.readAllLines(outputFile.toPath(), StandardCharsets.UTF_8);
                 lines.replaceAll(s -> s.replace("\\N", ""));
                 Files.write(outputFile.toPath(), lines, StandardCharsets.UTF_8,
                     StandardOpenOption.TRUNCATE_EXISTING);
+
+                // @todo: find a better way to map the file names to the actual table names
+                String tableName = entry.getName().replace(".txt", "").replace("_pipe", "")
+                    .replace("_tab", "").replace("all", "").replace("2008", "");
+
+                if (tableName.equals("events")) {
+                  tableName = "event";
+                }
+                if (tableName.equals("listings")) {
+                  tableName = "listing";
+                }
+
+                // Execute the copyCommand with DuckDB
+                String copyCommand = entry.getName().contains("tab") ? "COPY " + tableName
+                    + " FROM '" + fileName
+                    + "' (FORMAT CSV, AUTO_DETECT true, DELIMITER '\t', TIMESTAMPFORMAT '%m/%d/%Y %I:%M:%S', IGNORE_ERRORS true);"
+                    : "COPY " + tableName + " FROM '" + fileName + "';";
+
+                try (Statement st = connDuck.createStatement()) {
+                  LOGGER.fine("execute: " + copyCommand);
+                  st.execute(copyCommand);
+                }
               } catch (IOException e) {
                 throw new RuntimeException(e);
-              }
-
-              // @todo: find a better way to map the file names to the actual table names
-              String tableName = entry.getName().replace(".txt", "").replace("_pipe", "")
-                  .replace("_tab", "").replace("all", "").replace("2008", "");
-
-              if (tableName.equals("events")) {
-                tableName = "event";
-              }
-              if (tableName.equals("listings")) {
-                tableName = "listing";
-              }
-
-              // Execute the copyCommand with DuckDB
-              String fileName = EXTRACTION_PATH + File.separator + entry.getName();
-              String copyCommand = entry.getName().contains("tab") ? "COPY " + tableName + " FROM '"
-                  + fileName
-                  + "' (FORMAT CSV, AUTO_DETECT true, DELIMITER '\t', TIMESTAMPFORMAT '%m/%d/%Y %I:%M:%S', IGNORE_ERRORS true);"
-                  : "COPY " + tableName + " FROM '" + fileName + "';";
-
-              try (Statement st = connDuck.createStatement()) {
-                LOGGER.fine("execute: " + copyCommand);
-                st.execute(copyCommand);
-              }
-
-              File f = new File(fileName);
-              if (f.exists()) {
-                f.delete();
+              } finally {
+                File f = new File(fileName);
+                if (f.exists()) {
+                  f.delete();
+                }
               }
             }
           }
         }
       }
-
       // used by the Snowflake examples
       // see https://duckdb.org/docs/extensions/tpch
       LOGGER.info("Preparing TPCH with load factor 0.2");
@@ -354,24 +373,38 @@ public class JSQLTranspilerTest {
         }
       }
 
-      LOGGER.info("Preparing JSON Extension");
-      try (Statement st = connDuck.createStatement()) {
-        for (String s : new String[] {"INSTALL json;", "LOAD json;"}) {
-          LOGGER.fine("execute: " + s);
-          st.execute(s);
-        }
-      } catch (Exception ex) {
-        LOGGER.log(Level.FINE, "Failed to INSTALL/LOAD the JSON extension", ex);
-      }
+      LOGGER.info("Download Amazon Redshift Geo-Spatial examples");
+      URL[] urls = {
+          JSQLTranspilerTest.class.getClassLoader()
+              .getResource("ai/starlake/transpiler/accommodations.csv"),
+          JSQLTranspilerTest.class.getClassLoader()
+              .getResource("ai/starlake/transpiler/zipcode.csv")};
+      for (URL url1 : urls) {
+        assert url1 != null;
+        // remove some silly '\N' entries since
+        File outputFile = new File(extractionPathFolder, FilenameUtils.getName(url1.getFile()));
+        try {
+          List<String> lines = Files.readAllLines(Path.of(url1.toURI()), StandardCharsets.UTF_8);
+          lines.replaceAll(s -> s.replace("\\N", ""));
+          Files.write(outputFile.toPath(), lines, StandardCharsets.UTF_8,
+              StandardOpenOption.CREATE_NEW);
 
-      LOGGER.info("Preparing Spatial Extension");
-      try (Statement st = connDuck.createStatement()) {
-        for (String s : new String[] {"INSTALL spatial;", "LOAD spatial;"}) {
-          LOGGER.fine("execute: " + s);
-          st.execute(s);
+          // @todo: find a better way to map the file names to the actual table names
+          String tableName = FilenameUtils.getBaseName(url1.getFile());
+          String copyCommand = "COPY " + tableName + " FROM '" + outputFile.getAbsolutePath()
+              + "' (FORMAT CSV, AUTO_DETECT true, TIMESTAMPFORMAT '%m/%d/%Y %I:%M:%S', IGNORE_ERRORS true);";
+
+          try (Statement st = connDuck.createStatement()) {
+            LOGGER.fine("execute: " + copyCommand);
+            st.execute(copyCommand);
+          }
+        } catch (IOException | URISyntaxException e) {
+          throw new RuntimeException(e);
+        } finally {
+          if (outputFile.exists()) {
+            outputFile.delete();
+          }
         }
-      } catch (Exception ex) {
-        LOGGER.log(Level.FINE, "Failed to INSTALL/LOAD the SPATIAL extension", ex);
       }
 
       LOGGER.info("Fetching the MetaData");

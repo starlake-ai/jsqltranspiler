@@ -221,3 +221,29 @@ INSERT INTO sales_table (salesperson_name, sales_in_dollars) VALUES
     ('Jones', 1000),
     ('Torkelson', 700),
     ('Dolenz', 800);
+
+CREATE TABLE accommodations (
+  id INTEGER PRIMARY KEY,
+  shape GEOMETRY,
+  name VARCHAR(100),
+  host_name VARCHAR(100),
+  neighbourhood_group VARCHAR(100),
+  neighbourhood VARCHAR(100),
+  room_type VARCHAR(100),
+  price SMALLINT,
+  minimum_nights SMALLINT,
+  number_of_reviews SMALLINT,
+  last_review DATE,
+  reviews_per_month NUMERIC(8,2),
+  calculated_host_listings_count SMALLINT,
+  availability_365 SMALLINT
+);
+
+CREATE TABLE zipcode (
+  ogc_field INTEGER PRIMARY KEY NOT NULL,
+  wkb_geometry GEOMETRY,
+  gml_id VARCHAR(256),
+  spatial_name VARCHAR(256),
+  spatial_alias VARCHAR(256),
+  spatial_type VARCHAR(256)
+ );
