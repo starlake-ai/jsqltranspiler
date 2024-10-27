@@ -56,25 +56,15 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
   enum TranspiledFunction {
     // @FORMATTER:OFF
     BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN, CHARINDEX, STRPOS, COLLATE, OCTETINDEX
-
     , REGEXP_COUNT, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPLICATE
-
     , ADD_MONTHS, CONVERT_TIMEZONE, DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD, DATEDIFF, DATE_PART, DATE_PART_YEAR
-
     , DATE_TRUNC, GETDATE, INTERVAL_CMP, MONTHS_BETWEEN, SYSDATE, TIMEOFDAY, TIMESTAMP_CMP, TIMESTAMP_CMP_DATE
-
     , TIMESTAMP_CMP_TIMESTAMPTZ, TIMESTAMPTZ_CMP, TIMESTAMPTZ_CMP_DATE, TIMESTAMPTZ_CMP_TIMESTAMP, TIMEZONE, TO_TIMESTAMP
-
     , ARRAY, ARRAY_FLATTEN, GET_ARRAY_LENGTH, SPLIT_TO_ARRAY, SUBARRAY
-
     , DEXP, DLOG1, DLOG10, LOG
-
-    , TRUNC
-
-    , TO_CHAR, TO_NUMBER, CONVERT
-
+    , TRUNC, TO_CHAR, TO_NUMBER, CONVERT
     , APPROXIMATE_PERCENTILE_DISC, APPROXIMATE_COUNT
-
+    , GEOMETRYTYPE, ST_GEOMFROMTEXT, ST_GEOGFROMTEXT, ST_ASEWKB, ST_ASEWKT, ST_ASBINARY
     ;
     // @FORMATTER:ON
 
@@ -568,6 +558,42 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case APPROXIMATE_COUNT:
           function.setName("approx_count_distinct");
+          break;
+        case GEOMETRYTYPE:
+          function.setName("ST_GeometryType");
+          break;
+        case ST_GEOGFROMTEXT:
+          function.setName("ST_GEOMFROMTEXT$$");
+        case ST_GEOMFROMTEXT:
+          function.setName("ST_GEOMFROMTEXT$$");
+          if (paramCount==2) {
+            warning("SRID is not supported");
+          }
+          if (parameters.get(0) instanceof StringValue) {
+            String regex = "(?i)SRID=\\d+;";
+            String s = ((StringValue) parameters.get(0)).getValue();
+            if (s.toUpperCase().contains("SRID")) {
+              warning("SRID is not supported");
+              function.setParameters(new StringValue(s.replaceAll(regex, "")));
+            } else {
+              function.setParameters(parameters.get(0));
+            }
+          } else {
+            function.setParameters(parameters.get(0));
+          }
+          break;
+        case ST_ASBINARY:
+          rewrittenExpression = new CastExpression("$$", function.withName("ST_AsWKB$$"), "BLOB" );
+          break;
+        case ST_ASEWKB:
+          function.setName("ST_AsWKB$$");
+          break;
+        case ST_ASEWKT:
+          if (paramCount==2) {
+            warning("PRECISION is not supported");
+          }
+          function.setName("ST_AsText$$");
+          function.setParameters(parameters.get(0));
           break;
       }
     }

@@ -1995,6 +1995,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       castExpression.keyword = "Try_Cast";
     }
 
+    // CAST has been rewritten before already
+    if ("$$".equalsIgnoreCase(castExpression.keyword)) {
+      castExpression.getLeftExpression().accept(this, null);
+      this.buffer.append("::");
+      this.buffer.append(rewriteType(castExpression.getColDataType()));
+      return this.buffer;
+    }
+
     // same cast
     if (castExpression.getLeftExpression() instanceof CastExpression) {
       CastExpression leftExpression = (CastExpression) castExpression.getLeftExpression();
@@ -2027,8 +2035,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         && castExpression.isBLOB()
         && (castExpression.getLeftExpression() instanceof StringValue
             || castExpression.getLeftExpression() instanceof Concat
-            || castExpression.getLeftExpression() instanceof Function && !castExpression
-                .getLeftExpression(Function.class).getName().equalsIgnoreCase("encode"))) {
+            || castExpression.getLeftExpression() instanceof Function
+                && !castExpression
+                  .getLeftExpression(Function.class).getName().equalsIgnoreCase("encode"))) {
       Function f = new Function("Encode$$", castExpression.getLeftExpression());
       f.accept(this, null);
 
@@ -2103,9 +2112,6 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   // implement an Enum on Big Query allowed data types
   public ColDataType rewriteType(ColDataType colDataType) {
     String dataTypeStr = colDataType.getDataType();
-
-
-
     if (CastExpression.isOf(colDataType, CastExpression.DataType.BYTES,
         CastExpression.DataType.VARBYTE)) {
       colDataType.setDataType("BLOB");

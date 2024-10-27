@@ -1,9 +1,8 @@
 -- provided
-SELECT max_by(x, y) AS max_by FROM VALUES (('a', 10)), (('b', 50)), (('c', 20)) AS tab(x, y);
+SELECT ST_AsBinary(ST_GeomFromText('POLYGON((0 0,0 1,1 1,1 0,0 0))',4326)) b;
 
 -- expected
-SELECT max_by(x, y) AS max_by FROM VALUES ('a', 10), ('b', 50), ('c', 20) AS tab(x, y);
+SELECT ST_ASWKB(ST_GeomFromText('POLYGON((0 0,0 1,1 1,1 0,0 0))'))::BLOB b;
 
--- result
-"max_by"
-"b"
+-- count
+1
