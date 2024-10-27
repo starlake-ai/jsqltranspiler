@@ -64,7 +64,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     , DEXP, DLOG1, DLOG10, LOG
     , TRUNC, TO_CHAR, TO_NUMBER, CONVERT
     , APPROXIMATE_PERCENTILE_DISC, APPROXIMATE_COUNT
-    , GEOMETRYTYPE, ST_GEOMFROMTEXT, ST_GEOGFROMTEXT, ST_ASEWKB, ST_ASEWKT, ST_ASBINARY
+    , GEOMETRYTYPE, ST_GEOMFROMTEXT, ST_GEOGFROMTEXT, ST_ASEWKB, ST_ASEWKT, ST_ASBINARY, ST_ASGEOJSON, ST_ASHEXEWKB
+    , ST_ASTEXT, ST_BUFFER, ST_COLLECT, ST_DISTANCESPHERE, ST_FORCE3D
     ;
     // @FORMATTER:ON
 
@@ -595,6 +596,36 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           function.setName("ST_AsText$$");
           function.setParameters(parameters.get(0));
           break;
+        case ST_ASGEOJSON:
+        case ST_ASTEXT:
+          if (paramCount==2) {
+            warning("PRECISION is not supported");
+            function.setParameters(parameters.get(0));
+          }
+          break;
+        case ST_ASHEXEWKB:
+          function.setName("ST_ASHEXWKB");
+          break;
+        case ST_BUFFER:
+          function.setName("ST_BUFFER$$");
+          break;
+        case ST_COLLECT:
+          switch (paramCount) {
+            case 1:
+              function.setParameters(new Function("List", parameters));
+              break;
+            case 2:
+              function.setParameters(new Function("Array_value", parameters));
+              break;
+          }
+          break;
+        case ST_DISTANCESPHERE:
+          warning("Returns wrong results.");
+          function.setName("ST_DISTANCE_SPHERE");
+          break;
+        case ST_FORCE3D:
+          function.setName("ST_FORCE3DZ");
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -634,6 +665,9 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case APPROXIMATE_COUNT:
           function.setName("approx_count_distinct");
+          break;
+        case ST_COLLECT:
+          rewrittenExpression = new Function("ST_COLLECT$$", function.withName("Array_Agg"));
           break;
       }
     }
