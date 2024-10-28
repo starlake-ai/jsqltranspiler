@@ -389,3 +389,286 @@ SELECT ST_GeometryType(ST_GeomFromText('LINESTRING(77.29 29.07,77.42 29.26,77.27
 -- result
 "t"
 "LINESTRING"
+
+
+-- provided
+SELECT ST_AsText(ST_GeomFromWKB('01030000000100000005000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000')) g;
+
+-- expected
+SELECT ST_AsText(ST_GeomFromHexWKB('01030000000100000005000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000')::GEOMETRY) g;
+
+-- result
+"g"
+"POLYGON ((0 0, 0 1, 1 1, 1 0, 0 0))"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_GeomFromGeoJSON('{"type":"Point","coordinates":[1,2]}')) g;
+
+-- expected
+SELECT ST_AsText(ST_GeomFromGeoJSON('{"type":"Point","coordinates":[1,2]}')) g;
+
+-- result
+"g"
+"POINT (1 2)"
+
+
+-- provided
+SELECT ST_Intersects(ST_GeomFromText('POLYGON((0 0,10 0,10 10,0 10,0 0),(2 2,2 5,5 5,5 2,2 2))'), ST_GeomFromText('MULTIPOINT((4 4),(6 6))')) t;
+
+-- result
+"t"
+"true"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_Intersection(ST_GeomFromText('polygon((0 0,100 100,0 200,0 0))'), ST_GeomFromText('polygon((0 0,10 0,0 10,0 0))'))) i;
+
+-- expected
+SELECT ST_AsText(ST_Intersection(ST_GeomFromText('polygon((0 0,100 100,0 200,0 0))'), ST_GeomFromText('polygon((0 0,10 0,0 10,0 0))'))) i;
+
+-- result
+"i"
+"POLYGON ((0 0, 0 10, 5 5, 0 0))"
+
+
+-- provided
+SELECT ST_IsEmpty(ST_GeomFromText('POLYGON((0 2,1 1,0 -1,0 2))')) e;
+
+-- result
+"e"
+"false"
+
+
+-- provided
+SELECT ST_IsRing(ST_GeomFromText('linestring(0 0, 1 1, 1 2, 0 0)')) e;
+
+-- result
+"e"
+"true"
+
+-- provided
+SELECT ST_IsSimple(ST_GeomFromText('LINESTRING(0 0,10 0,5 5,5 -5)')) e;
+
+-- result
+"e"
+"false"
+
+
+-- provided
+SELECT ST_IsValid(ST_GeomFromText('POLYGON((0 0,10 0,10 10,0 10,0 0),(5 0,10 5,5 10,0 5,5 0))')) b;
+
+-- result
+"b"
+"false"
+
+
+-- provided
+SELECT ST_Length(ST_GeomFromText('MULTILINESTRING((0 0,10 0,0 10),(10 0,20 0,20 10))')) l;
+
+-- result
+"l"
+"44.142135624"
+
+
+-- provided
+SELECT ST_LengthSphere(ST_GeomFromText('LINESTRING(10 10,45 45)')) l;
+
+-- expected
+SELECT ST_Length_Spheroid(ST_GeomFromText('LINESTRING(10 10,45 45)')) l;
+
+-- result
+"l"
+"5122094.403815614"
+
+
+-- provided
+SELECT ST_M(ST_GeomFromEWKT('POINT M (1 2 3)')) m;
+
+-- expected
+SELECT ST_M(ST_GeomFromText('POINT M (1 2 3)')) m;
+
+-- result
+"m"
+"3.0"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_MakeEnvelope(2,4,5,7)) e;
+
+-- expected
+SELECT ST_AsText(ST_MakeEnvelope(2,4,5,7)) e;
+
+-- result
+"e"
+"POLYGON ((2 4, 2 7, 5 7, 5 4, 2 4))"
+
+
+
+-- provided
+SELECT ST_AsText(ST_MakePoint(1,3)) p;
+
+-- expected
+SELECT ST_AsText(ST_Point(1,3)::GEOMETRY) p;
+
+-- result
+"p"
+"POINT (1 3)"
+
+
+-- provided
+SELECT ST_AsText(ST_MakePolygon(ST_GeomFromText('LINESTRING(77.29 29.07,77.42 29.26,77.27 29.31,77.29 29.07)'))) p;
+
+-- expected
+SELECT ST_AsText(ST_MakePolygon(ST_GeomFromText('LINESTRING(77.29 29.07,77.42 29.26,77.27 29.31,77.29 29.07)'))::GEOMETRY) p;
+
+-- result
+"p"
+"POLYGON ((77.29 29.07, 77.42 29.26, 77.27 29.31, 77.29 29.07))"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_Multi(ST_GeomFromText('MULTIPOINT((1 2),(3 4))', 4326))) m;
+
+-- expected
+SELECT ST_AsText(ST_Multi(ST_GeomFromText('MULTIPOINT((1 2),(3 4))'))) m;
+
+-- result
+"m"
+"MULTIPOINT (1 2, 3 4)"
+
+
+-- provided
+SELECT ST_NDims(ST_GeomFromText('LINESTRING Z(0 0 3,1 1 3,2 2 3,0 0 3)')) d;
+
+-- expected
+SELECT ST_Dimension(ST_GeomFromText('LINESTRING Z(0 0 3,1 1 3,2 2 3,0 0 3)')) d;
+
+-- result
+"d"
+"1"
+
+
+-- provided
+SELECT ST_NPoints(ST_GeomFromText('LINESTRING(77.29 29.07,77.42 29.26,77.27 29.31,77.29 29.07)')) p;
+
+-- result
+"p"
+"4"
+
+
+-- provided
+SELECT ST_NumGeometries(ST_GeomFromText('MULTILINESTRING((0 0,1 0,0 5),(3 4,13 26))')) n;
+
+-- result
+"n"
+"2"
+
+
+-- provided
+SELECT ST_NumInteriorRings(ST_GeomFromText('POLYGON((0 0,100 0,100 100,0 100,0 0),(1 1,1 5,5 1,1 1),(7 7,7 8,8 7,7 7))')) n;
+
+-- result
+"n"
+"2"
+
+
+-- provided
+SELECT ST_NumPoints(ST_GeomFromText('LINESTRING(77.29 29.07,77.42 29.26,77.27 29.31,77.29 29.07)')) n;
+
+-- expected
+SELECT ST_NumPoints(ST_GeomFromText('LINESTRING(77.29 29.07,77.42 29.26,77.27 29.31,77.29 29.07)')::GEOMETRY) n;
+
+-- result
+"n"
+"4"
+
+
+-- provided
+SELECT ST_Perimeter(ST_GeomFromText('MULTIPOLYGON(((0 0,10 0,0 10,0 0)),((10 0,20 0,20 10,10 0)))')) p;
+
+-- result
+"p"
+"68.284271247"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_PointN(ST_GeomFromText('LINESTRING(0 0,10 0,10 10,5 5,0 5,0 0)',4326), 5)) p;
+
+-- expected
+SELECT ST_AsText(ST_PointN(ST_GeomFromText('LINESTRING(0 0,10 0,10 10,5 5,0 5,0 0)'), 5)) p;
+
+-- result
+"p"
+"POINT (0 5)"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_Points(ST_GeomFromText('MULTIPOLYGON(((0 0,1 0,0 1,0 0)))'))) p;
+
+-- expected
+SELECT ST_AsText(ST_Points(ST_GeomFromText('MULTIPOLYGON(((0 0,1 0,0 1,0 0)))'))) p;
+
+-- result
+"p"
+"MULTIPOINT (0 0, 1 0, 0 1, 0 0)"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_Polygon(ST_GeomFromText('LINESTRING(77.29 29.07,77.42 29.26,77.27 29.31,77.29 29.07)'),4356)) p;
+
+-- expected
+SELECT ST_AsText(ST_MakePolygon(ST_GeomFromText('LINESTRING(77.29 29.07,77.42 29.26,77.27 29.31,77.29 29.07)'))) p;
+
+-- result
+"p"
+"POLYGON ((77.29 29.07, 77.42 29.26, 77.27 29.31, 77.29 29.07))"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_Reverse(ST_GeomFromText('LINESTRING(1 0,2 0,3 0,4 0)', 4326))) r;
+
+-- expected
+SELECT ST_AsText(ST_Reverse(ST_GeomFromText('LINESTRING(1 0,2 0,3 0,4 0)'))) r;
+
+-- result
+"r"
+"LINESTRING (4 0, 3 0, 2 0, 1 0)"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_Simplify(ST_GeomFromText('LINESTRING(0 0,1 2,1 1,2 2,2 1)'), 1)) s;
+
+-- expected
+SELECT ST_AsText(ST_Simplify(ST_GeomFromText('LINESTRING(0 0,1 2,1 1,2 2,2 1)'), 1)) s;
+
+-- result
+"s"
+"LINESTRING (0 0, 1 2, 2 1)"
+
+
+-- provided
+SELECT ST_Touches(ST_GeomFromText('POLYGON((0 0,10 0,0 10,0 0))'), ST_GeomFromText('LINESTRING(20 10,20 0,10 0)')) t;
+
+-- result
+"t"
+"true"
+
+
+-- provided
+SELECT ST_AsEWKT(ST_Union(ST_GeomFromText('POLYGON((0 0,100 100,0 200,0 0))'), ST_GeomFromText('POLYGON((0 0,10 0,0 10,0 0))'))) u;
+
+-- expected
+SELECT ST_AsText(ST_Union(ST_GeomFromText('POLYGON((0 0,100 100,0 200,0 0))'), ST_GeomFromText('POLYGON((0 0,10 0,0 10,0 0))'))) u;
+
+-- result
+"u"
+"POLYGON ((0 200, 100 100, 5 5, 10 0, 0 0, 0 10, 0 200))"
+
+
+-- provided
+SELECT ST_Within(ST_GeomFromText('POLYGON((0 2,1 1,0 -1,0 2))'), ST_GeomFromText('POLYGON((-1 3,2 1,0 -3,-1 3))')) w;
+
+-- result
+"w"
+"true"

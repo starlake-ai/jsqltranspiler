@@ -55,18 +55,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
 
   enum TranspiledFunction {
     // @FORMATTER:OFF
-    BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN, CHARINDEX, STRPOS, COLLATE, OCTETINDEX
-    , REGEXP_COUNT, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPLICATE
-    , ADD_MONTHS, CONVERT_TIMEZONE, DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD, DATEDIFF, DATE_PART, DATE_PART_YEAR
-    , DATE_TRUNC, GETDATE, INTERVAL_CMP, MONTHS_BETWEEN, SYSDATE, TIMEOFDAY, TIMESTAMP_CMP, TIMESTAMP_CMP_DATE
-    , TIMESTAMP_CMP_TIMESTAMPTZ, TIMESTAMPTZ_CMP, TIMESTAMPTZ_CMP_DATE, TIMESTAMPTZ_CMP_TIMESTAMP, TIMEZONE, TO_TIMESTAMP
-    , ARRAY, ARRAY_FLATTEN, GET_ARRAY_LENGTH, SPLIT_TO_ARRAY, SUBARRAY
-    , DEXP, DLOG1, DLOG10, LOG
-    , TRUNC, TO_CHAR, TO_NUMBER, CONVERT
-    , APPROXIMATE_PERCENTILE_DISC, APPROXIMATE_COUNT
-    , GEOMETRYTYPE, ST_GEOMFROMTEXT, ST_GEOGFROMTEXT, ST_ASEWKB, ST_ASEWKT, ST_ASBINARY, ST_ASGEOJSON, ST_ASHEXEWKB
-    , ST_ASTEXT, ST_BUFFER, ST_COLLECT, ST_DISTANCESPHERE, ST_FORCE3D
-    ;
+    BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN, CHARINDEX, STRPOS, COLLATE, OCTETINDEX, REGEXP_COUNT, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPLICATE, ADD_MONTHS, CONVERT_TIMEZONE, DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD, DATEDIFF, DATE_PART, DATE_PART_YEAR, DATE_TRUNC, GETDATE, INTERVAL_CMP, MONTHS_BETWEEN, SYSDATE, TIMEOFDAY, TIMESTAMP_CMP, TIMESTAMP_CMP_DATE, TIMESTAMP_CMP_TIMESTAMPTZ, TIMESTAMPTZ_CMP, TIMESTAMPTZ_CMP_DATE, TIMESTAMPTZ_CMP_TIMESTAMP, TIMEZONE, TO_TIMESTAMP, ARRAY, ARRAY_FLATTEN, GET_ARRAY_LENGTH, SPLIT_TO_ARRAY, SUBARRAY, DEXP, DLOG1, DLOG10, LOG, TRUNC, TO_CHAR, TO_NUMBER, CONVERT, APPROXIMATE_PERCENTILE_DISC, APPROXIMATE_COUNT, GEOMETRYTYPE, ST_GEOMFROMTEXT, ST_GEOGFROMTEXT, ST_ASEWKB, ST_ASEWKT, ST_ASBINARY, ST_ASGEOJSON, ST_ASHEXEWKB, ST_ASTEXT, ST_BUFFER, ST_COLLECT, ST_DISTANCESPHERE, ST_FORCE3D, ST_GEOGFROMWKB, ST_GEOMFROMWKB, ST_GEOMFROMEWKB, ST_GEOMFROMEWKT, ST_LENGTHSPHERE, ST_LENGTH2D, ST_MAKEPOINT, ST_NDIMS, ST_PERIMETER2D, ST_POLYGON;
     // @FORMATTER:ON
 
 
@@ -564,10 +553,10 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           function.setName("ST_GeometryType");
           break;
         case ST_GEOGFROMTEXT:
-          function.setName("ST_GEOMFROMTEXT$$");
         case ST_GEOMFROMTEXT:
+        case ST_GEOMFROMEWKT:
           function.setName("ST_GEOMFROMTEXT$$");
-          if (paramCount==2) {
+          if (paramCount == 2) {
             warning("SRID is not supported");
           }
           if (parameters.get(0) instanceof StringValue) {
@@ -584,13 +573,13 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           }
           break;
         case ST_ASBINARY:
-          rewrittenExpression = new CastExpression("$$", function.withName("ST_AsWKB$$"), "BLOB" );
+          rewrittenExpression = new CastExpression("$$", function.withName("ST_AsWKB$$"), "BLOB");
           break;
         case ST_ASEWKB:
           function.setName("ST_AsWKB$$");
           break;
         case ST_ASEWKT:
-          if (paramCount==2) {
+          if (paramCount == 2) {
             warning("PRECISION is not supported");
           }
           function.setName("ST_AsText$$");
@@ -598,7 +587,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case ST_ASGEOJSON:
         case ST_ASTEXT:
-          if (paramCount==2) {
+          if (paramCount == 2) {
             warning("PRECISION is not supported");
             function.setParameters(parameters.get(0));
           }
@@ -625,6 +614,37 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case ST_FORCE3D:
           function.setName("ST_FORCE3DZ");
+          break;
+        case ST_GEOMFROMWKB:
+        case ST_GEOGFROMWKB:
+          function.setName("ST_GEOMFROMHEXWKB");
+          break;
+        case ST_GEOMFROMEWKB:
+          function.setName("ST_GEOMFROMHEXEWKB");
+          break;
+        case ST_LENGTHSPHERE:
+          warning("Results differ");
+          function.setName("ST_LENGTH_SPHEROID");
+          break;
+        case ST_LENGTH2D:
+          function.setName("ST_LENGTH");
+          break;
+        case ST_MAKEPOINT:
+          function.setName("ST_POINT");
+          break;
+        case ST_NDIMS:
+          warning("Produces wrong result");
+          function.setName("ST_DIMENSION");
+          break;
+        case ST_PERIMETER2D:
+          function.setName("ST_PERIMETER");
+          break;
+        case ST_POLYGON:
+          if (paramCount == 2) {
+            warning("SRID is not supported");
+          }
+          function.setName("ST_MakePolygon");
+          function.setParameters(parameters.get(0));
           break;
       }
     }
