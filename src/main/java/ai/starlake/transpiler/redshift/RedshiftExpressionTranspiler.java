@@ -26,21 +26,30 @@ import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.JsonExpression;
+import net.sf.jsqlparser.expression.JsonFunction;
+import net.sf.jsqlparser.expression.JsonFunctionExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
+import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
+import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
+import net.sf.jsqlparser.expression.operators.relational.JsonOperator;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
+import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
 
+import java.util.AbstractMap;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,9 +63,19 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
   }
 
   enum TranspiledFunction {
-    // @FORMATTER:OFF
-    BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN, CHARINDEX, STRPOS, COLLATE, OCTETINDEX, REGEXP_COUNT, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPLICATE, ADD_MONTHS, CONVERT_TIMEZONE, DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD, DATEDIFF, DATE_PART, DATE_PART_YEAR, DATE_TRUNC, GETDATE, INTERVAL_CMP, MONTHS_BETWEEN, SYSDATE, TIMEOFDAY, TIMESTAMP_CMP, TIMESTAMP_CMP_DATE, TIMESTAMP_CMP_TIMESTAMPTZ, TIMESTAMPTZ_CMP, TIMESTAMPTZ_CMP_DATE, TIMESTAMPTZ_CMP_TIMESTAMP, TIMEZONE, TO_TIMESTAMP, ARRAY, ARRAY_FLATTEN, GET_ARRAY_LENGTH, SPLIT_TO_ARRAY, SUBARRAY, DEXP, DLOG1, DLOG10, LOG, TRUNC, TO_CHAR, TO_NUMBER, CONVERT, APPROXIMATE_PERCENTILE_DISC, APPROXIMATE_COUNT, GEOMETRYTYPE, ST_GEOMFROMTEXT, ST_GEOGFROMTEXT, ST_ASEWKB, ST_ASEWKT, ST_ASBINARY, ST_ASGEOJSON, ST_ASHEXEWKB, ST_ASTEXT, ST_BUFFER, ST_COLLECT, ST_DISTANCESPHERE, ST_FORCE3D, ST_GEOGFROMWKB, ST_GEOMFROMWKB, ST_GEOMFROMEWKB, ST_GEOMFROMEWKT, ST_LENGTHSPHERE, ST_LENGTH2D, ST_MAKEPOINT, ST_NDIMS, ST_PERIMETER2D, ST_POLYGON;
-    // @FORMATTER:ON
+    // @formatter:off
+    BPCHARCMP, BTRIM, BTTEXT_PATTERN_CMP, CHAR_LENGTH, CHARACTER_LENGTH, TEXTLEN, LEN, CHARINDEX, STRPOS, COLLATE
+    , OCTETINDEX, REGEXP_COUNT, REGEXP_INSTR, REGEXP_REPLACE, REGEXP_SUBSTR, REPLICATE, ADD_MONTHS, CONVERT_TIMEZONE
+    , DATE_CMP, DATE_CMP_TIMESTAMP, DATE_CMP_TIMESTAMPTZ, DATEADD, DATEDIFF, DATE_PART, DATE_PART_YEAR, DATE_TRUNC
+    , GETDATE, INTERVAL_CMP, MONTHS_BETWEEN, SYSDATE, TIMEOFDAY, TIMESTAMP_CMP, TIMESTAMP_CMP_DATE
+    , TIMESTAMP_CMP_TIMESTAMPTZ, TIMESTAMPTZ_CMP, TIMESTAMPTZ_CMP_DATE, TIMESTAMPTZ_CMP_TIMESTAMP, TIMEZONE
+    , TO_TIMESTAMP, ARRAY, ARRAY_FLATTEN, GET_ARRAY_LENGTH, SPLIT_TO_ARRAY, SUBARRAY, DEXP, DLOG1, DLOG10, LOG
+    , TRUNC, TO_CHAR, TO_NUMBER, CONVERT, APPROXIMATE_PERCENTILE_DISC, APPROXIMATE_COUNT, GEOMETRYTYPE, ST_GEOMFROMTEXT
+    , ST_GEOGFROMTEXT, ST_ASEWKB, ST_ASEWKT, ST_ASBINARY, ST_ASGEOJSON, ST_ASHEXEWKB, ST_ASTEXT, ST_BUFFER, ST_COLLECT
+    , ST_DISTANCESPHERE, ST_FORCE3D, ST_GEOGFROMWKB, ST_GEOMFROMWKB, ST_GEOMFROMEWKB, ST_GEOMFROMEWKT, ST_LENGTHSPHERE
+    , ST_LENGTH2D, ST_MAKEPOINT, ST_NDIMS, ST_PERIMETER2D, ST_POLYGON
+    , JSON_PARSE, CAN_JSON_PARSE, IS_VALID_JSON, IS_VALID_JSON_ARRAY, JSON_EXTRACT_ARRAY_ELEMENT_TEXT, JSON_EXTRACT_PATH_TEXT;
+    // @formatter:on
 
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
@@ -646,6 +665,43 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           function.setName("ST_MakePolygon");
           function.setParameters(parameters.get(0));
           break;
+        case JSON_PARSE:
+          if (paramCount == 1) {
+            rewrittenExpression = new CastExpression(parameters.get(0), "JSON");
+          }
+          break;
+        case CAN_JSON_PARSE:
+          if (paramCount == 1) {
+            rewrittenExpression = new IsNullExpression(new CastExpression("Try_Cast", parameters.get(0), "JSON")).withNot(true);
+          }
+          break;
+        case IS_VALID_JSON:
+          if (paramCount == 1) {
+            // json_valid(json_strings) AND json_type(try_cast(json_strings AS JSON))!='ARRAY'
+            function.setName("Json_Valid");
+            rewrittenExpression = new AndExpression(function, new NotEqualsTo(new Function("Json_type", new CastExpression("Try_cast", parameters.get(0), "JSON")), new StringValue("ARRAY")));
+          }
+          break;
+        case IS_VALID_JSON_ARRAY:
+          if (paramCount == 1) {
+            // json_valid(json_strings) AND json_type(try_cast(json_strings AS JSON))='ARRAY'
+            function.setName("Json_Valid");
+            rewrittenExpression = new AndExpression(function, new EqualsTo(new Function("Json_type", new CastExpression("Try_cast", parameters.get(0), "JSON")), new StringValue("ARRAY")));
+          }
+          break;
+        case JSON_EXTRACT_ARRAY_ELEMENT_TEXT:
+          if (paramCount == 2) {
+            // SELECT ('[111,112,113]'::JSON)[2] e;
+            rewrittenExpression = new ArrayExpression( new CastExpression("Try_Cast", parameters.get(0), "JSON"), parameters.get(1) );
+          }
+          break;
+        case JSON_EXTRACT_PATH_TEXT:
+          if (paramCount>1) {
+            rewrittenExpression = new CastExpression(parameters.get(0), "JSON");
+            for (int i=1; i<paramCount; i++) {
+              rewrittenExpression = new JsonExpression(rewrittenExpression, List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->")));
+            }
+          }
       }
     }
     if (rewrittenExpression == null) {

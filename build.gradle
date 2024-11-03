@@ -60,7 +60,7 @@ dependencies {
     // for the ASCII Trees
     testImplementation 'hu.webarticum:tree-printer:+'
 
-    testImplementation 'org.duckdb:duckdb_jdbc:+'
+    testImplementation 'org.duckdb:duckdb_jdbc:1.1.2'
     testImplementation 'org.apache.commons:commons-compress:+'
     testImplementation 'com.opencsv:opencsv:+'
 
