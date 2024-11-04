@@ -292,6 +292,16 @@ public class JSQLTranspilerTest {
         LOGGER.log(Level.FINE, "Failed to INSTALL/LOAD the SPATIAL extension", ex);
       }
 
+      LOGGER.info("Preparing H3 Community Extension");
+      try (Statement st = connDuck.createStatement()) {
+        for (String s : new String[] {"INSTALL h3 FROM community;", "LOAD h3;"}) {
+          LOGGER.fine("execute: " + s);
+          st.execute(s);
+        }
+      } catch (Exception ex) {
+        LOGGER.log(Level.FINE, "Failed to INSTALL/LOAD the SPATIAL extension", ex);
+      }
+
       String sqlStr = IOUtils.resourceToString(
           JSQLTranspilerTest.class.getCanonicalName().replaceAll("\\.", "/") + "_DDL.sql",
           Charset.defaultCharset(), JSQLTranspilerTest.class.getClassLoader());

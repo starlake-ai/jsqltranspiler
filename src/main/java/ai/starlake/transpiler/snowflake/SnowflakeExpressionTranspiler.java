@@ -57,59 +57,45 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
   }
 
   enum DatePart {
+    //@formatter:off
     year, y, yy, yyy, yyyy, yr, years, yrs, month, mm, mon, mons, months, day, d, dd, days, dayofmonth, dayofweek
-
     , weekday, dow, dw, dayofweekiso, weekday_iso, dow_iso, dw_iso, dayofyear, yearday, doy, dy, week, w, wk, weekofyear
-
     , woy, wy, weekiso, week_iso, weekofyeariso, weekofyear_iso, quarter, q, qtr, qtrs, quarters, yearofweek, yearofweekiso
+    //@formatter:on
   }
 
   enum TimePart {
+    //@formatter:off
     hour, h, hh, hr, hours, hrs, minute, m, mi, min, minutes, mins, second, s, sec, seconds, secs, millisecond, ms
-
     , msec, milliseconds, microsecond, us, usec, microseconds, nanosecond, ns, nsec, nanosec, nsecond, nanoseconds
-
     , nanosecs, nseconds, epoch_second, epoch, epoch_seconds, epoch_millisecond, epoch_milliseconds, epoch_microsecond
-
     , epoch_microseconds, epoch_nanosecond, epoch_nanoseconds, timezone_hour, tzh, timezone_minute, tzm
+    //@formatter:on
   }
 
   enum TranspiledFunction {
-    // @FORMATTER:OFF
+    //@formatter:off
     DATE_FROM_PARTS, DATEFROMPARTS, TIME_FROM_PARTS, TIMEFROMPARTS, TIMESTAMP_FROM_PARTS, TIMESTAMPFROMPARTS
-
     , TIMESTAMP_TZ_FROM_PARTS, TIMESTAMPTZFROMPARTS, TIMESTAMP_LTZ_FROM_PARTS, TIMESTAMPLTZFROMPARTS
-
     , TIMESTAMP_NTZ_FROM_PARTS, TIMESTAMPNTZFROMPARTS, DATE_PART, DAYNAME, LAST_DAY, MONTHNAME, ADD_MONTHS, DATEADD
-
     , TIMEADD, TIMESTAMPADD, DATEDIFF, TIMEDIFF, TIMESTAMPDIFF, TIME_SLICE, TRUNC, DATE, TIME, TO_TIMESTAMP_LTZ
-
     , TO_TIMESTAMP_NTZ, TO_TIMESTAMP_TZ, CONVERT_TIMEZONE, TO_DATE, TO_TIME, TO_TIMESTAMP
-
     , REGEXP_COUNT, REGEXP_EXTRACT_ALL, REGEXP_SUBSTR_ALL, REGEXP_INSTR, REGEXP_SUBSTR, REGEXP_LIKE, REGEXP_REPLACE
-
     , BIT_LENGTH, OCTET_LENGTH, CHAR, INSERT, RTRIMMED_LENGTH, SPACE, SPLIT_TO_TABLE, STRTOK_SPLIT_TO_TABLE, STRTOK
-
     , STRTOK_TO_ARRAY, UUID_STRING, CHARINDEX, POSITION, EDITDISTANCE, ENDSWITH, STARTSWITH, JAROWINKLER_SIMILARITY
-
     , ARRAYAGG, ARRAY_CONSTRUCT, ARRAY_COMPACT, ARRAY_CONSTRUCT_COMPACT, ARRAY_CONTAINS, ARRAY_EXCEPT
-
     , ARRAY_FLATTEN, ARRAY_GENERATE_RANGE, ARRAY_INSERT, ARRAY_INTERSECTION, ARRAY_MAX, ARRAY_MIN, ARRAY_POSITION
-
     , ARRAY_PREPEND, ARRAY_REMOVE, ARRAY_REMOVE_AT, ARRAY_SIZE, ARRAY_SLICE, ARRAY_SORT, ARRAY_TO_STRING, ARRAYS_OVERLAP
-
     , VARIANCE_POP, VARIANCE_SAMP, BITAND_AGG, BITOR_AGG, BITXOR_AGG, BOOLAND_AGG, BOOLOR_AGG, BOOLXOR_AGG, SKEW
-
     , GROUPING_ID, TO_VARCHAR, TO_BINARY, TRY_TO_BINARY, TO_DECIMAL, TO_NUMBER, TO_NUMERIC, TRY_TO_DECIMAL
-
     , TRY_TO_NUMBER, TRY_TO_NUMERIC, TO_DOUBLE, TRY_TO_DOUBLE, TO_BOOLEAN, TRY_TO_BOOLEAN, TRY_TO_DATE, TRY_TO_TIME
-
     , TRY_TO_TIMESTAMP, TRY_TO_TIMESTAMP_LTZ, TRY_TO_TIMESTAMP_NTZ, TRY_TO_TIMESTAMP_TZ
-
     , RANDOM, DIV0, DIV0NULL, ROUND, SQUARE
-
+    , CHECK_JSON, TRY_PARSE_JSON, GET_PATH, OBJECT_KEYS, STRIP_NULL_VALUE
+    , ST_GEOMFROMWKB , ST_GEOMETRYFROMEWKB , ST_GEOMFROMEWKB, ST_GEOMETRYFROMWKB, ST_GEOMFROMWKT , ST_GEOMETRYFROMEWKT
+    , ST_GEOMFROMEWKT , ST_GEOMETRYFROMTEXT , ST_GEOMFROMTEXT, ST_GEOMETRYFROMWKT, TO_GEOMETRY, TRY_TO_GEOMETRY
     ;
-    // @FORMATTER:ON
+    //@formatter:on
 
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
@@ -986,6 +972,73 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
             function.setName("Power");
             function.setParameters(parameters.get(0), new LongValue(2));
           }
+          break;
+        case CHECK_JSON:
+          function.setName("JSon_Valid");
+          break;
+        case TRY_PARSE_JSON:
+          if (paramCount == 1) {
+            rewrittenExpression = new CastExpression("Try_Cast", parameters.get(0), "JSON");
+          }
+          break;
+        case GET_PATH:
+          function.setName("Json_Value");
+          break;
+        case OBJECT_KEYS:
+          function.setName("Json_Keys");
+          break;
+        case STRIP_NULL_VALUE:
+          if (paramCount == 1) {
+            rewrittenExpression = parameters.get(0);
+          }
+          break;
+        case ST_GEOMETRYFROMWKB:
+        case ST_GEOMFROMWKB:
+        case ST_GEOMETRYFROMEWKB:
+        case ST_GEOMFROMEWKB:
+          if (paramCount > 1) {
+            warning("SRID and ALLOW_INVALID are not supported.");
+          }
+          function.setName("If");
+          function.setParameters(
+              new Function("REGEXP_MATCHES", parameters.get(0), new StringValue("^[0-9A-Fa-f]+$")),
+              new Function("ST_GeomFromHEXEWKB$$", parameters.get(0)),
+              new Function("ST_GeomFromWKB$$", new CastExpression(parameters.get(0), "BLOB")));
+          break;
+        case ST_GEOMFROMWKT:
+        case ST_GEOMETRYFROMEWKT:
+        case ST_GEOMFROMEWKT:
+        case ST_GEOMETRYFROMTEXT:
+        case ST_GEOMFROMTEXT:
+        case ST_GEOMETRYFROMWKT:
+          function.setName("ST_GEOMFROMTEXT$$");
+          if (paramCount > 1) {
+            warning("SRID and ALLOW_INVALID are not supported.");
+          }
+          if (parameters.get(0) instanceof StringValue) {
+            String regex = "(?i)SRID=\\d+;";
+            String s = ((StringValue) parameters.get(0)).getValue();
+            if (s.toUpperCase().contains("SRID")) {
+              warning("SRID is not supported");
+              function.setParameters(new StringValue(s.replaceAll(regex, "")));
+            } else {
+              function.setParameters(parameters.get(0));
+            }
+          } else {
+            function.setParameters(parameters.get(0));
+          }
+          break;
+        case TO_GEOMETRY:
+          if (paramCount > 1) {
+            warning("SRID and ALLOW_INVALID are not supported.");
+          }
+          rewrittenExpression = new CastExpression("Cast", parameters.get(0), "GEOMETRY");
+          break;
+        case TRY_TO_GEOMETRY:
+          if (paramCount > 1) {
+            warning("SRID and ALLOW_INVALID are not supported.");
+          }
+          rewrittenExpression = new CastExpression("Try_Cast", parameters.get(0), "GEOMETRY");
           break;
       }
     }

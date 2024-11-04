@@ -27,8 +27,6 @@ import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.JsonExpression;
-import net.sf.jsqlparser.expression.JsonFunction;
-import net.sf.jsqlparser.expression.JsonFunctionExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
@@ -40,7 +38,6 @@ import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
-import net.sf.jsqlparser.expression.operators.relational.JsonOperator;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
 import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
@@ -672,34 +669,46 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case CAN_JSON_PARSE:
           if (paramCount == 1) {
-            rewrittenExpression = new IsNullExpression(new CastExpression("Try_Cast", parameters.get(0), "JSON")).withNot(true);
+            rewrittenExpression =
+                new IsNullExpression(new CastExpression("Try_Cast", parameters.get(0), "JSON"))
+                    .withNot(true);
           }
           break;
         case IS_VALID_JSON:
           if (paramCount == 1) {
             // json_valid(json_strings) AND json_type(try_cast(json_strings AS JSON))!='ARRAY'
             function.setName("Json_Valid");
-            rewrittenExpression = new AndExpression(function, new NotEqualsTo(new Function("Json_type", new CastExpression("Try_cast", parameters.get(0), "JSON")), new StringValue("ARRAY")));
+            rewrittenExpression = new AndExpression(function,
+                new NotEqualsTo(
+                    new Function("Json_type",
+                        new CastExpression("Try_cast", parameters.get(0), "JSON")),
+                    new StringValue("ARRAY")));
           }
           break;
         case IS_VALID_JSON_ARRAY:
           if (paramCount == 1) {
             // json_valid(json_strings) AND json_type(try_cast(json_strings AS JSON))='ARRAY'
             function.setName("Json_Valid");
-            rewrittenExpression = new AndExpression(function, new EqualsTo(new Function("Json_type", new CastExpression("Try_cast", parameters.get(0), "JSON")), new StringValue("ARRAY")));
+            rewrittenExpression = new AndExpression(function,
+                new EqualsTo(
+                    new Function("Json_type",
+                        new CastExpression("Try_cast", parameters.get(0), "JSON")),
+                    new StringValue("ARRAY")));
           }
           break;
         case JSON_EXTRACT_ARRAY_ELEMENT_TEXT:
           if (paramCount == 2) {
             // SELECT ('[111,112,113]'::JSON)[2] e;
-            rewrittenExpression = new ArrayExpression( new CastExpression("Try_Cast", parameters.get(0), "JSON"), parameters.get(1) );
+            rewrittenExpression = new ArrayExpression(
+                new CastExpression("Try_Cast", parameters.get(0), "JSON"), parameters.get(1));
           }
           break;
         case JSON_EXTRACT_PATH_TEXT:
-          if (paramCount>1) {
+          if (paramCount > 1) {
             rewrittenExpression = new CastExpression(parameters.get(0), "JSON");
-            for (int i=1; i<paramCount; i++) {
-              rewrittenExpression = new JsonExpression(rewrittenExpression, List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->")));
+            for (int i = 1; i < paramCount; i++) {
+              rewrittenExpression = new JsonExpression(rewrittenExpression,
+                  List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->")));
             }
           }
       }

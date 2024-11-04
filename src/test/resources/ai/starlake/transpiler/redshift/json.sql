@@ -133,6 +133,6 @@ SELECT JSON_EXTRACT_PATH_TEXT('{"f2":{"f3":1},"f4":{"f5":99,"f6":"star"}}','f4',
 -- expected
 SELECT  '{"f2":{"f3":1},"f4":{"f5":99,"f6":"star"}}'::JSON -> 'f4' -> 'f6' e;
 
--- expected
+-- result
 "e"
 """star"""
