@@ -849,4 +849,97 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     assertLineage(schemaDefinition, sqlStr, expected);
   }
 
+  /**
+   * Test lenient mode for an aliased table and column, when table and column exist, but schema
+   * mismatch.
+   *
+   * @throws JSQLParserException then exception when the SQL can't be parsed
+   */
+  @Test
+  void testLenientSelectAliasSchemaMismatch() throws JSQLParserException {
+    //@formatter:off
+    String sqlStr =
+        "SELECT alias_a.colaa\n" +
+        "FROM a alias_a\n" +
+        "    JOIN b alias_b\n" +
+        "        ON alias_a.col1 = alias_b.col1";
+    //@formatter:on
+
+    JdbcMetaData jdbcMetadata = new JdbcMetaData("", "starbake");
+    jdbcMetadata.addTable("", "", "a", new JdbcColumn("col1"), new JdbcColumn("colAA"));
+    jdbcMetadata.addTable("", "", "b", new JdbcColumn("col1"));
+
+    JdbcResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
+        jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.LENIENT));
+
+    // `alias_a.colAA` --> derived from Table `a`
+    Assertions.assertThat(res.getColumns().get(0).scopeTable).isEqualToIgnoringCase("a");
+  }
+
+  /**
+   * Test lenient mode for an aliased table and column, when table exists, but no columns found and
+   * schema mismatch.
+   *
+   * @throws JSQLParserException then exception when the SQL can't be parsed
+   */
+  @Test
+  void testLenientSelectAliasSchemaAndColumnsMismatch() throws JSQLParserException, SQLException {
+    //@formatter:off
+    String sqlStr =
+        "SELECT alias_a.colaa\n" +
+        "FROM a alias_a\n" +
+        "    JOIN b alias_b\n" +
+        "        ON alias_a.col1 = alias_b.col1";
+    //@formatter:on
+
+    JdbcMetaData jdbcMetadata = new JdbcMetaData("", "starbake");
+    jdbcMetadata.addTable("", "", "a", new JdbcColumn[0]);
+    jdbcMetadata.addTable("", "", "b", new JdbcColumn[0]);
+
+    JdbcResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
+        jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.LENIENT));
+
+    // `alias_a.colAA` --> derived from Table `a`
+    Assertions.assertThat(res.getColumns().get(0).scopeTable).isEqualToIgnoringCase("a");
+  }
+
+  @Test
+  void testSelectCTEAlias() throws JSQLParserException, SQLException {
+    //@formatter:off
+    String sqlStr =
+        "WITH order_details AS (\n" +
+                "    SELECT  o.order_id\n" +
+                "         , o.customer_id\n" +
+                "         , List( p.name || ' (' || o.quantity || ')' ) AS purchased_items\n" +
+                "         , Sum( o.quantity * p.price ) AS total_order_value\n" +
+                "    FROM starbake.order_line o\n" +
+                "             JOIN starbake.product p\n" +
+                "                  ON o.product_id = p.product_id\n" +
+                "    GROUP BY    o.order_id\n" +
+                "           , o.customer_id )\n" +
+                "SELECT  order_id\n" +
+                "     , customer_id\n" +
+                "     , purchased_items\n" +
+                "     , total_order_value\n" +
+                "FROM order_details\n" +
+                "ORDER BY order_id";
+    //@formatter:on
+
+    JdbcMetaData jdbcMetadata = new JdbcMetaData("", "starbake");
+    jdbcMetadata.addTable("", "starbake", "order_line", new JdbcColumn[0]);
+    jdbcMetadata.addTable("", "starbake", "product", new JdbcColumn[0]);
+    JdbcResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
+        jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.LENIENT));
+
+    // `order_id` --> `order_details` derived from Table `order_line`
+    Assertions.assertThat(res.getColumns().get(0).scopeTable).isEqualToIgnoringCase("order_line");
+
+    // `customer_id` --> `order_details` derived from Table `order_line`
+    Assertions.assertThat(res.getColumns().get(1).scopeTable).isEqualToIgnoringCase("order_line");
+
+    // The last two columns also stop short of resolving to the source table name and instead
+    // resolve to the alias name only.
+    Assertions.assertThat(res.getColumns()).hasSize(4);
+  }
+
 }

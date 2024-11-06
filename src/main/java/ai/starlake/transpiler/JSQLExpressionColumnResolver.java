@@ -354,10 +354,56 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
             throw new RuntimeException("Column " + column + " not found in tables "
                 + Arrays.deepToString(metaData.getFromTables().values().toArray()));
           case LENIENT:
-            columns
-                .add(new JdbcColumn(column.getUnquotedCatalogName(), column.getUnquotedSchemaName(),
-                    column.getUnquotedTableName(), column.getUnquotedColumnName(), Types.OTHER,
-                    "Unknown", 0, 0, 0, "Not found in schema", null));
+            boolean found = false;
+
+            String columnCatalogName = column.getUnquotedCatalogName();
+            if (columnCatalogName == null || columnCatalogName.isEmpty()) {
+              columnCatalogName = metaData.getCurrentCatalogName();
+            }
+
+            String columnSchemaName = column.getUnquotedSchemaName();
+            if (columnSchemaName == null || columnSchemaName.isEmpty()) {
+              columnSchemaName = metaData.getCurrentSchemaName();
+            }
+            String columnTableName = column.getUnquotedTableName();
+
+            if (columnTableName != null) {
+              for (Table t : metaData.getFromTables().values()) {
+                String tableCatalogName = t.getUnquotedCatalogName();
+                if (tableCatalogName == null || tableCatalogName.isEmpty()) {
+                  tableCatalogName = metaData.getCurrentCatalogName();
+                }
+
+                String tableSchemaName = t.getUnquotedSchemaName();
+                if (tableSchemaName == null || tableSchemaName.isEmpty()) {
+                  tableSchemaName = metaData.getCurrentSchemaName();
+                }
+
+                if (columnCatalogName.equalsIgnoreCase(tableCatalogName)
+                    && columnSchemaName.equalsIgnoreCase(tableSchemaName)
+                    && (columnTableName.equalsIgnoreCase(t.getUnquotedName())
+                        || t.getAlias() != null
+                            && columnTableName.equalsIgnoreCase(t.getAlias().getUnquotedName()))) {
+                  JdbcColumn jdbcColumn1 = new JdbcColumn(column.getUnquotedCatalogName(),
+                      column.getUnquotedSchemaName(), column.getUnquotedTableName(),
+                      column.getUnquotedColumnName(), Types.OTHER, "Unknown", 0, 0, 0,
+                      "Not found in schema", null);
+                  jdbcColumn1.scopeCatalog = t.getUnquotedCatalogName();
+                  jdbcColumn1.scopeSchema = t.getUnquotedSchemaName();
+                  jdbcColumn1.scopeTable = t.getUnquotedName();
+                  columns.add(jdbcColumn1);
+
+                  found = true;
+                  break;
+                }
+              }
+            }
+            if (!found) {
+              columns.add(
+                  new JdbcColumn(column.getUnquotedCatalogName(), column.getUnquotedSchemaName(),
+                      column.getUnquotedTableName(), column.getUnquotedColumnName(), Types.OTHER,
+                      "Unknown", 0, 0, 0, "Not found in schema", null));
+            }
           case IGNORE:
             columResolver.addUnresolved(column.getFullyQualifiedName(true));
         }
