@@ -99,7 +99,7 @@ public class JSQLTranspilerTest {
     @Override
     public boolean accept(File dir, String name) {
       String filename = name.toLowerCase().trim();
-      return filename.endsWith(".sql") && !filename.startsWith("disabled");
+      return filename.endsWith(".sql") && !filename.contains("disabled");
     }
   };
 
