@@ -1,3 +1,4 @@
+-- For Big Query assume everything is a Geography
 -- provided
 select st_area(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as area
 

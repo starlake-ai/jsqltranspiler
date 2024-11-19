@@ -44,7 +44,7 @@ SELECT
 
 -- expected
 SELECT
-        json_data::JSON -> 'level_1_key'
+        json_data -> 'level_1_key'
             AS JSON_EXTRACT_PATH_TEXT
     FROM demo1
     ORDER BY id;

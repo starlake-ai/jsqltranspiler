@@ -29,6 +29,7 @@ import net.sf.jsqlparser.expression.ExtractExpression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.HexValue;
 import net.sf.jsqlparser.expression.IntervalExpression;
+import net.sf.jsqlparser.expression.JsonExpression;
 import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.NullValue;
@@ -2035,9 +2036,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         && castExpression.isBLOB()
         && (castExpression.getLeftExpression() instanceof StringValue
             || castExpression.getLeftExpression() instanceof Concat
-            || castExpression.getLeftExpression() instanceof Function
-                && !castExpression
-                  .getLeftExpression(Function.class).getName().equalsIgnoreCase("encode"))) {
+            || castExpression.getLeftExpression() instanceof Function && !castExpression
+                .getLeftExpression(Function.class).getName().equalsIgnoreCase("encode"))) {
       Function f = new Function("Encode$$", castExpression.getLeftExpression());
       f.accept(this, null);
 
@@ -2470,6 +2470,37 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       super.visit(subList, null);
     } else {
       super.visit(expressionList, null);
+    }
+    return buffer;
+  }
+
+  @Override
+  public <S> StringBuilder visit(JsonExpression e, S context) {
+    // new CastExpression(e.getExpression(), "JSON").accept(this, context);
+    e.getExpression().accept(this, context);
+
+    for (Map.Entry<Expression, String> ident : e.getIdentList()) {
+      String operatorStr = ident.getValue();
+      if (operatorStr.equalsIgnoreCase(":")) {
+        buffer.append("->");
+      } else {
+        buffer.append(operatorStr);
+      }
+
+      Expression expr = ident.getKey();
+      if (expr instanceof Column) {
+        new StringValue(expr.toString()).accept(this, context);
+      } else if (expr instanceof ArrayConstructor) {
+        ArrayConstructor arrayConstructor = (ArrayConstructor) expr;
+        ExpressionList<?> expressions = arrayConstructor.getExpressions();
+        if (expressions.size() == 1 && expressions.get(0) instanceof StringValue) {
+          expressions.get(0).accept(this, context);
+        } else {
+          expr.accept(this, context);
+        }
+      } else {
+        expr.accept(this, context);
+      }
     }
     return buffer;
   }

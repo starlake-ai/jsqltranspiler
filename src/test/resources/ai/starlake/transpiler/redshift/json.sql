@@ -131,7 +131,7 @@ SELECT Try_Cast('[111,112,113]' AS JSON)[2] e;
 SELECT JSON_EXTRACT_PATH_TEXT('{"f2":{"f3":1},"f4":{"f5":99,"f6":"star"}}','f4', 'f6') e;
 
 -- expected
-SELECT  '{"f2":{"f3":1},"f4":{"f5":99,"f6":"star"}}'::JSON -> 'f4' -> 'f6' e;
+SELECT  '{"f2":{"f3":1},"f4":{"f5":99,"f6":"star"}}' -> 'f4' -> 'f6' e;
 
 -- result
 "e"

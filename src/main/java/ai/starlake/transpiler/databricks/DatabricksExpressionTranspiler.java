@@ -50,31 +50,21 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
   }
 
   enum TranspiledFunction {
-    // @FORMATTER:OFF
+    // @formatter:off
     DATE_FROM_PARTS, BINARY, BITMAP_COUNT, BTRIM, CHAR, CHAR_LENGTH, CHARACTER_LENGTH, CHARINDEX, ENDSWITH, STARTSWITH
-
     , FIND_IN_SET, LEVENSHTEIN, LOCATE, LTRIM, RTRIM, POSITION, REGEXP_REGEX, REGEXP_LIKE, REGEXP_EXTRACT, REGEXP_SUBSTR
-
     , SHA2, SPACE, SPLIT, STRING, SUBSTR, SUBSTRING_INDEX, TRY_TO_BINARY, TO_BINARY, UNBASE64, ENCODE, DECODE
-
     , ARRAY
-
     , GETDATE, NOW, CURDATE, CURRENT_TIMEZONE, DATEADD, DATE_ADD, DATEDIFF, DATE_DIFF, DATE_FORMAT, DATE_FROM_UNIX_DATE, DATE_SUB
-
     , DAY, DAYOFMONTH, DAYOFWEEK, DAYOFYEAR, HOUR, LAST_DAY, MINUTE, MONTH, QUARTER, SECOND, WEEKDAY, WEEKOFYEAR, YEAR
-
     , FROM_UNIXTIME, TO_UNIX_TIMESTAMP, MAKE_TIMESTAMP, TIMESTAMP, TO_TIMESTAMP
-
     , ANY, APPROX_PERCENTILE, ARRAY_AGG, COLLECT_LIST, COLLECT_SET, COUNT, COUNT_IF, FIRST, FIRST_VALUE, LAST, LAST_VALUE
-
     , PERCENTILE, PERCENTILE_APPROX, REGR_INTERCEPT, REGR_SLOPE, KURTOSIS, SKEWNESS, STD, NTH_VALUE
-
     , TRY_AVG, TRY_SUM, PERCENT_RANK
-
     , ARRAY_APPEND, ARRAY_COMPACT, ARRAY_EXCEPT
-
+    , FROM_JSON, GET_JSON_OBJECT, JSON_OBJECT_KEYS, SCHEMA_OF_JSON, TO_JSON
     ;
-    // @FORMATTER:ON
+    // @formatter:on
 
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
@@ -557,7 +547,42 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
                 new LambdaExpression("x", notExpression)));
           }
           break;
-
+        case FROM_JSON:
+          switch (paramCount) {
+            case 3:
+              warning("OPTIONS are not supported");
+            case 2:
+              warning("SCHEMA is not supported");
+            default:
+              function.setName("JSon");
+              function.setParameters(parameters.get(0));
+          }
+          break;
+        case GET_JSON_OBJECT:
+          function.setName("JSon_Value$$");
+          break;
+        case JSON_OBJECT_KEYS:
+          function.setName("JSon_Keys$$");
+          break;
+        case SCHEMA_OF_JSON:
+          switch (paramCount) {
+            case 2:
+              warning("OPTIONS are not supported");
+            case 1:
+              function.setName("JSon_Structure");
+              function.setParameters(parameters.get(0));
+              break;
+          }
+          break;
+        case TO_JSON:
+          switch (paramCount) {
+            case 2:
+              warning("OPTIONS are not supported");
+            case 1:
+              function.setParameters(parameters.get(0));
+              break;
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {

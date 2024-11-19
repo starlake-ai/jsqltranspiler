@@ -705,7 +705,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case JSON_EXTRACT_PATH_TEXT:
           if (paramCount > 1) {
-            rewrittenExpression = new CastExpression(parameters.get(0), "JSON");
+            rewrittenExpression = parameters.get(0);
             for (int i = 1; i < paramCount; i++) {
               rewrittenExpression = new JsonExpression(rewrittenExpression,
                   List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->")));
