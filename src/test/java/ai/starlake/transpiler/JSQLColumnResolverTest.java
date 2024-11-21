@@ -34,6 +34,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.Arguments;
 
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSetMetaData;
@@ -71,6 +73,16 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
         .isEqualTo(new String[] {res.getTableName(5), res.getColumnName(5)});
     Assertions.assertThat(new String[] {"b", "col3"})
         .isEqualTo(new String[] {res.getTableName(6), res.getColumnName(6)});
+  }
+
+  @Test
+  void test() throws JSQLParserException, SQLException {
+    JdbcMetaData metaData = new JdbcMetaData("", "")
+        .addTable("a", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"))
+        .addTable("b", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"));
+
+    //should be exception bb table not exist
+    assertThrowsExactly(JSQLParserException.class, () -> JSQLColumResolver.getResultSetMetaData("select * from a where a.col1 in (select bb.col1 from bb)", metaData));
   }
 
   @Test
