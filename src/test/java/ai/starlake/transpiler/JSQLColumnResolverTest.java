@@ -94,6 +94,15 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
+  void testWithWrongColumn() {
+    JdbcMetaData metaData = new JdbcMetaData("", "")
+        .addTable("foo", new JdbcColumn("id"), new JdbcColumn("name"));
+
+    //should be exception because name1 column is not exist
+    org.junit.jupiter.api.Assertions.assertThrows(JSQLParserException.class, () -> JSQLColumResolver.getResultSetMetaData("select count(foo.id) from foo group by foo.name having foo.name1 = 'test'", metaData));
+  }
+
+  @Test
   void testSimplerSchemaProvider() throws JSQLParserException, SQLException {
     JdbcMetaData metaData = new JdbcMetaData().addTable("a", "col1", "col2", "col3").addTable("b",
         "col1", "col2", "col3");
