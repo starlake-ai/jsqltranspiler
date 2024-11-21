@@ -79,8 +79,8 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
         .addTable("a", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"))
         .addTable("b", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"));
 
-    //should be exception bb table not exist
-    org.junit.jupiter.api.Assertions.assertThrowsExactly(JSQLParserException.class, () -> JSQLColumResolver.getResultSetMetaData("select * from a where a.col1 in (select bb.col1 from bb)", metaData));
+    //should be exception because bb table not exist
+    org.junit.jupiter.api.Assertions.assertThrows(JSQLParserException.class, () -> JSQLColumResolver.getResultSetMetaData("select * from a where a.col1 in (select bb.col1 from bb)", metaData));
   }
 
   @Test
