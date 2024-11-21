@@ -34,8 +34,6 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.Arguments;
 
-import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
-
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSetMetaData;
@@ -82,7 +80,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
         .addTable("b", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"));
 
     //should be exception bb table not exist
-    assertThrowsExactly(JSQLParserException.class, () -> JSQLColumResolver.getResultSetMetaData("select * from a where a.col1 in (select bb.col1 from bb)", metaData));
+    org.junit.jupiter.api.Assertions.assertThrowsExactly(JSQLParserException.class, () -> JSQLColumResolver.getResultSetMetaData("select * from a where a.col1 in (select bb.col1 from bb)", metaData));
   }
 
   @Test
