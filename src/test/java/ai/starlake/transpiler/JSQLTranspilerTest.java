@@ -672,8 +672,12 @@ public class JSQLTranspilerTest {
                 if(inputDialect == JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY){
                     result = executeBQQuery(inputQuery);
                 } else {
-                    // TODO
-                    throw new NotImplementedException();
+                    String dbJdbcURL = System.getenv(inputDialect.name().toUpperCase() + "_JDBC_URL");
+                    String dbUserName = System.getenv(inputDialect.name().toUpperCase() + "_USERNAME");
+                    String dbPassword = System.getenv(inputDialect.name().toUpperCase() + "_PASSWORD");
+                    try(Connection jdbcConnection = DriverManager.getConnection(dbJdbcURL, dbUserName, dbPassword)) {
+                        result = executeJdbcQuery(jdbcConnection, inputQuery);
+                    }
                 }
                 writer.write(result + "\n\n");
             } catch (Exception e) {

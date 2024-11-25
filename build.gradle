@@ -68,6 +68,9 @@ dependencies {
 
     testImplementation 'com.google.cloud:google-cloud-bigquery:+'
 
+    testImplementation 'com.amazon.redshift:redshift-jdbc42:+'
+
+
     // Java Doc in XML Format
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
 }

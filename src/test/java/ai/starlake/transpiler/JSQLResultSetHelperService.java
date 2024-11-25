@@ -20,15 +20,11 @@ import com.opencsv.ResultSetHelperService;
 import org.apache.commons.text.TextStringBuilder;
 
 import java.io.IOException;
-import java.sql.Clob;
-import java.sql.NClob;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Types;
+import java.sql.*;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.Base64;
 import java.util.Date;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -116,6 +112,28 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
       value = nColumnValue;
     }
     return value;
+  }
+
+  protected String handleBinary(ResultSet rs, int colIndex) throws SQLException {
+    Object binaryData = rs.getObject(colIndex);
+
+    if (binaryData == null) {
+      return "NULL";
+    }
+
+    byte[] binaryContent;
+
+    if (binaryData instanceof byte[]) {
+      binaryContent = (byte[]) binaryData;
+    } else if (binaryData instanceof Blob) {
+      Blob blob = (Blob) binaryData;
+      binaryContent = blob.getBytes(1, (int) blob.length());
+    } else {
+      throw new RuntimeException("Unknown Binary Data Type");
+    }
+
+    // Encode the binary content as a Base64 string
+    return Base64.getEncoder().encodeToString(binaryContent);
   }
 
   /**
@@ -230,6 +248,11 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
       case Types.VARCHAR:
       case Types.CHAR:
         value = handleVarChar(rs, colIndex, trim);
+        break;
+      case Types.VARBINARY:
+      case Types.LONGVARBINARY:
+      case Types.BLOB:
+        value = handleBinary(rs, colIndex);
         break;
       default:
         // This takes care of Types.BIT, Types.JAVA_OBJECT, and anything
