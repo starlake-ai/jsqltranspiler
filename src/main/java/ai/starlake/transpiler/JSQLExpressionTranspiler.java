@@ -1218,13 +1218,15 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                 }
               }
 
-              ParenthesedExpressionList types = new ParenthesedExpressionList( new StringValue("VARCHAR"), new StringValue("DOUBLE"), new StringValue("BOOLEAN"), new StringValue("UBIGINT"), new StringValue("BIGINT"));
-              rewrittenExpression = new CaseExpression( new Function("JSON_VALUE$$", parameters.get(0), p1),
-                new WhenClause(
-                        new InExpression( new Function("JSon_Type", new Function("JSon_Extract", parameters.get(0), p1)), types)
-                        , new Function("JSON_EXTRACT_STRING", parameters.get(0), p1)
-                )
-              );
+              ParenthesedExpressionList types = new ParenthesedExpressionList(
+                  new StringValue("VARCHAR"), new StringValue("DOUBLE"), new StringValue("BOOLEAN"),
+                  new StringValue("UBIGINT"), new StringValue("BIGINT"));
+              rewrittenExpression =
+                  new CaseExpression(new Function("JSON_VALUE$$", parameters.get(0), p1),
+                      new WhenClause(
+                          new InExpression(new Function("JSon_Type",
+                              new Function("JSon_Extract", parameters.get(0), p1)), types),
+                          new Function("JSON_EXTRACT_STRING", parameters.get(0), p1)));
               break;
           }
           break;

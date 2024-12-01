@@ -541,11 +541,14 @@ public class JSQLTranspilerTest {
     Assertions.assertThat(sanitize(transpiledSqlStr, true))
         .isEqualTo(sanitize(t.expectedSqlStr, true));
 
-    executeTest(connDuck, t, transpiledSqlStr);
+    // For any JSON related test we want to distinguish the SQL NULL, while for anything else it
+    // does not matter
+    executeTest(connDuck, t, transpiledSqlStr,
+        f.getName().toLowerCase().contains("json") ? "JSQL_NULL" : "");
   }
 
-  public static void executeTest(Connection connDuck, SQLTest t, String transpiledSqlStr)
-      throws SQLException, IOException, JSQLParserException {
+  public static void executeTest(Connection connDuck, SQLTest t, String transpiledSqlStr,
+      String defaultValue) throws SQLException, IOException, JSQLParserException {
     // Expect this transpiled query to succeed since DuckDB does not support `TOP <integer>`
     if (t.expectedTally >= 0) {
       int i = 0;
@@ -582,7 +585,8 @@ public class JSQLTranspilerTest {
             CSVWriter csvWriter = new CSVWriter(stringWriter);) {
 
           // enforce SQL compliant format
-          ResultSetHelperService resultSetHelperService = new JSQLResultSetHelperService();
+          ResultSetHelperService resultSetHelperService =
+              new JSQLResultSetHelperService(defaultValue);
           resultSetHelperService.setDateFormat("yyyy-MM-dd");
           resultSetHelperService.setDateTimeFormat("yyyy-MM-dd HH:mm:ss.S");
           resultSetHelperService.setFloatingPointFormat(floatingPointFormat);

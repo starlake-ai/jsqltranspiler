@@ -85,7 +85,10 @@ public abstract class SQLGlotTest extends JSQLTranspilerTest {
       Assertions.assertThat(i).isEqualTo(t.expectedTally).as("Returned records do not tally.");
     }
 
-    executeTest(connDuck, t, output.toString());
+    // For any JSON related test we want to distinguish the SQL NULL, while for anything else it
+    // does not matter
+    executeTest(connDuck, t, output.toString(),
+        f.getName().toLowerCase().contains("json") ? "JSQL_NULL" : "");
   }
 
 }

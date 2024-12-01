@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 // Since this is not easy when using the parametrised tests
 public class DebugTest extends JSQLTranspilerTest {
   public final static String TEST_FOLDER_STR =
-      "build/resources/test/ai/starlake/transpiler/bigquery";
+      "build/resources/test/ai/starlake/transpiler/redshift";
 
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override
@@ -42,7 +42,7 @@ public class DebugTest extends JSQLTranspilerTest {
 
   static Stream<Arguments> getSqlTestMap() {
     return unrollParameterMap(getSqlTestMap(new File(TEST_FOLDER_STR).listFiles(FILENAME_FILTER),
-        JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY, JSQLTranspiler.Dialect.DUCK_DB));
+        JSQLTranspiler.Dialect.AMAZON_REDSHIFT, JSQLTranspiler.Dialect.DUCK_DB));
   }
 
   @ParameterizedTest(name = "{index} {0} {1}: {2}")

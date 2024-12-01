@@ -18,7 +18,7 @@ SELECT ID, json_valid(varchar1) v, varchar1 FROM sample_json_table ORDER BY ID;
 "ID","v","varchar1"
 "1","true","{""ValidKey1"": ""ValidValue1""}"
 "2","false","{""Malformed -- Missing value"": }"
-"3","",""
+"3","JSQL_NULL","JSQL_NULL"
 
 -- epilog
 DROP TABLE IF EXISTS sample_json_table;
@@ -83,7 +83,7 @@ SELECT ID, Try_Cast(v AS JSON) j
 "ID","j"
 "1","[-1, 12, 289, 2188, false,]"
 "2","{ ""x"" : ""abc"", ""y"" : false, ""z"": 10} "
-"3",""
+"3","JSQL_NULL"
 
 -- epilog
 DROP TABLE IF EXISTS vartab;
