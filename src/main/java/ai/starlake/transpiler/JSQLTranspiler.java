@@ -79,9 +79,7 @@ public class JSQLTranspiler extends StatementDeParser {
 
   protected final HashMap<String, Object> parameters = new LinkedHashMap<>();
 
-  private final static Pattern DOUBLE_QUOTES_PATTERN =
-      Pattern.compile("(?=(?:[^']*'[^']*')*[^']*$)\"");
-  private final static Pattern SINGLE_QUOTES_PATTERN =
+  private final static Pattern SINGLE_TICKS_PATTERN =
       Pattern.compile("(?=(?:[^']*'[^']*')*[^']*$)`");
 
   protected JSQLTranspiler(Class<? extends JSQLSelectTranspiler> selectTranspilerClass,
@@ -138,15 +136,30 @@ public class JSQLTranspiler extends StatementDeParser {
     switch (dialect) {
       case GOOGLE_BIG_QUERY:
         // Replace Double quoted string literals with single quoted string literals
-        Matcher matcher = DOUBLE_QUOTES_PATTERN.matcher(qryStr);
         StringBuilder sb = new StringBuilder();
-        while (matcher.find()) {
-          matcher.appendReplacement(sb, matcher.group().replaceAll("^\"|\"$", "'"));
+        boolean inSingleQuote = false; // Tracks if we're inside single quotes
+        boolean inDoubleQuote = false; // Tracks if we're inside double quotes
+
+        for (int i = 0; i < qryStr.length(); i++) {
+          char c = qryStr.charAt(i);
+
+          // Toggle state for single quotes
+          if (c == '\'' && !inDoubleQuote) {
+            inSingleQuote = !inSingleQuote;
+            sb.append(c); // Append the single quote as-is
+          } else /* Toggle state for double quotes */ if (c == '\"' && !inSingleQuote) {
+            inDoubleQuote = !inDoubleQuote;
+            sb.append('\''); // Replace outer double quotes with single quotes
+          } else /*Replace inner single quotes with double quotes if inside double-quoted context */ if (c == '\''
+              && inDoubleQuote) {
+            sb.append('"');
+          } else /* Append everything else as-is */ {
+            sb.append(c);
+          }
         }
-        matcher.appendTail(sb);
 
         // Replace single quoted identifiers with double-quoted identifiers
-        matcher = SINGLE_QUOTES_PATTERN.matcher(sb.toString());
+        Matcher matcher = SINGLE_TICKS_PATTERN.matcher(sb.toString());
         sb = new StringBuilder();
         while (matcher.find()) {
           matcher.appendReplacement(sb, matcher.group().replaceAll("^`|`$", "\""));

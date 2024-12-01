@@ -180,12 +180,15 @@ public class JSQLTranspilerTest {
             if (token.startsWith("prolog") || token.startsWith("provid")
                 || token.startsWith("expect") || token.startsWith("count")
                 || token.startsWith("tally") || token.startsWith("result")
-                || token.startsWith("return") || token.startsWith("epilog")) {
+                || token.startsWith("return") || token.startsWith("epilog")
+                || token.startsWith("output")) {
 
               if (previousToken.startsWith("prolog")) {
                 test.prologue = stringBuilder.toString();
               } else if (previousToken.startsWith("provid")) {
                 test.providedSqlStr = stringBuilder.toString();
+              } else if (previousToken.startsWith("output")) {
+                //
               } else if (previousToken.startsWith("expect")) {
                 test.expectedSqlStr = stringBuilder.toString();
               } else if (previousToken.startsWith("count") || token.startsWith("tally")) {
@@ -226,6 +229,8 @@ public class JSQLTranspilerTest {
           test.prologue = stringBuilder.toString();
         } else if (token.startsWith("provid")) {
           test.providedSqlStr = stringBuilder.toString();
+        } else if (token.startsWith("output")) {
+          // ignore
         } else if (token.startsWith("expect")) {
           test.expectedSqlStr = stringBuilder.toString();
         } else if (token.startsWith("count") || token.startsWith("tally")) {

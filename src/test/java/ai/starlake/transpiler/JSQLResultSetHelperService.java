@@ -34,9 +34,11 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 public class JSQLResultSetHelperService extends ResultSetHelperService {
-  private static final String DEFAULT_VALUE = "";
+  private static final String DEFAULT_VALUE = "JSQL_NULL";
 
   public TreeMap<Integer, NumberFormat> numberFormatters = null;
+
+
 
   @Override
   public String[] getColumnValues(ResultSet rs, boolean trim, String dateFormatString,

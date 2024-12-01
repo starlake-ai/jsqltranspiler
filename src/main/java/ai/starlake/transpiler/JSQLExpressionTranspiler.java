@@ -30,6 +30,9 @@ import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.HexValue;
 import net.sf.jsqlparser.expression.IntervalExpression;
 import net.sf.jsqlparser.expression.JsonExpression;
+import net.sf.jsqlparser.expression.JsonFunction;
+import net.sf.jsqlparser.expression.JsonFunctionExpression;
+import net.sf.jsqlparser.expression.JsonKeyValuePair;
 import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.NullValue;
@@ -46,6 +49,7 @@ import net.sf.jsqlparser.expression.operators.arithmetic.Concat;
 import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.expression.operators.relational.InExpression;
 import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
 import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
@@ -134,7 +138,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     , ARRAY_TO_STRING, GENERATE_ARRAY, GENERATE_DATE_ARRAY, GENERATE_TIMESTAMP_ARRAY, ARRAY_DISTINCT
     , ARRAY_INTERSECT, FIRST_VALUE, LAST_VALUE, PERCENTILE_CONT, PERCENTILE_DISC, GENERATE_UUID, BOOL, LAX_BOOL
     , FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY
-    , JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING, NVL
+    , JSON_EXTRACT, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING, NVL
     , UNNEST, ST_GEOGPOINT, ST_GEOGFROMTEXT, ST_GEOGFROMGEOJSON, ST_GEOGFROMWKB, ST_ASBINARY, ST_ASGEOJSON, ST_ASTEXT
     , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER;
     //@formatter:on
@@ -480,6 +484,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   public <S> StringBuilder visit(Function function, S params) {
     String functionName = function.getName();
     boolean hasParameters = hasParameters(function);
+    boolean hasSafePrefix = false;
     int paramCount = hasParameters ? function.getParameters().size() : 0;
 
     if (UnsupportedFunction.from(function) != null) {
@@ -496,7 +501,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (function.getMultipartName().size() > 1
         && function.getMultipartName().get(0).equalsIgnoreCase("SAFE")) {
       warning("SAFE prefix is not supported.");
+      hasSafePrefix = true;
       function.getMultipartName().remove(0);
+      functionName = function.getName();
     }
 
     if (function.isIgnoreNullsOutside()) {
@@ -1002,25 +1009,66 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("UUID");
           break;
         case BOOL:
-        case LAX_BOOL:
           if (parameters.size() == 1) {
-            rewrittenExpression = new CastExpression("Cast", parameters.get(0), "Boolean");
+            rewrittenExpression = new CastExpression(hasSafePrefix ? "Try_Cast" : "Cast",
+                parameters.get(0), "Boolean");
           }
           break;
+        case LAX_BOOL:
+          rewrittenExpression = new CaseExpression(
+              new WhenClause(new StringValue("JSON"),
+                  new CastExpression("Try_Cast",
+                      new Function("Trim",
+                          new Function("JSON_EXTRACT_STRING", parameters.get(0),
+                              new StringValue("$"))),
+                      "BOOLEAN")),
+              new WhenClause(new StringValue("TEXT"),
+                  new CastExpression("Try_Cast", new Function("Trim", parameters.get(0)),
+                      "BOOLEAN")))
+              .withElseExpression(new CastExpression("Try_Cast", parameters.get(0), "BOOLEAN"))
+              .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+          break;
         case FLOAT64:
-        case LAX_FLOAT64:
           switch (parameters.size()) {
             case 2:
               warning("WIDE_NUMBER_MODE is not supported.");
             case 1:
-              rewrittenExpression = new CastExpression("Cast", parameters.get(0), "Double");
+              rewrittenExpression = new CastExpression(hasSafePrefix ? "Try_Cast" : "Cast",
+                  parameters.get(0), "Double");
           }
           break;
+        case LAX_FLOAT64:
+          rewrittenExpression = new CaseExpression(
+              new WhenClause(new StringValue("JSON"),
+                  new CastExpression("Try_Cast",
+                      new Function("Trim",
+                          new Function("JSON_EXTRACT_STRING", parameters.get(0),
+                              new StringValue("$"))),
+                      "FLOAT")),
+              new WhenClause(new StringValue("TEXT"),
+                  new CastExpression("Try_Cast", new Function("Trim", parameters.get(0)), "FLOAT")))
+              .withElseExpression(new CastExpression("Try_Cast", parameters.get(0), "FLOAT"))
+              .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+          break;
         case INT64:
-        case LAX_INT64:
           if (parameters.size() == 1) {
-            rewrittenExpression = new CastExpression("Cast", parameters.get(0), "HugeInt");
+            rewrittenExpression = new CastExpression(hasSafePrefix ? "Try_Cast" : "Cast",
+                parameters.get(0), "HugeInt");
           }
+          break;
+        case LAX_INT64:
+          rewrittenExpression = new CaseExpression(
+              new WhenClause(new StringValue("JSON"),
+                  new CastExpression("Try_Cast",
+                      new Function("Trim",
+                          new Function("JSON_EXTRACT_STRING", parameters.get(0),
+                              new StringValue("$"))),
+                      "HUGEINT")),
+              new WhenClause(new StringValue("TEXT"),
+                  new CastExpression("Try_Cast", new Function("Trim", parameters.get(0)),
+                      "HUGEINT")))
+              .withElseExpression(new CastExpression("Try_Cast", parameters.get(0), "HUGEINT"))
+              .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
           break;
         case STRING:
         case LAX_STRING:
@@ -1048,6 +1096,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                               new CastExpression("Try_Cast", castDateTime(parameters.get(0)),
                                   "TIMESTAMPTZ"),
                               new StringValue("%c%z"))))
+                      .withElseExpression(new CastExpression("Try_Cast", parameters.get(0), "TEXT"))
                       .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
               break;
 
@@ -1059,23 +1108,125 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               break;
           }
           break;
-
+        case JSON_EXTRACT:
+          switch (paramCount) {
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", ".\"$1\"");
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract");
+              break;
+          }
+          break;
         case JSON_EXTRACT_STRING_ARRAY:
+          function.setName("JSon_Extract_String");
+          switch (paramCount) {
+            case 1:
+              function.setParameters(parameters.get(0), new StringValue("$[*]"));
+              break;
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                jsonPath += "[*]";
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract_String");
+              break;
+          }
+          break;
+        case JSON_VALUE_ARRAY:
+          function.setName("JSon_Extract_String");
+          switch (paramCount) {
+            case 1:
+              function.setParameters(parameters.get(0), new StringValue("$[*]"));
+              break;
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                jsonPath += "[*]";
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract_String");
+              break;
+          }
+          rewrittenExpression = new Function("If", new Function("JSon_Valid", parameters.get(0)),
+              function, new ArrayConstructor());
+          break;
         case JSON_QUERY:
+          switch (paramCount) {
+            case 1:
+              function.setParameters(parameters.get(0), new StringValue("$"));
+              function.setName("JSon_Extract");
+              break;
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract");
+              break;
+          }
+          break;
         case JSON_EXTRACT_ARRAY:
         case JSON_QUERY_ARRAY:
-          if (paramCount == 2 && parameters.get(1) instanceof StringValue) {
-            String jsonPath = ((StringValue) parameters.get(1)).getValue();
-            jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "/$1");
-            function.setParameters(parameters.get(0), new StringValue(jsonPath));
+          switch (paramCount) {
+            case 1:
+              function.setParameters(parameters.get(0), new StringValue("$[*]"));
+              function.setName("JSon_Extract");
+              break;
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                jsonPath += "[*]";
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract");
+              break;
           }
-          function.setName("JSon_Extract");
           break;
         case JSON_EXTRACT_SCALAR:
         case JSON_VALUE:
-          function.setName("JSon_Extract_String");
-          break;
-        case JSON_VALUE_ARRAY:
+          /*
+            SELECT
+            CASE
+            WHEN Json_type(JSON_EXTRACT('{"a.b":{"c":"world"}}','$."a.b".c')) IN ('VARCHAR', 'DOUBLE', 'BOOLEAN', 'UBIGINT', 'BIGINT')
+            THEN JSON_EXTRACT_STRING('{"a.b":{"c":"world"}}','$."a.b".c')
+            ELSE JSON_VALUE('{"a.b":{"c":"world"}}','$."a.b".c')
+            END AS HELLO;
+           */
+          switch (paramCount) {
+            case 2:
+              Expression p1 = parameters.get(1);
+              if (p1 instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                if (jsonPath.trim().equalsIgnoreCase("$")) {
+                  function.setParameters(parameters.get(0), new StringValue("$"));
+                } else {
+                  jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                  jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                  p1 = new StringValue(jsonPath);
+                }
+              }
+
+              ParenthesedExpressionList types = new ParenthesedExpressionList( new StringValue("VARCHAR"), new StringValue("DOUBLE"), new StringValue("BOOLEAN"), new StringValue("UBIGINT"), new StringValue("BIGINT"));
+              rewrittenExpression = new CaseExpression( new Function("JSON_VALUE$$", parameters.get(0), p1),
+                new WhenClause(
+                        new InExpression( new Function("JSon_Type", new Function("JSon_Extract", parameters.get(0), p1)), types)
+                        , new Function("JSON_EXTRACT_STRING", parameters.get(0), p1)
+                )
+              );
+              break;
+          }
           break;
         case PARSE_JSON:
           switch (paramCount) {
@@ -1095,6 +1246,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                   new CastExpression(new Function("To_Json", parameters.get(0)), "TEXT");
               break;
           }
+          break;
+        case TO_JSON:
+          if (paramCount > 1) {
+            warning("No additional flags supported.");
+          }
+          function.setParameters(parameters.get(0));
           break;
         case ST_GEOGPOINT:
           function.setName("ST_POINT");
@@ -1175,6 +1332,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           if (paramCount > 3) {
             warning("USE_SPHEROID is not supported.");
           }
+          break;
       }
     }
     if (rewrittenExpression == null) {
@@ -2106,6 +2264,89 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
     return buffer;
   }
+
+  public <S> StringBuilder visit(JsonFunction jsonFunction, S context) {
+    switch (jsonFunction.getType()) {
+      case OBJECT:
+        buffer.append("JSON_OBJECT( ");
+        int i = 0;
+
+        for (JsonKeyValuePair keyValuePair : jsonFunction.getKeyValuePairs()) {
+          if (i > 0) {
+            buffer.append(", ");
+          }
+
+          if (keyValuePair.isUsingValueKeyword()) {
+            if (keyValuePair.isUsingKeyKeyword()) {
+              buffer.append("KEY ");
+            }
+
+            buffer.append(keyValuePair.getKey()).append(" VALUE ").append(keyValuePair.getValue());
+          } else {
+            buffer.append(keyValuePair.getKey()).append(":").append(keyValuePair.getValue());
+          }
+
+          if (keyValuePair.isUsingFormatJson()) {
+            buffer.append(" FORMAT JSON");
+          }
+
+          ++i;
+        }
+
+        if (jsonFunction.getOnNullType() != null) {
+          switch (jsonFunction.getOnNullType()) {
+            case NULL:
+              buffer.append(" NULL ON NULL");
+              break;
+            case ABSENT:
+              buffer.append(" ABSENT On NULL");
+          }
+        }
+
+        if (jsonFunction.getUniqueKeysType() != null) {
+          switch (jsonFunction.getUniqueKeysType()) {
+            case WITH:
+              buffer.append(" WITH UNIQUE KEYS");
+              break;
+            case WITHOUT:
+              buffer.append(" WITHOUT UNIQUE KEYS");
+          }
+        }
+
+        buffer.append(" ) ");
+        break;
+
+      case ARRAY:
+        buffer.append("JSON_ARRAY( ");
+        int k = 0;
+
+        for (JsonFunctionExpression expr : jsonFunction.getExpressions()) {
+          if (k > 0) {
+            buffer.append(", ");
+          }
+          expr.getExpression().accept(this, context);
+          buffer.append(expr.isUsingFormatJson() ? " FORMAT JSON" : "");
+          ++k;
+        }
+
+        if (jsonFunction.getOnNullType() != null) {
+          switch (jsonFunction.getOnNullType()) {
+            case NULL:
+              buffer.append(" NULL ON NULL ");
+              break;
+            case ABSENT:
+              buffer.append(" ABSENT ON NULL ");
+          }
+        }
+        buffer.append(") ");
+        break;
+
+      default:
+        jsonFunction.appendTo(buffer);
+    }
+    return buffer;
+  }
+
 
 
   // @todo: complete the data type mapping

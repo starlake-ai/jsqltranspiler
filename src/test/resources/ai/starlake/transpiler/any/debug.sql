@@ -1,8 +1,14 @@
--- provided
-SELECT 1;
+--provided
+SELECT ARRAY(
+           SELECT CAST(integer_element AS INT64)
+  FROM UNNEST(
+    JSON_EXTRACT_ARRAY('[1,2,3]','$')
+  ) AS integer_element
+) AS integer_array;
 
--- expected
-SELECT 1;
+--expected
+SELECT List_Sort(Array(SELECT CAST(integer_element AS INT64) FROM (SELECT UNNEST(JSon_Extract('[1,2,3]', '$[*]')) AS integer_element) AS integer_element)) AS integer_array
 
--- count
-1
+--result
+"integer_array"
+"[1, 2, 3]"

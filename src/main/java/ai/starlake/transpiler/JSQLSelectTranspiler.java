@@ -16,19 +16,28 @@
  */
 package ai.starlake.transpiler;
 
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.parser.SimpleNode;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.FromItem;
+import net.sf.jsqlparser.statement.select.FromItemVisitor;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
+import net.sf.jsqlparser.statement.select.Pivot;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.statement.select.Top;
+import net.sf.jsqlparser.statement.select.UnPivot;
+import net.sf.jsqlparser.statement.select.WithItem;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
+import net.sf.jsqlparser.util.deparser.LimitDeparser;
+import net.sf.jsqlparser.util.deparser.OrderByDeParser;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 
 public class JSQLSelectTranspiler extends SelectDeParser {
@@ -87,8 +96,7 @@ public class JSQLSelectTranspiler extends SelectDeParser {
 
       ParenthesedSelect parenthesedSelect =
           new ParenthesedSelect().withSelect(select).withAlias(tableFunction.getAlias());
-
-      visit(parenthesedSelect, params);
+      parenthesedSelect.accept((FromItemVisitor<StringBuilder>) this, params);
     } else {
       super.visit(tableFunction, params);
     }
@@ -106,6 +114,60 @@ public class JSQLSelectTranspiler extends SelectDeParser {
     }
     super.visit(plainSelect, params);
     return buffer;
+  }
+
+  @SuppressWarnings({"PMD.CyclomaticComplexity"})
+  public <S> StringBuilder visit(ParenthesedSelect select, S params) {
+    List<WithItem<?>> withItemsList = select.getWithItemsList();
+    if (withItemsList != null && !withItemsList.isEmpty()) {
+      this.buffer.append("WITH ");
+
+      for (WithItem<?> withItem : withItemsList) {
+        withItem.accept(this, params);
+        this.buffer.append(" ");
+      }
+    }
+
+    this.buffer.append("(");
+    select.getSelect().accept((SelectVisitor<StringBuilder>) this, params);
+    this.buffer.append(")");
+    if (select.getOrderByElements() != null) {
+      new OrderByDeParser(this.getExpressionVisitor(), this.buffer)
+          .deParse(select.isOracleSiblings(), select.getOrderByElements());
+    }
+
+    Alias alias = select.getAlias();
+    if (alias != null) {
+      this.buffer.append(alias);
+    }
+
+    Pivot pivot = select.getPivot();
+    if (pivot != null) {
+      pivot.accept(this, params);
+    }
+
+    UnPivot unpivot = select.getUnPivot();
+    if (unpivot != null) {
+      unpivot.accept(this, params);
+    }
+
+    if (select.getLimit() != null) {
+      new LimitDeparser(this.getExpressionVisitor(), this.buffer).deParse(select.getLimit());
+    }
+
+    if (select.getOffset() != null) {
+      this.visit(select.getOffset());
+    }
+
+    if (select.getFetch() != null) {
+      this.visit(select.getFetch());
+    }
+
+    if (select.getIsolation() != null) {
+      this.buffer.append(select.getIsolation().toString());
+    }
+
+    return this.buffer;
   }
 
   @Override
