@@ -21,6 +21,7 @@ import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.ArrayExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
+import net.sf.jsqlparser.expression.BooleanValue;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
@@ -667,7 +668,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case JSON_PARSE:
           if (paramCount == 1) {
-            rewrittenExpression = new CastExpression(parameters.get(0), "JSON");
+            function.setName("JSon");
           }
           break;
         case CAN_JSON_PARSE:
@@ -700,18 +701,42 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           }
           break;
         case JSON_EXTRACT_ARRAY_ELEMENT_TEXT:
-          if (paramCount == 2) {
-            // SELECT ('[111,112,113]'::JSON)[2] e;
-            rewrittenExpression = new ArrayExpression(
-                new CastExpression("Try_Cast$$", parameters.get(0), "JSON"), parameters.get(1));
+          switch (paramCount) {
+            case 3:
+              rewrittenExpression = new Function("If",
+                  new AndExpression(parameters.get(2),
+                      new NotExpression(new Function("JSon_Valid", parameters.get(0)))),
+                  new NullValue(),
+                  new ArrayExpression(new CastExpression("Try_Cast", parameters.get(0), "JSON"),
+                      parameters.get(1)));
+              break;
+            case 2:
+              // SELECT ('[111,112,113]'::JSON)[2] e;
+              rewrittenExpression = new ArrayExpression(
+                  new CastExpression("Try_Cast", parameters.get(0), "JSON"), parameters.get(1));
+              break;
           }
           break;
         case JSON_EXTRACT_PATH_TEXT:
           if (paramCount > 1) {
-            rewrittenExpression = parameters.get(0);
-            for (int i = 1; i < paramCount; i++) {
-              rewrittenExpression = new JsonExpression(rewrittenExpression,
-                  List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->")));
+            if (paramCount > 2 && parameters.get(paramCount - 1) instanceof BooleanValue) {
+              rewrittenExpression = parameters.get(0);
+              for (int i = 1; i < paramCount - 1; i++) {
+                rewrittenExpression = new JsonExpression(rewrittenExpression,
+                    List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->>")));
+              }
+
+              rewrittenExpression = new Function("If",
+                  new AndExpression(parameters.get(paramCount - 1),
+                      new NotExpression(new Function("JSon_Valid", parameters.get(0)))),
+                  new NullValue(), rewrittenExpression);
+              break;
+            } else {
+              rewrittenExpression = parameters.get(0);
+              for (int i = 1; i < paramCount; i++) {
+                rewrittenExpression = new JsonExpression(rewrittenExpression,
+                    List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->>")));
+              }
             }
           }
           break;
@@ -719,10 +744,10 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           function.setName("JSon_Type");
           break;
         case JSON_SERIALIZE:
-          rewrittenExpression = new CastExpression("Cast$$", function, "VARCHAR");
+          rewrittenExpression = new CastExpression("Cast", function.getParameters().get(0), "TEXT");
           break;
         case JSON_SERIALIZE_TO_VARBYTE:
-          rewrittenExpression = new Function("Encode$$", function);
+          rewrittenExpression = new Function("Encode", function.getParameters().get(0));
           break;
         case JSON_ARRAY_LENGTH:
           switch (paramCount) {

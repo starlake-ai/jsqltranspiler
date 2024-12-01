@@ -43,15 +43,11 @@ SELECT
 
 
 -- expected
-SELECT
-        json_data -> 'level_1_key'
-            AS JSON_EXTRACT_PATH_TEXT
-    FROM demo1
-    ORDER BY id;
+SELECT JSON_DATA->>'level_1_key' AS JSON_EXTRACT_PATH_TEXT FROM DEMO1 ORDER BY ID;
 
 -- result
 "JSON_EXTRACT_PATH_TEXT"
-"""level_1_value"""
+"level_1_value"
 "{""level_2_key"":""level_2_value""}"
 "{""level_2_key"":[""zero"",""one"",""two""]}"
 
