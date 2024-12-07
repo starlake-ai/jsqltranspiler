@@ -23,6 +23,7 @@ import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
+import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.ExtractExpression;
@@ -46,10 +47,12 @@ import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.WindowDefinition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Concat;
+import net.sf.jsqlparser.expression.operators.arithmetic.Division;
 import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.InExpression;
+import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
 import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
 import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
@@ -906,8 +909,15 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
             }
           }
           break;
-        case SAFE_ADD:
         case SAFE_DIVIDE:
+          Expression p0 = parameters.get(0);
+          Expression p1 = parameters.get(1);
+          Expression orExpression = BinaryExpression.or(new EqualsTo(p1, new DoubleValue(0)),
+              new IsNullExpression(p1), new IsNullExpression(p0));
+          rewrittenExpression = new Function("If", orExpression, new NullValue(),
+              new Division(parameters.get(0), parameters.get(1)));
+          break;
+        case SAFE_ADD:
         case SAFE_MULTIPLY:
         case SAFE_SUBTRACT:
           warning("SAFE variant not supported");
@@ -982,13 +992,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           if (parameters != null) {
             switch (parameters.size()) {
               case 3:
-                Expression p1 = parameters.get(0);
-                Expression p2 = parameters.get(1);
+                p0 = parameters.get(0);
+                p1 = parameters.get(1);
 
                 // turn it into a Lambda replacing the NULL values with 3rd parameter
-                p1 = new Function("List_Transform", p1, new LambdaExpression("x",
+                p0 = new Function("List_Transform", p0, new LambdaExpression("x",
                     new Function("Coalesce", new Column("x"), parameters.get(2))));
-                function.setParameters(p1, p2);
+                function.setParameters(p0, p1);
             }
           }
           break;
@@ -1222,19 +1232,19 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
            */
           switch (paramCount) {
             case 2:
-              Expression p1 = parameters.get(1);
+              p1 = parameters.get(1);
               if (p1 instanceof StringValue) {
                 String jsonPath = ((StringValue) parameters.get(1)).getValue();
                 if (jsonPath.trim().equalsIgnoreCase("$")) {
                   function.setParameters(parameters.get(0), new StringValue("$"));
                 } else {
                   jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
-                  jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                  jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"]", "\"$1\"");
                   p1 = new StringValue(jsonPath);
                 }
               }
 
-              ParenthesedExpressionList types = new ParenthesedExpressionList(
+              ParenthesedExpressionList<?> types = new ParenthesedExpressionList<>(
                   new StringValue("VARCHAR"), new StringValue("DOUBLE"), new StringValue("BOOLEAN"),
                   new StringValue("UBIGINT"), new StringValue("BIGINT"));
               rewrittenExpression =
