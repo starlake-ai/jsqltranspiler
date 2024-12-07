@@ -26,6 +26,6 @@ public class BigQueryTranspiler extends JSQLTranspiler {
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     super(BigQuerySelectTranspiler.class, BigQueryExpressionTranspiler.class);
     this.parameters.putAll(parameters);
-    this.expressionTranspiler.parameters.putAll(parameters);
+    this.expressionTranspiler.parameterMap.putAll(parameters);
   }
 }

@@ -26,6 +26,6 @@ public class RedshiftTranspiler extends JSQLTranspiler {
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     super(RedshiftSelectTranspiler.class, RedshiftExpressionTranspiler.class);
     this.parameters.putAll(parameters);
-    this.expressionTranspiler.parameters.putAll(parameters);
+    this.expressionTranspiler.parameterMap.putAll(parameters);
   }
 }

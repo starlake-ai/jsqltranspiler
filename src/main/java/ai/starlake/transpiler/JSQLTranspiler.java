@@ -107,7 +107,7 @@ public class JSQLTranspiler extends StatementDeParser {
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     this(JSQLSelectTranspiler.class, JSQLExpressionTranspiler.class);
     this.parameters.putAll(parameters);
-    this.expressionTranspiler.parameters.putAll(parameters);
+    this.expressionTranspiler.parameterMap.putAll(parameters);
   }
 
   public JSQLTranspiler() throws InvocationTargetException, NoSuchMethodException,
@@ -150,8 +150,7 @@ public class JSQLTranspiler extends StatementDeParser {
           } else /* Toggle state for double quotes */ if (c == '\"' && !inSingleQuote) {
             inDoubleQuote = !inDoubleQuote;
             sb.append('\''); // Replace outer double quotes with single quotes
-          } else /*Replace inner single quotes with double quotes if inside double-quoted context */ if (c == '\''
-              && inDoubleQuote) {
+          } else /*Replace inner single quotes with double quotes if inside double-quoted context */ if (c == '\'') {
             sb.append('"');
           } else /* Append everything else as-is */ {
             sb.append(c);

@@ -89,7 +89,7 @@ import java.util.regex.Pattern;
 public class JSQLExpressionTranspiler extends ExpressionDeParser {
   final private Pattern ARRAY_COLUMN_TYPE_PATTERN = Pattern.compile("ARRAY<(.+)>");
 
-  public final HashMap<String, Object> parameters = new LinkedHashMap<>();
+  public final HashMap<String, Object> parameterMap = new LinkedHashMap<>();
 
   public JSQLExpressionTranspiler(SelectDeParser deParser, StringBuilder buffer) {
     super(deParser, buffer);
@@ -125,6 +125,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   };
 
+  enum GeoMode {
+    GEOGRAPHY, GEOMETRY;
+  }
+
   enum TranspiledFunction {
     //@formatter:off
     CURRENT_DATE, CURRENT_DATETIME, CURRENT_TIME, CURRENT_TIMESTAMP, DATE, DATETIME, TIME, TIMESTAMP, DATE_ADD
@@ -143,7 +147,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     , FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY
     , JSON_EXTRACT, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING, NVL
     , UNNEST, ST_GEOGPOINT, ST_GEOGFROMTEXT, ST_GEOGFROMGEOJSON, ST_GEOGFROMWKB, ST_ASBINARY, ST_ASGEOJSON, ST_ASTEXT
-    , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER;
+    , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER
+    // GEO_MODE
+    , ST_AREA
+    ;
     //@formatter:on
 
 
@@ -493,6 +500,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     boolean hasParameters = hasParameters(function);
     boolean hasSafePrefix = false;
     int paramCount = hasParameters ? function.getParameters().size() : 0;
+
+    GeoMode geoMode = GeoMode.GEOMETRY;
+    if ("GEOGRAPHY".equalsIgnoreCase(String.valueOf(parameterMap.get("GEO_MODE")))) {
+      geoMode = GeoMode.GEOGRAPHY;
+    } else if ("GEOGRAPHY"
+        .equalsIgnoreCase(String.valueOf(System.getProperties().get("GEO_MODE")))) {
+      geoMode = GeoMode.GEOGRAPHY;
+    }
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
@@ -1361,6 +1376,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
             warning("USE_SPHEROID is not supported.");
           }
           break;
+        case ST_AREA:
+          switch (geoMode) {
+            case GEOMETRY:
+              break;
+            case GEOGRAPHY:
+              function.setName("ST_Area_Spheroid");
+              break;
+          }
       }
     }
     if (rewrittenExpression == null) {
@@ -2646,9 +2669,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   public <S> StringBuilder visit(TimeKeyExpression expression, S context) {
     String value = expression.getStringValue().toUpperCase().replaceAll("[()]", "");
 
-    if (parameters.containsKey(value)) {
+    if (parameterMap.containsKey(value)) {
       // @todo: Cast Date/Time types
-      castDateTime(parameters.get(value).toString()).accept(this, null);
+      castDateTime(parameterMap.get(value).toString()).accept(this, null);
     } else if (System.getProperties().containsKey(value)) {
       castDateTime(System.getProperty(value)).accept(this, null);
     } else if (value.equals("CURRENT_TIMEZONE")) {

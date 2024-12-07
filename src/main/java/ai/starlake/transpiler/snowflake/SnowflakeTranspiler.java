@@ -26,6 +26,6 @@ public class SnowflakeTranspiler extends JSQLTranspiler {
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     super(SnowflakeSelectTranspiler.class, SnowflakeExpressionTranspiler.class);
     this.parameters.putAll(parameters);
-    this.expressionTranspiler.parameters.putAll(parameters);
+    this.expressionTranspiler.parameterMap.putAll(parameters);
   }
 }

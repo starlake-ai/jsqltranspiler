@@ -249,6 +249,35 @@ String actual =
 
 Assertions.assertThat(actual).isEqualTo(expected);
 ```
+
+### Geography vs. Geometry
+
+DuckDB currently only supports the `GEOMETRY` type. So for overloaded functions we need to decide if to interpret as `GEOMETRY` or as `GEOGRAPHY`. One can use the property `GEO_MODE` and set it either to `GEOGRAPHY` or `GEOMETRY` (with `GEOMETRY` being the default). Alternatively the Parameter Map can be used.
+
+```java
+String expected = "SELECT ST_Area_Spheroid(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) AS area";
+String actual = JSQLTranspiler
+                    .transpileQuery(
+                            "select st_area(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as area;"
+                            , JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY
+                            , Map.of("GEO_MODE", "GEOGRAPHY")
+                    );
+Assertions.assertEquals(expected, actual);
+Assertions.assertEquals(12308778361.469452, getQueryResults(actual)[1][0]);
+```
+
+```java
+System.setProperty("GEO_MODE", "GEOMETRY");
+String expected = "SELECT ST_Area(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) AS area";
+String actual = JSQLTranspiler
+                    .transpileQuery(
+                            "select ST_Area(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as area;"
+                            , JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY
+                    );
+Assertions.assertEquals(expected, actual);
+Assertions.assertEquals(1.0, getQueryResults(actual)[1][0]);
+```
+
 ### Error Handling
 
 In case the query refers to objects not existing in the provided database schema, the `JSQLColumnResolver` offers three modes:
@@ -302,7 +331,6 @@ String lineage =
 Please refer to the [Feature Matrix](https://docs.google.com/spreadsheets/d/1jK6E1s2c0CWcw9rFeDvALdZ5wCshztdtlAHuNDaKQt4/edit?usp=sharing):
 
 - DuckDB's Number and Currency formatting is very limited right now
-- `Geography`, `JSon` and `XML` functions have not been implemented yet, but are planned
 - `SELECT * REPLACE(...)` on DuckDB works very differently (replaces value instead of label)
 
 ## License
