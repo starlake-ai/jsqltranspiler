@@ -18,6 +18,8 @@ package ai.starlake.transpiler;
 
 import ai.starlake.transpiler.bigquery.BigQueryTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -53,9 +55,10 @@ public class DebugTest extends JSQLTranspilerTest {
 
   @Test
   void testTranspiled() throws JSQLParserException, InterruptedException {
-    String sqlStr = "SELECT JSON_EXTRACT(\n"
-        + "               '{\"class\": {\"students\": [{\"name\": \"Jane\"}]}}',\n"
-        + "               \"$.class['students']\") AS student_names;";
+    String sqlStr = "SELECT AS VALUE STRUCT(1 AS a, 2 AS b) xyz;";
+
+    PlainSelect select = (PlainSelect) CCJSqlParserUtil.parse(sqlStr);
+    System.out.println(select.toString());
 
     String s = BigQueryTranspiler.transpileQuery(sqlStr, JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY);
     System.out.println(s);
