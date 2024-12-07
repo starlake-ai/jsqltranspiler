@@ -55,7 +55,7 @@ public class DebugTest extends JSQLTranspilerTest {
 
   @Test
   void testTranspiled() throws JSQLParserException, InterruptedException {
-    String sqlStr = "SELECT AS VALUE STRUCT(1 AS a, 2 AS b) xyz;";
+    String sqlStr = "SELECT CURRENT_DATE('America/Los_Angeles') AS the_date;";
 
     PlainSelect select = (PlainSelect) CCJSqlParserUtil.parse(sqlStr);
     System.out.println(select.toString());

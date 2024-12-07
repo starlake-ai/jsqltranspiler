@@ -522,6 +522,19 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (f != null) {
       switch (f) {
         case CURRENT_DATE:
+          if (parameters != null) {
+            switch (parameters.size()) {
+              case 0:
+                rewrittenExpression = new CastExpression("Cast", new Column(functionName), "DATE");
+                break;
+              case 1:
+                // CURRENT_DATE(timezone)
+                rewrittenExpression = new CastExpression("Cast",
+                    new TimezoneExpression(new Column(functionName), parameters.get(0)), "DATE");
+                break;
+            }
+          }
+          break;
         case CURRENT_DATETIME:
         case CURRENT_TIME:
         case CURRENT_TIMESTAMP:
@@ -531,7 +544,6 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                 rewrittenExpression = new Column(functionName);
                 break;
               case 1:
-                // CURRENT_DATE(timezone)
                 // CURRENT_DATETIME(timezone)
                 rewrittenExpression =
                     new TimezoneExpression(new Column(functionName), parameters.get(0));
