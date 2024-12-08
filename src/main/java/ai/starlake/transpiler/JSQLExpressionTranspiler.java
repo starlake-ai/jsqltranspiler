@@ -65,6 +65,7 @@ import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
 
@@ -147,7 +148,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     , FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY
     , JSON_EXTRACT, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING, NVL
     , UNNEST, ST_GEOGPOINT, ST_GEOGFROMTEXT, ST_GEOGFROMGEOJSON, ST_GEOGFROMWKB, ST_ASBINARY, ST_ASGEOJSON, ST_ASTEXT
-    , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER
+    , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_MAXDISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER, ST_LENGTH
     // GEO_MODE
     , ST_AREA
     ;
@@ -1357,6 +1358,25 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("ST_NUMPOINTS");
           function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
+        case ST_LENGTH:
+          switch (paramCount) {
+            case 1:
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setName("St_Length");
+                  break;
+                case GEOGRAPHY:
+                  function.setName("ST_Length_Spheroid");
+                  break;
+              }
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)));
+              break;
+            case 2:
+              function.setName("ST_Length_Spheroid");
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)));
+              break;
+          }
+          break;
         case ST_DISTANCE:
           switch (paramCount) {
             case 2:
@@ -1373,13 +1393,23 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               break;
             case 3:
               rewrittenExpression = new Function("If", parameters.get(2),
-                  new Function(
-                      "ST_Distance_Spheroid", new Function("ST_FLIPCOORDINATES", parameters.get(0)),
+                  new Function("ST_Distance_Spheroid",
+                      new Function("ST_FLIPCOORDINATES", parameters.get(0)),
                       new Function("ST_FLIPCOORDINATES", parameters.get(1))),
-                  new Function("ST_Distance$$", new Function("ST_FLIPCOORDINATES", parameters.get(0)),
+                  new Function("ST_Distance_Sphere",
+                      new Function("ST_FLIPCOORDINATES", parameters.get(0)),
                       new Function("ST_FLIPCOORDINATES", parameters.get(1))));
               break;
           }
+          break;
+        case ST_MAXDISTANCE:
+          // SELECT ( select max_distance from ST_MaxDistance(st_geomfromtext('LINESTRING(0 0, 0 1,
+          // 1 1, 1 0, 0 0)'), st_geomfromtext('LINESTRING(10 0, 10 1, 11 1, 11 0, 10 0)')) )
+          // max_distance;
+          TableFunction tableFunction =
+              new TableFunction("ST_MaxDistance$$", parameters.get(0), parameters.get(1));
+          rewrittenExpression =
+              new ParenthesedSelect(List.of(new Column("max_distance")), tableFunction);
           break;
         case ST_BOUNDINGBOX:
           // not aggregated version of EXTEND
@@ -1391,8 +1421,22 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("ST_Extent_Agg");
           break;
         case ST_PERIMETER:
-          if (paramCount > 3) {
-            warning("USE_SPHEROID is not supported.");
+          switch (paramCount) {
+            case 1:
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setName("St_Perimeter");
+                  break;
+                case GEOGRAPHY:
+                  function.setName("ST_Perimeter_Spheroid");
+                  break;
+              }
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)));
+              break;
+            case 2:
+              function.setName("ST_Perimeter_Spheroid");
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)));
+              break;
           }
           break;
         case ST_AREA:
