@@ -1358,8 +1358,27 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
         case ST_DISTANCE:
-          if (paramCount > 2) {
-            warning("USE_SPHEROID is not supported.");
+          switch (paramCount) {
+            case 2:
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setName("ST_Distance");
+                  break;
+                case GEOGRAPHY:
+                  function.setName("ST_Distance_Sphere");
+                  break;
+              }
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)),
+                  new Function("ST_FLIPCOORDINATES", parameters.get(1)));
+              break;
+            case 3:
+              rewrittenExpression = new Function("If", parameters.get(2),
+                  new Function(
+                      "ST_Distance_Spheroid", new Function("ST_FLIPCOORDINATES", parameters.get(0)),
+                      new Function("ST_FLIPCOORDINATES", parameters.get(1))),
+                  new Function("ST_Distance$$", new Function("ST_FLIPCOORDINATES", parameters.get(0)),
+                      new Function("ST_FLIPCOORDINATES", parameters.get(1))));
+              break;
           }
           break;
         case ST_BOUNDINGBOX:

@@ -47,31 +47,9 @@ select ST_STARTPOINT(ST_ShortestLine(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 
 "closest_point"
 "POINT (1 1)"
 
--- provided
-select ST_DISTANCE(ST_GEOGFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOGFROMTEXT('POINT(11.4594367 48.1549958)'), true) / 1000 as km
 
--- expected
-select st_distance_spheroid(
-               st_startpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOMFROMTEXT('POINT(11.4594367 48.1549958)')))),
-               st_endpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOMFROMTEXT('POINT(11.4594367 48.1549958)'))))
-       ) / 1000 AS km
 
--- results
-"km"
-680.463998149257
 
--- provided
-select ST_DISTANCE(ST_GEOGFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOGFROMTEXT('POINT(11.4594367 48.1549958)')) / 1000 as km
-
--- expected
-select st_distance_sphere(
-               st_startpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOMFROMTEXT('POINT(11.4594367 48.1549958)')))),
-               st_endpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOMFROMTEXT('POINT(11.4594367 48.1549958)'))))
-       ) / 1000 AS km
-
--- results
-"km"
-678.4515514892884
 
 -- provided
 select 'in' AS label, st_dwithin(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOGFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'), 157226) AS within_distance
@@ -170,35 +148,9 @@ MultiPolygon,true
 GeometryCollection,true
 Empty GeometryCollection,false
 
--- provided
-SELECT st_length(st_geogfromtext("LINESTRING(0 0, 0 1, 1 1, 1 0, 0 0)")) as geo
 
--- expected
-SELECT /* APPROXIMATION: ST_LENGTH SPHERE */ st_length_spheroid(st_flipcoordinates(st_geomfromtext('LINESTRING(0 0, 0 1, 1 1, 1 0, 0 0)'))) as geo
 
--- results
-"geo"
-443770.91724830196
 
--- provided
-SELECT st_maxdistance(st_geogfromtext('LINESTRING(0 0, 0 1, 1 1, 1 0, 0 0)'), st_geogfromtext('LINESTRING(10 0, 10 1, 11 1, 11 0, 10 0)'))
-
--- expected
-SELECT max(ST_DISTANCE_SPHERE(ST_FlipCoordinates(g1.UNNEST.geom), ST_FlipCoordinates(g2.UNNEST.geom))) AS max_distance FROM UNNEST(st_dump(st_points(st_geomfromtext('LINESTRING(0 0, 0 1, 1 1, 1 0, 0 0)')))) AS g1, UNNEST(st_dump(st_points(st_geomfromtext('LINESTRING(10 0, 10 1, 11 1, 11 0, 10 0)')))) g2
-
--- results
-"max_distance"
-1228126.109277834
-
--- provided
-SELECT st_perimeter(st_geogfromtext('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as perimeter
-
--- expected
-SELECT st_perimeter_spheroid(st_geomfromtext('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as perimeter
-
--- results
-"perimeter"
-443770.91724830196
 
 -- provided
 WITH DATA AS (
