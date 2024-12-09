@@ -7,3 +7,8 @@ CREATE OR REPLACE FUNCTION ST_MaxDistance(a, b) AS TABLE
         UNNEST(st_dump(st_points(a))) AS g1
       , UNNEST(st_dump(st_points(b))) AS g2
 );
+
+CREATE OR REPLACE FUNCTION St_DWithin(g1, g2, distance) AS
+COALESCE(st_distance_sphere(
+               st_startpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(g1,g2))),
+               st_endpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(g1,g2)))) <= distance, FALSE);

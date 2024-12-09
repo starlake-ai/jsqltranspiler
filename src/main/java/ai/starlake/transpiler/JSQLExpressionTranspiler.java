@@ -148,7 +148,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     , FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY
     , JSON_EXTRACT, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING, NVL
     , UNNEST, ST_GEOGPOINT, ST_GEOGFROMTEXT, ST_GEOGFROMGEOJSON, ST_GEOGFROMWKB, ST_ASBINARY, ST_ASGEOJSON, ST_ASTEXT
-    , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_MAXDISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER, ST_LENGTH
+    , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_MAXDISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER, ST_LENGTH, ST_CLOSESTPOINT
     // GEO_MODE
     , ST_AREA
     ;
@@ -176,7 +176,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH, APPROX_QUANTILES
     , APPROX_TOP_COUNT, APPROX_TOP_SUM, SEARCH, VECTOR_SEARCH
     , S2_CELLIDFROMPOINT, S2_COVERINGCELLIDS, ST_ANGLE, ST_AZIMUTH, ST_BUFFERWITHTOLERANCE, ST_CENTROID_AGG
-    , ST_CLOSESTPOINT, ST_CLUSTERDBSCAN, ST_GEOGFROM, ST_GEOGPOINTFROMGEOHASH, ST_GEOHASH, ST_HAUSDORFFDISTANCE
+    , ST_CLUSTERDBSCAN, ST_GEOGFROM, ST_GEOGPOINTFROMGEOHASH, ST_GEOHASH, ST_HAUSDORFFDISTANCE
     , ST_INTERIORRINGS, ST_INTERSECTSBOX, ST_ISCOLLECTION, ST_LINEINTERPOLATEPOINT, ST_LINELOCATEPOINT, ST_LINESUBSTRING
     , ST_MAKEPOLYGONORIENTED, ST_SNAPTOGRID
     // time series
@@ -1328,8 +1328,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           break;
         case ST_ASBINARY:
           // SELECT ST_AsWKB('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'::GEOMETRY)::BLOB;
-          rewrittenExpression = new CastExpression(
-              new Function("ST_AsWKB", new CastExpression(parameters.get(0), "GEOMETRY")), "BLOB");
+          rewrittenExpression =
+              new Function("ST_AsWKB", new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
         case ST_ASGEOJSON:
           // ST_AsGeoJSON('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'::GEOMETRY);
@@ -1345,12 +1345,41 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           }
           switch (paramCount) {
             case 2:
-              function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
-                  parameters.get(1));
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
+                      parameters.get(1));
+                  break;
+                case GEOGRAPHY:
+                  // SELECT ST_TRANSFORM(ST_BUFFER(ST_TRANSFORM(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1,
+                  // 1 1, 1 0, 0 0))'), 'EPSG:4326', 'EPSG:6933'), 20), 'EPSG:6933', 'EPSG:4326') as
+                  // buffer
+                  rewrittenExpression = new Function("ST_TRANSFORM",
+                      new Function("ST_Buffer$$",
+                          new Function("ST_TRANSFORM",
+                              new CastExpression(parameters.get(0), "GEOMETRY"),
+                              new StringValue("EPSG:4326"), new StringValue("EPSG:6933")),
+                          parameters.get(1)),
+                      new StringValue("EPSG:6933"), new StringValue("EPSG:4326"));
+                  break;
+              }
               break;
             case 3:
-              function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
-                  parameters.get(1), parameters.get(2));
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
+                      parameters.get(1), parameters.get(2));
+                  break;
+                case GEOGRAPHY:
+                  rewrittenExpression = new Function("ST_TRANSFORM",
+                      new Function("ST_Buffer$$",
+                          new Function("ST_TRANSFORM",
+                              new CastExpression(parameters.get(0), "GEOMETRY"),
+                              new StringValue("EPSG:4326"), new StringValue("EPSG:6933")),
+                          parameters.get(1), parameters.get(2)),
+                      new StringValue("EPSG:6933"), new StringValue("EPSG:4326"));
+                  break;
+              }
               break;
           }
           break;
@@ -1375,6 +1404,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               function.setName("ST_Length_Spheroid");
               function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)));
               break;
+          }
+          break;
+        case ST_CLOSESTPOINT:
+          if (paramCount == 2) {
+            rewrittenExpression = new Function("ST_StartPoint",
+                new Function("ST_ShortestLine", parameters.get(0), parameters.get(1)));
           }
           break;
         case ST_DISTANCE:

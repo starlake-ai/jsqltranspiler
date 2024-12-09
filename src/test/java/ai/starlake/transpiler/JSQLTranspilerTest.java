@@ -290,8 +290,6 @@ public class JSQLTranspilerTest {
     connDuck = DriverManager.getConnection("jdbc:duckdb:" + fileDuckDB.getAbsolutePath(), info);
 
     if (!isInitialised) {
-      JSQLTranspiler.createMacros(connDuck);
-
       LOGGER.info("Preparing JSON Extension");
       try (Statement st = connDuck.createStatement()) {
         for (String s : new String[] {"INSTALL json;", "LOAD json;"}) {
@@ -321,6 +319,8 @@ public class JSQLTranspilerTest {
       } catch (Exception ex) {
         LOGGER.log(Level.FINE, "Failed to INSTALL/LOAD the SPATIAL extension", ex);
       }
+
+      JSQLTranspiler.createMacros(connDuck);
 
       String sqlStr = IOUtils.resourceToString(
           JSQLTranspilerTest.class.getCanonicalName().replaceAll("\\.", "/") + "_DDL.sql",

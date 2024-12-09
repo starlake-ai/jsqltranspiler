@@ -1,33 +1,3 @@
--- For Big Query assume everything is a Geography
--- provided
-select st_area(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as area
-
--- expected
-SELECT /*APPROXIMATION: SPHERE */ ST_Area_Spheroid(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as area
-
--- results
-"area"
-12308778361.469452
-
--- provided
-select st_asbinary(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as wkb
-
--- expected
-SELECT ST_aswkb(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as wkb
-
--- results
-"wkb"
-"POLYGON ((0 0, 0 1, 1 1, 1 0, 0 0))"
-
--- provided
-select ST_BUFFER(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), 20) as buffer
-
--- expected
-SELECT /*APPROXIMATION: ST_BUFFER IN METER */ ST_ASGEOJSON(ST_TRANSFORM(ST_BUFFER(ST_TRANSFORM(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), 'EPSG:4326', 'EPSG:6933'), 20), 'EPSG:6933', 'EPSG:4326'))  as buffer
-
--- count
-1
-
 -- provided
 select ST_BUFFERWITHTOLERANCE(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), 20, tolerance_meters => 10) as buffer
 
@@ -36,39 +6,6 @@ SELECT /*APPROXIMATION: ST_BUFFERWITHTOLERANCE AS ST_BUFFER IN METER */ ST_ASGEO
 
 -- count
     1
-
--- provided
-select ST_CLOSESTPOINT(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), ST_GEOGFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))')) as closest_point
-
--- expected
-select ST_STARTPOINT(ST_ShortestLine(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'))) as closest_point
-
--- results
-"closest_point"
-"POINT (1 1)"
-
-
-
-
-
--- provided
-select 'in' AS label, st_dwithin(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOGFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'), 157226) AS within_distance
-UNION ALL
-select 'out' AS label, st_dwithin(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOGFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'), 157225) AS within_distance
-
--- expected
-select 'in' AS label, COALESCE(st_distance_sphere(
-                                       st_startpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))')))),
-                                       st_endpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'))))) <= 157226, FALSE) AS within_distance
-UNION ALL
-select 'out' AS label, COALESCE(st_distance_sphere(
-                                        st_startpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))')))),
-                                        st_endpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'))))) <= 157225, FALSE) AS within_distance
-
--- results
-"label","within_distance"
-"in","true"
-"out","false"
 
 -- provided
 SELECT ST_GEOGFROMWKB(FROM_HEX('010100000000000000000000400000000000001040')) AS geo
