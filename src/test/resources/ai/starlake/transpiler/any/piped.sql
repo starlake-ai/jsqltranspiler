@@ -130,3 +130,54 @@ FROM (  SELECT  Sum( sales ) AS total_sales
 -- result
 "id","total_sales","color"
 "456","5","yellow"
+
+
+-- provided
+(
+  SELECT 'apples' AS item, 2 AS sales
+  UNION ALL
+  SELECT 'bananas' AS item, 5 AS sales
+  UNION ALL
+  SELECT 'carrots' AS item, 8 AS sales
+)
+|> WHERE sales >= 3;
+
+-- expected
+SELECT *
+FROM (
+       SELECT 'apples' AS item, 2 AS sales
+       UNION ALL
+       SELECT 'bananas' AS item, 5 AS sales
+       UNION ALL
+       SELECT 'carrots' AS item, 8 AS sales
+     )
+WHERE sales >= 3;
+
+-- result
+"item","sales"
+"bananas","5"
+"carrots","8"
+
+
+-- provided
+(
+  SELECT 'apples' AS item, 2 AS sales
+  UNION ALL
+  SELECT 'bananas' AS item, 5 AS sales
+  UNION ALL
+  SELECT 'carrots' AS item, 8 AS sales
+)
+|> ORDER BY item
+|> LIMIT 1;
+
+-- expected
+SELECT *
+FROM (
+       SELECT 'apples' AS item, 2 AS sales
+       UNION ALL
+       SELECT 'bananas' AS item, 5 AS sales
+       UNION ALL
+       SELECT 'carrots' AS item, 8 AS sales
+     )
+ORDER BY item
+LIMIT 1;

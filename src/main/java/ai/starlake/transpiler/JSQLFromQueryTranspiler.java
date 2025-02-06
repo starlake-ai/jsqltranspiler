@@ -1,5 +1,6 @@
 package ai.starlake.transpiler;
 
+import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.statement.piped.AggregatePipeOperator;
 import net.sf.jsqlparser.statement.piped.AsPipeOperator;
@@ -24,6 +25,7 @@ import net.sf.jsqlparser.statement.piped.WherePipeOperator;
 import net.sf.jsqlparser.statement.piped.WindowPipeOperator;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.GroupByElement;
+import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectItem;
@@ -44,6 +46,10 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
     for (PipeOperator operator : fromQuery.getPipeOperators()) {
       plainSelect = operator.accept(this, plainSelect);
+    }
+
+    if (plainSelect.getSelectItems()==null || plainSelect.getSelectItems().isEmpty()) {
+      plainSelect.addSelectItem(new AllColumns());
     }
 
     return plainSelect;
@@ -114,11 +120,25 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
   @Override
   public PlainSelect visit(LimitPipeOperator limitPipeOperator, PlainSelect plainSelect) {
+    if (plainSelect.getLimit()==null) {
+      plainSelect.setLimit( new Limit().withRowCount(limitPipeOperator.getLimitExpression()).withOffset(limitPipeOperator.getOffsetExpression()) );
+    } else {
+      plainSelect = new PlainSelect()
+              .withFromItem(
+                      new ParenthesedSelect().withSelect(plainSelect))
+              .addSelectItem(new AllColumns());
+      plainSelect.setLimit(new Limit().withRowCount(limitPipeOperator.getLimitExpression()).withOffset(limitPipeOperator.getOffsetExpression()));
+    }
     return plainSelect;
   }
 
   @Override
   public PlainSelect visit(OrderByPipeOperator orderByPipeOperator, PlainSelect plainSelect) {
+    if (plainSelect.getOrderByElements()==null || plainSelect.getOrderByElements().isEmpty()) {
+      plainSelect.setOrderByElements( orderByPipeOperator.getOrderByElements());
+    } else {
+      plainSelect.getOrderByElements().addAll(orderByPipeOperator.getOrderByElements());
+    }
     return plainSelect;
   }
 
@@ -178,6 +198,11 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
   @Override
   public PlainSelect visit(WherePipeOperator wherePipeOperator, PlainSelect plainSelect) {
+    if (plainSelect.getWhere()==null) {
+      plainSelect.setWhere(wherePipeOperator.getExpression());
+    } else {
+      plainSelect.setWhere( new AndExpression(plainSelect.getWhere(), wherePipeOperator.getExpression()));
+    }
     return plainSelect;
   }
 
