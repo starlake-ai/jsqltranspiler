@@ -21,8 +21,8 @@ import net.sf.jsqlparser.util.deparser.UpdateDeParser;
 
 public class JSQLUpdateTranspiler extends UpdateDeParser {
 
-  JSQLUpdateTranspiler(ExpressionVisitor expressionVisitor, StringBuilder buffer) {
-    this.buffer = buffer;
+  JSQLUpdateTranspiler(ExpressionVisitor expressionVisitor, StringBuilder builder) {
+    this.builder = builder;
     this.setExpressionVisitor(expressionVisitor);
   }
 }

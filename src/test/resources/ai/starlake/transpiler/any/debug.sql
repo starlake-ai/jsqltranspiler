@@ -1,14 +1,31 @@
---provided
-SELECT ARRAY(
-           SELECT CAST(integer_element AS INT64)
-  FROM UNNEST(
-    JSON_EXTRACT_ARRAY('[1,2,3]','$')
-  ) AS integer_element
-) AS integer_array;
+-- provided
+(
+  SELECT 'apples' AS item, 2 AS sales
+  UNION ALL
+  SELECT 'bananas' AS item, 5 AS sales
+)
+|> AS produce_sales
+|> LEFT JOIN
+     (
+       SELECT 'apples' AS item, 123 AS id
+     ) AS produce_data
+   ON produce_sales.item = produce_data.item
+|> SELECT produce_sales.item, sales, id;
 
---expected
-SELECT List_Sort(Array(SELECT CAST(integer_element AS INT64) FROM (SELECT UNNEST(JSon_Extract('[1,2,3]', '$[*]')) AS integer_element) AS integer_element)) AS integer_array
+-- expected
+SELECT produce_sales.item, sales, id
+FROM (
+       SELECT 'apples' AS item, 2 AS sales
+       UNION ALL
+       SELECT 'bananas' AS item, 5 AS sales
+     ) AS produce_sales
+     LEFT JOIN
+            (
+              SELECT 'apples' AS item, 123 AS id
+            ) AS produce_data
+          ON produce_sales.item = produce_data.item;
 
---result
-"integer_array"
-"[1, 2, 3]"
+-- result
+"item","sales","id"
+"apples","2","123"
+"bananas","5",""

@@ -92,14 +92,14 @@ public class JSQLTranspiler extends StatementDeParser {
     this.selectTranspiler = selectTranspilerClass.cast(this.getSelectDeParser());
 
     this.insertTranspiler =
-        new JSQLInsertTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
+        new JSQLInsertTranspiler(this.expressionTranspiler, this.selectTranspiler, this.getBuilder());
 
-    this.updateTranspiler = new JSQLUpdateTranspiler(this.expressionTranspiler, buffer);
+    this.updateTranspiler = new JSQLUpdateTranspiler(this.expressionTranspiler, this.getBuilder());
 
-    this.deleteTranspiler = new JSQLDeleteTranspiler(this.expressionTranspiler, buffer);
+    this.deleteTranspiler = new JSQLDeleteTranspiler(this.expressionTranspiler, this.getBuilder());
 
     this.mergeTranspiler =
-        new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
+        new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler, this.getBuilder());
 
   }
 
@@ -243,10 +243,10 @@ public class JSQLTranspiler extends StatementDeParser {
       Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
       for (Statement st : statements) {
         st.accept(transpiler);
-        transpiler.getBuffer().append("\n;\n\n");
+        transpiler.getBuilder().append("\n;\n\n");
       }
 
-      String transpiledSqlStr = transpiler.getBuffer().toString();
+      String transpiledSqlStr = transpiler.getBuilder().toString();
       LOGGER.fine("-- Transpiled SQL:\n" + transpiledSqlStr);
 
       // write to STDOUT when there is no OUTPUT File
@@ -441,7 +441,7 @@ public class JSQLTranspiler extends StatementDeParser {
       JSQLTranspiler transpiler = new JSQLTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -460,7 +460,7 @@ public class JSQLTranspiler extends StatementDeParser {
       BigQueryTranspiler transpiler = new BigQueryTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -479,7 +479,7 @@ public class JSQLTranspiler extends StatementDeParser {
       DatabricksTranspiler transpiler = new DatabricksTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -498,7 +498,7 @@ public class JSQLTranspiler extends StatementDeParser {
       SnowflakeTranspiler transpiler = new SnowflakeTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -518,7 +518,7 @@ public class JSQLTranspiler extends StatementDeParser {
       RedshiftTranspiler transpiler = new RedshiftTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -528,29 +528,29 @@ public class JSQLTranspiler extends StatementDeParser {
 
   public <S> StringBuilder visit(Select select, S context) {
     select.accept((SelectVisitor<StringBuilder>) selectTranspiler, context);
-    return buffer;
+    return this.getBuilder();
   }
 
   public <S> StringBuilder visit(Insert insert, S context) {
     insertTranspiler.deParse(insert);
-    return buffer;
+    return this.getBuilder();
   }
 
   public <S> StringBuilder visit(Update update, S context) {
     updateTranspiler.deParse(update);
 
-    return buffer;
+    return this.getBuilder();
   }
 
   public <S> StringBuilder visit(Delete delete, S context) {
     deleteTranspiler.deParse(delete);
-    return buffer;
+    return this.getBuilder();
   }
 
 
   public <S> StringBuilder visit(Merge merge, S context) {
     mergeTranspiler.deParse(merge);
-    return buffer;
+    return this.getBuilder();
   }
 
   /**

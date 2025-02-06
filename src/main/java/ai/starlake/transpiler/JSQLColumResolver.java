@@ -27,6 +27,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.piped.FromQuery;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
@@ -490,6 +491,11 @@ public class JSQLColumResolver
   @Override
   public void visit(PlainSelect plainSelect) {
     SelectVisitor.super.visit(plainSelect);
+  }
+
+  @Override
+  public <S> JdbcResultSetMetaData visit(FromQuery fromQuery, S s) {
+    return null;
   }
 
   // for visiting Column Sub-Selects

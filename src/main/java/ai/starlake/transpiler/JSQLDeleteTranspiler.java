@@ -20,8 +20,8 @@ import net.sf.jsqlparser.expression.ExpressionVisitor;
 import net.sf.jsqlparser.util.deparser.DeleteDeParser;
 
 public class JSQLDeleteTranspiler extends DeleteDeParser {
-  JSQLDeleteTranspiler(ExpressionVisitor expressionVisitor, StringBuilder buffer) {
-    this.buffer = buffer;
+  JSQLDeleteTranspiler(ExpressionVisitor expressionVisitor, StringBuilder builder) {
+    this.builder = builder;
     this.setExpressionVisitor(expressionVisitor);
   }
 }

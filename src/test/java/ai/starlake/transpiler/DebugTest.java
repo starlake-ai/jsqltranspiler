@@ -20,6 +20,7 @@ import ai.starlake.transpiler.bigquery.BigQueryTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -33,18 +34,18 @@ import java.util.stream.Stream;
 // Since this is not easy when using the parametrised tests
 public class DebugTest extends JSQLTranspilerTest {
   public final static String TEST_FOLDER_STR =
-      "build/resources/test/ai/starlake/transpiler/redshift";
+      "build/resources/test/ai/starlake/transpiler/any";
 
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override
     public boolean accept(File dir, String name) {
-      return name.toLowerCase().endsWith("json_boun_fixed.sql");
+      return name.equalsIgnoreCase("debug.sql");
     }
   };
 
   static Stream<Arguments> getSqlTestMap() {
     return unrollParameterMap(getSqlTestMap(new File(TEST_FOLDER_STR).listFiles(FILENAME_FILTER),
-        JSQLTranspiler.Dialect.AMAZON_REDSHIFT, JSQLTranspiler.Dialect.DUCK_DB));
+        JSQLTranspiler.Dialect.ANY, JSQLTranspiler.Dialect.DUCK_DB));
   }
 
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
@@ -54,6 +55,7 @@ public class DebugTest extends JSQLTranspilerTest {
   }
 
   @Test
+  @Disabled
   void testTranspiled() throws JSQLParserException, InterruptedException {
     String sqlStr = "SELECT CURRENT_DATE('America/Los_Angeles') AS the_date;";
 

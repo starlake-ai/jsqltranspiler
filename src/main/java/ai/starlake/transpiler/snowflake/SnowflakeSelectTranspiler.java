@@ -76,7 +76,7 @@ public class SnowflakeSelectTranspiler extends JSQLSelectTranspiler {
     } else {
       super.visit(values, params);
     }
-    return buffer;
+    return builder;
   }
 
   @Override

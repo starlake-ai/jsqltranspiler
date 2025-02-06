@@ -23,8 +23,8 @@ import net.sf.jsqlparser.util.deparser.InsertDeParser;
 public class JSQLInsertTranspiler extends InsertDeParser {
 
   JSQLInsertTranspiler(ExpressionVisitor expressionVisitor, SelectVisitor selectVisitor,
-      StringBuilder buffer) {
-    this.buffer = buffer;
+      StringBuilder builder) {
+    this.builder = builder;
     this.setExpressionVisitor(expressionVisitor);
     this.setSelectVisitor(selectVisitor);
   }
