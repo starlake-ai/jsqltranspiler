@@ -33,8 +33,7 @@ import java.util.stream.Stream;
 // The purpose of this facility is to debug one single test line by line
 // Since this is not easy when using the parametrised tests
 public class DebugTest extends JSQLTranspilerTest {
-  public final static String TEST_FOLDER_STR =
-      "build/resources/test/ai/starlake/transpiler/any";
+  public final static String TEST_FOLDER_STR = "build/resources/test/ai/starlake/transpiler/any";
 
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override

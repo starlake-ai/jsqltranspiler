@@ -65,8 +65,7 @@ SELECT
   ST_NUMPOINTS(ST_BUFFER(ST_GEOGFROMTEXT('POINT(100 2)'), 50)) AS thirty_two_sides;
 
 -- expected
-SELECT  St_Numpoints( St_Buffer( St_Geomfromtext( 'POINT(1 2)' )::GEOMETRY, 50, 2 )::GEOMETRY ) AS eight_sides
-        , St_Numpoints( St_Buffer( St_Geomfromtext( 'POINT(100 2)' )::GEOMETRY, 50 )::GEOMETRY ) AS thirty_two_sides
+SELECT ST_NUMPOINTS(ST_BUFFER(ST_GEOMFROMTEXT('POINT(1 2)'),50,2)::GEOMETRY)AS EIGHT_SIDES,ST_NUMPOINTS(ST_BUFFER(ST_GEOMFROMTEXT('POINT(100 2)'),50)::GEOMETRY)AS THIRTY_TWO_SIDES
 ;
 
 -- result

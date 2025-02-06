@@ -221,23 +221,24 @@ public class JSQLSelectTranspiler extends SelectDeParser {
 
   @Override
   public <S> StringBuilder visit(FromQuery fromQuery, S context) {
-    PlainSelect select = fromQuery.accept( new JSQLFromQueryTranspiler(), null );
+    PlainSelect select = fromQuery.accept(new JSQLFromQueryTranspiler(), null);
     select.accept(this);
     return builder;
   }
 
-  public  PlainSelect visit(SelectPipeOperator selectPipeOperator, PlainSelect select) {
+  public PlainSelect visit(SelectPipeOperator selectPipeOperator, PlainSelect select) {
     if (selectPipeOperator.getOperatorName().equalsIgnoreCase("SELECT")) {
       List<SelectItem<?>> selectItems = select.getSelectItems();
 
       if (selectItems.isEmpty()) {
-        selectItems.addAll( selectPipeOperator.getSelectItems() );
+        selectItems.addAll(selectPipeOperator.getSelectItems());
       } else {
-        select = new PlainSelect( new ParenthesedSelect().withSelect(select)).withSelectItems( selectPipeOperator.getSelectItems());
+        select = new PlainSelect(new ParenthesedSelect().withSelect(select))
+            .withSelectItems(selectPipeOperator.getSelectItems());
       }
     }
 
     return select;
   };
 
- }
+}

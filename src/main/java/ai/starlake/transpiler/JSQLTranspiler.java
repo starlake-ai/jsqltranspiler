@@ -91,15 +91,15 @@ public class JSQLTranspiler extends StatementDeParser {
     this.expressionTranspiler = expressionTranspilerClass.cast(this.getExpressionDeParser());
     this.selectTranspiler = selectTranspilerClass.cast(this.getSelectDeParser());
 
-    this.insertTranspiler =
-        new JSQLInsertTranspiler(this.expressionTranspiler, this.selectTranspiler, this.getBuilder());
+    this.insertTranspiler = new JSQLInsertTranspiler(this.expressionTranspiler,
+        this.selectTranspiler, this.getBuilder());
 
     this.updateTranspiler = new JSQLUpdateTranspiler(this.expressionTranspiler, this.getBuilder());
 
     this.deleteTranspiler = new JSQLDeleteTranspiler(this.expressionTranspiler, this.getBuilder());
 
-    this.mergeTranspiler =
-        new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler, this.getBuilder());
+    this.mergeTranspiler = new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler,
+        this.getBuilder());
 
   }
 
