@@ -43,11 +43,16 @@ import net.sf.jsqlparser.statement.piped.UnPivotPipeOperator;
 import net.sf.jsqlparser.statement.piped.WherePipeOperator;
 import net.sf.jsqlparser.statement.piped.WindowPipeOperator;
 import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.ExceptOp;
 import net.sf.jsqlparser.statement.select.GroupByElement;
+import net.sf.jsqlparser.statement.select.IntersectOp;
 import net.sf.jsqlparser.statement.select.Limit;
+import net.sf.jsqlparser.statement.select.MinusOp;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.SetOperationList;
+import net.sf.jsqlparser.statement.select.UnionOp;
 import net.sf.jsqlparser.statement.update.UpdateSet;
 
 import java.util.ArrayList;
@@ -299,7 +304,33 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
   @Override
   public PlainSelect visit(SetOperationPipeOperator setOperationPipeOperator,
       PlainSelect plainSelect) {
-    return plainSelect;
+
+    SetOperationList setOperationList = new SetOperationList();
+    setOperationList.addSelects(plainSelect);
+
+    for (ParenthesedSelect select : setOperationPipeOperator.getSelects()) {
+      switch (setOperationPipeOperator.getSetOperationType()) {
+        // @todo: implement correct modifiers for INTERSET and EXCEPT and MINUS
+        case INTERSECT:
+          setOperationList.addOperations(new IntersectOp());
+          break;
+        case EXCEPT:
+          setOperationList.addOperations(new ExceptOp());
+          break;
+        case MINUS:
+          setOperationList.addOperations(new MinusOp());
+          break;
+        case UNION:
+          setOperationList.addOperations(new UnionOp()
+              .withAll(setOperationPipeOperator.getModifier().toUpperCase().contains("ALL"))
+              .withDistinct(
+                  setOperationPipeOperator.getModifier().toUpperCase().contains("DISTINCT")));
+          break;
+      }
+      setOperationList.addSelects(select.getSelect());
+    }
+
+    return new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(setOperationList));
   }
 
   @Override

@@ -237,3 +237,23 @@ SELECT y FROM (
 -- result
 "y"
 "2"
+
+
+-- provided
+SELECT 1 AS one_digit, 10 AS two_digit
+|> UNION ALL
+    (SELECT 20 AS two_digit, 2 AS one_digit);
+
+-- expected
+SELECT *
+FROM (
+    SELECT 1 AS one_digit, 10 AS two_digit
+    UNION ALL
+    SELECT 20 AS two_digit, 2 AS one_digit
+)
+;
+
+-- result
+"one_digit","two_digit"
+"1","10"
+"20","2"
