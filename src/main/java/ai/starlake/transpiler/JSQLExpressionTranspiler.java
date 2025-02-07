@@ -1494,10 +1494,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   @Override
   public <S> StringBuilder visit(AllColumns allColumns, S context) {
-    if (allColumns.getReplaceExpressions() != null) {
-      warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
-      allColumns.setReplaceExpressions(null);
-    }
+    // if (allColumns.getReplaceExpressions() != null) {
+    // warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
+    // allColumns.setReplaceExpressions(null);
+    // }
 
     // DuckDB uses "EXCLUDE" instead "EXCEPT", because why not?!
     super.visit(

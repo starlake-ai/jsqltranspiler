@@ -1,9 +1,9 @@
 -- provided
-SELECT TOP 10 * EXCEPT( salesid, listid, sellerid) REPLACE( eventid AS "EVENT_ID")
+SELECT TOP 10 * EXCEPT( salesid, listid, sellerid) REPLACE( eventid AS eventid)
 FROM sales;
 
 -- expected
-SELECT * /*WARNING: DuckDB replaces Column's content instead Column's label, so unsupported.*/ EXCLUDE( salesid, listid, sellerid)
+SELECT * EXCLUDE( salesid, listid, sellerid) REPLACE( eventid AS eventid)
 FROM sales
 LIMIT 10;
 

@@ -1,7 +1,10 @@
 package ai.starlake.transpiler;
 
+import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.piped.AggregatePipeOperator;
 import net.sf.jsqlparser.statement.piped.AsPipeOperator;
 import net.sf.jsqlparser.statement.piped.CallPipeOperator;
@@ -29,7 +32,9 @@ import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.update.UpdateSet;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, PlainSelect>,
@@ -48,7 +53,7 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
       plainSelect = operator.accept(this, plainSelect);
     }
 
-    if (plainSelect.getSelectItems()==null || plainSelect.getSelectItems().isEmpty()) {
+    if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()) {
       plainSelect.addSelectItem(new AllColumns());
     }
 
@@ -120,22 +125,22 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
   @Override
   public PlainSelect visit(LimitPipeOperator limitPipeOperator, PlainSelect plainSelect) {
-    if (plainSelect.getLimit()==null) {
-      plainSelect.setLimit( new Limit().withRowCount(limitPipeOperator.getLimitExpression()).withOffset(limitPipeOperator.getOffsetExpression()) );
+    if (plainSelect.getLimit() == null) {
+      plainSelect.setLimit(new Limit().withRowCount(limitPipeOperator.getLimitExpression())
+          .withOffset(limitPipeOperator.getOffsetExpression()));
     } else {
-      plainSelect = new PlainSelect()
-              .withFromItem(
-                      new ParenthesedSelect().withSelect(plainSelect))
-              .addSelectItem(new AllColumns());
-      plainSelect.setLimit(new Limit().withRowCount(limitPipeOperator.getLimitExpression()).withOffset(limitPipeOperator.getOffsetExpression()));
+      plainSelect = new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
+          .addSelectItem(new AllColumns());
+      plainSelect.setLimit(new Limit().withRowCount(limitPipeOperator.getLimitExpression())
+          .withOffset(limitPipeOperator.getOffsetExpression()));
     }
     return plainSelect;
   }
 
   @Override
   public PlainSelect visit(OrderByPipeOperator orderByPipeOperator, PlainSelect plainSelect) {
-    if (plainSelect.getOrderByElements()==null || plainSelect.getOrderByElements().isEmpty()) {
-      plainSelect.setOrderByElements( orderByPipeOperator.getOrderByElements());
+    if (plainSelect.getOrderByElements() == null || plainSelect.getOrderByElements().isEmpty()) {
+      plainSelect.setOrderByElements(orderByPipeOperator.getOrderByElements());
     } else {
       plainSelect.getOrderByElements().addAll(orderByPipeOperator.getOrderByElements());
     }
@@ -176,7 +181,49 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
   @Override
   public PlainSelect visit(SetPipeOperator setPipeOperator, PlainSelect plainSelect) {
+    List<SelectItem<?>> selectItems = plainSelect.getSelectItems();
+
+    if (selectItems == null || selectItems.isEmpty()) {
+      AllColumns allColumns = new AllColumns();
+      setAllColumnsReplace(allColumns, setPipeOperator);
+      plainSelect.addSelectItem(allColumns);
+    } else {
+      boolean allColumnsFound = false;
+      for (SelectItem<?> selectItem : selectItems) {
+        if (selectItem.getExpression() instanceof AllColumns) {
+          AllColumns allColumns = (AllColumns) selectItem.getExpression();
+          setAllColumnsReplace(allColumns, setPipeOperator);
+          allColumnsFound = true;
+          break;
+        }
+      }
+      if (!allColumnsFound) {
+        AllColumns allColumns = new AllColumns();
+        setAllColumnsReplace(allColumns, setPipeOperator);
+
+        plainSelect =
+            new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
+                .addSelectItem(allColumns);
+      }
+    }
+
     return plainSelect;
+  }
+
+  private static void setAllColumnsReplace(AllColumns allColumns, SetPipeOperator setPipeOperator) {
+    if (allColumns.getReplaceExpressions() == null
+        || allColumns.getReplaceExpressions().isEmpty()) {
+      allColumns.setReplaceExpressions(new ArrayList<>());
+    }
+
+    for (UpdateSet updateSet : setPipeOperator.getUpdateSets()) {
+      for (int i = 0; i < updateSet.getColumns().size(); i++) {
+        Column column = updateSet.getColumn(i);
+        Expression value = updateSet.getValue(i);
+        allColumns.getReplaceExpressions()
+            .add(new SelectItem<>(value, new Alias(column.getColumnName(), true)));
+      }
+    }
   }
 
   @Override
@@ -198,10 +245,11 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
   @Override
   public PlainSelect visit(WherePipeOperator wherePipeOperator, PlainSelect plainSelect) {
-    if (plainSelect.getWhere()==null) {
+    if (plainSelect.getWhere() == null) {
       plainSelect.setWhere(wherePipeOperator.getExpression());
     } else {
-      plainSelect.setWhere( new AndExpression(plainSelect.getWhere(), wherePipeOperator.getExpression()));
+      plainSelect
+          .setWhere(new AndExpression(plainSelect.getWhere(), wherePipeOperator.getExpression()));
     }
     return plainSelect;
   }

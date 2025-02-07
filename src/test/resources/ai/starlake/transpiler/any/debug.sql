@@ -1,31 +1,24 @@
+-- result
+"item","sales"
+"apples","2"
+
 -- provided
 (
-  SELECT 'apples' AS item, 2 AS sales
+  SELECT 1 AS x, 11 AS y
   UNION ALL
-  SELECT 'bananas' AS item, 5 AS sales
+  SELECT 2 AS x, 22 AS y
 )
-|> AS produce_sales
-|> LEFT JOIN
-     (
-       SELECT 'apples' AS item, 123 AS id
-     ) AS produce_data
-   ON produce_sales.item = produce_data.item
-|> SELECT produce_sales.item, sales, id;
+|> SET x = x * x, y = 3;
 
 -- expected
-SELECT produce_sales.item, sales, id
+SELECT * REPLACE ( x * x AS x,  3 AS y )
 FROM (
-       SELECT 'apples' AS item, 2 AS sales
+       SELECT 1 AS x, 11 AS y
        UNION ALL
-       SELECT 'bananas' AS item, 5 AS sales
-     ) AS produce_sales
-     LEFT JOIN
-            (
-              SELECT 'apples' AS item, 123 AS id
-            ) AS produce_data
-          ON produce_sales.item = produce_data.item;
+       SELECT 2 AS x, 22 AS y
+     );
 
--- result
-"item","sales","id"
-"apples","2","123"
-"bananas","5",""
+-- results
+"x","y"
+"1","3"
+"4","3"
