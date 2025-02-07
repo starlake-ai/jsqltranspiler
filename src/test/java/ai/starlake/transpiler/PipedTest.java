@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,8 @@ public class PipedTest extends JSQLTranspilerTest {
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override
     public boolean accept(File dir, String name) {
-      return name.toLowerCase().contains("piped") && name.toLowerCase().endsWith(".sql");
+      return !name.toLowerCase().contains("disabled") && name.toLowerCase().contains("piped")
+          && name.toLowerCase().endsWith(".sql");
     }
   };
 

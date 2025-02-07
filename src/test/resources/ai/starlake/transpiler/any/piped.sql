@@ -206,3 +206,34 @@ FROM (
 "x","y"
 "1","3"
 "4","3"
+
+
+-- provided
+SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
+|> DROP sales, category;
+
+-- expected
+select * EXCLUDE(sales, category)
+FROM (
+    SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
+);
+
+-- result
+"item"
+"apples"
+
+
+-- provided
+FROM (SELECT 1 AS x, 2 AS y) AS t
+|> DROP x
+|> SELECT y;
+
+-- expected
+SELECT y FROM (
+    SELECT * EXCLUDE(x)
+    FROM (SELECT 1 AS x, 2 AS y) AS t
+);
+
+-- result
+"y"
+"2"

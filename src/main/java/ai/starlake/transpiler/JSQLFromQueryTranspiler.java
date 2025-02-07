@@ -1,3 +1,19 @@
+/**
+ * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package ai.starlake.transpiler;
 
 import net.sf.jsqlparser.expression.Alias;
@@ -44,7 +60,11 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
   @Override
   public PlainSelect visit(FromQuery fromQuery, PlainSelect plainSelect) {
     if (plainSelect == null) {
-      plainSelect = new PlainSelect().withFromItem(fromQuery.getFromItem());
+      if (fromQuery.getFromItem() instanceof PlainSelect) {
+        plainSelect = (PlainSelect) fromQuery.getFromItem();
+      } else {
+        plainSelect = new PlainSelect().withFromItem(fromQuery.getFromItem());
+      }
     } else {
       plainSelect.setFromItem(fromQuery.getFromItem());
     }
@@ -105,6 +125,31 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
   @Override
   public PlainSelect visit(DropPipeOperator dropPipeOperator, PlainSelect plainSelect) {
+    List<SelectItem<?>> selectItems = plainSelect.getSelectItems();
+    if (selectItems == null || selectItems.isEmpty()) {
+      AllColumns allColumns = new AllColumns();
+      setAllColumnsExcept(allColumns, dropPipeOperator);
+      plainSelect.addSelectItem(allColumns);
+    } else {
+      boolean allColumnsFound = false;
+      for (SelectItem<?> selectItem : selectItems) {
+        if (selectItem.getExpression() instanceof AllColumns) {
+          AllColumns allColumns = (AllColumns) selectItem.getExpression();
+          setAllColumnsExcept(allColumns, dropPipeOperator);
+          allColumnsFound = true;
+          break;
+        }
+      }
+      if (!allColumnsFound) {
+        AllColumns allColumns = new AllColumns();
+        setAllColumnsExcept(allColumns, dropPipeOperator);
+
+        plainSelect =
+            new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
+                .addSelectItem(allColumns);
+      }
+    }
+
     return plainSelect;
   }
 
@@ -160,10 +205,21 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
   @Override
   public PlainSelect visit(SelectPipeOperator selectPipeOperator, PlainSelect plainSelect) {
     if (selectPipeOperator.getOperatorName().equalsIgnoreCase("SELECT")) {
-      if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()
-          || plainSelect.getSelectItems().size() == 1
-              && plainSelect.getSelectItem(0).getExpression() instanceof AllColumns) {
+      if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()) {
         plainSelect.setSelectItems(selectPipeOperator.getSelectItems());
+      } else if (plainSelect.getSelectItems().size() == 1
+          && plainSelect.getSelectItem(0).getExpression() instanceof AllColumns) {
+        AllColumns allColumns = (AllColumns) plainSelect.getSelectItem(0).getExpression();
+
+        if ((allColumns.getReplaceExpressions() == null
+            || allColumns.getReplaceExpressions().isEmpty())
+            && (allColumns.getExceptColumns() == null || allColumns.getExceptColumns().isEmpty())) {
+          plainSelect.setSelectItems(selectPipeOperator.getSelectItems());
+        } else {
+          return new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
+              .withSelectItems(selectPipeOperator.getSelectItems());
+        }
+
       } else {
         return new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
             .withSelectItems(selectPipeOperator.getSelectItems());
@@ -224,6 +280,14 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
             .add(new SelectItem<>(value, new Alias(column.getColumnName(), true)));
       }
     }
+  }
+
+  private static void setAllColumnsExcept(AllColumns allColumns, DropPipeOperator setPipeOperator) {
+    if (allColumns.getExceptColumns() == null || allColumns.getExceptColumns().isEmpty()) {
+      allColumns.setExceptKeyword("EXCEPT");
+      allColumns.setExceptColumns(new ExpressionList<>());
+    }
+    allColumns.getExceptColumns().addAll(setPipeOperator.getColumns());
   }
 
   @Override
