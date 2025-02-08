@@ -49,6 +49,7 @@ import net.sf.jsqlparser.statement.select.IntersectOp;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.MinusOp;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
+import net.sf.jsqlparser.statement.select.Pivot;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SetOperationList;
@@ -199,6 +200,18 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
   @Override
   public PlainSelect visit(PivotPipeOperator pivotPipeOperator, PlainSelect plainSelect) {
+    Pivot pivot = new Pivot()
+        .withFunctionItems(List.of(new SelectItem<>(pivotPipeOperator.getAggregateExpression())))
+        .addForColumns(pivotPipeOperator.getInputColumn())
+        .withSingleInItems(pivotPipeOperator.getPivotColumns());
+
+    if (plainSelect.getPivot() == null) {
+      plainSelect.setPivot(pivot);
+    } else {
+      plainSelect = new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
+          .addSelectItem(new AllColumns());
+      plainSelect.setPivot(pivot);
+    }
     return plainSelect;
   }
 

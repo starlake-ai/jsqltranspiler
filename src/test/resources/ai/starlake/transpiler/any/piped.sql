@@ -341,3 +341,40 @@ FROM (
 "apples","2","15"
 "bananas","5","15"
 "carrots","8","15"
+
+
+-- provided
+(
+  SELECT "kale" AS product, 51 AS sales, "Q1" AS quarter
+  UNION ALL
+  SELECT "kale" AS product, 4 AS sales, "Q1" AS quarter
+  UNION ALL
+  SELECT "kale" AS product, 45 AS sales, "Q2" AS quarter
+  UNION ALL
+  SELECT "apple" AS product, 8 AS sales, "Q1" AS quarter
+  UNION ALL
+  SELECT "apple" AS product, 10 AS sales, "Q2" AS quarter
+)
+|> PIVOT(SUM(sales) FOR quarter IN ('Q1', 'Q2'))
+;
+
+-- expected
+SELECT *
+FROM (
+       SELECT 'kale' AS product, 51 AS sales, 'Q1' AS quarter
+       UNION ALL
+       SELECT 'kale' AS product, 4 AS sales, 'Q1' AS quarter
+       UNION ALL
+       SELECT 'kale' AS product, 45 AS sales, 'Q2' AS quarter
+       UNION ALL
+       SELECT 'apple' AS product, 8 AS sales, 'Q1' AS quarter
+       UNION ALL
+       SELECT 'apple' AS product, 10 AS sales, 'Q2' AS quarter
+     )
+PIVOT(SUM(sales) FOR quarter IN ('Q1', 'Q2'))
+;
+
+-- result
+"product","Q1","Q2"
+"kale","55","45"
+"apple","8","10"
