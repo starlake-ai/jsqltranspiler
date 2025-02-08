@@ -257,3 +257,87 @@ FROM (
 "one_digit","two_digit"
 "1","10"
 "20","2"
+
+
+-- provided
+SELECT * FROM UNNEST(ARRAY[1, 2, 3, 3, 4]) AS number
+|> INTERSECT DISTINCT
+    (SELECT * FROM UNNEST(ARRAY[2, 3, 3, 5]) AS number),
+    (SELECT * FROM UNNEST(ARRAY[3, 3, 4, 5]) AS number);
+
+-- expected
+SELECT *
+FROM (  SELECT *
+        FROM (  SELECT Unnest(  ARRAY   [ 1, 2, 3, 3, 4] ) AS number  ) AS number
+        INTERSECT DISTINCT
+        SELECT *
+        FROM (  SELECT Unnest(  ARRAY   [ 2, 3, 3, 5] ) AS number  ) AS number
+        INTERSECT DISTINCT
+        SELECT *
+        FROM (  SELECT Unnest(  ARRAY   [ 3, 3, 4, 5] ) AS number  ) AS number  )
+;
+
+-- result
+"number"
+"3"
+
+
+-- provided
+SELECT * FROM UNNEST(ARRAY[1, 2, 3, 3, 4]) AS number
+|> EXCEPT DISTINCT
+(
+  SELECT * FROM UNNEST(ARRAY[1, 2]) AS number
+  |> EXCEPT DISTINCT
+      (SELECT * FROM UNNEST(ARRAY[1, 4]) AS number)
+)
+|> ORDER BY 1
+;
+
+-- expected
+SELECT *
+FROM (  SELECT *
+        FROM (  SELECT Unnest(  ARRAY   [ 1, 2, 3, 3, 4] ) AS number  ) AS number
+        EXCEPT DISTINCT
+        SELECT *
+        FROM (  SELECT *
+                FROM (  SELECT Unnest(  ARRAY   [ 1, 2] ) AS number  ) AS number
+                EXCEPT DISTINCT
+                SELECT *
+                FROM (  SELECT Unnest(  ARRAY   [ 1, 4] ) AS number  ) AS number  ) )
+ORDER BY 1
+;
+
+-- result
+"number"
+"1"
+"3"
+"4"
+
+
+-- provided
+(
+  SELECT 'apples' AS item, 2 AS sales
+  UNION ALL
+  SELECT 'bananas' AS item, 5 AS sales
+  UNION ALL
+  SELECT 'carrots' AS item, 8 AS sales
+)
+|> WINDOW SUM(sales) OVER() AS total_sales;
+
+
+-- expected
+SELECT *, SUM(sales) OVER() AS total_sales
+FROM (
+       SELECT 'apples' AS item, 2 AS sales
+       UNION ALL
+       SELECT 'bananas' AS item, 5 AS sales
+       UNION ALL
+       SELECT 'carrots' AS item, 8 AS sales
+     )
+;
+
+-- result
+"item","sales","total_sales"
+"apples","2","15"
+"bananas","5","15"
+"carrots","8","15"

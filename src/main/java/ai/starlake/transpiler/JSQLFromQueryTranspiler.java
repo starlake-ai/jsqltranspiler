@@ -209,7 +209,9 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
   @Override
   public PlainSelect visit(SelectPipeOperator selectPipeOperator, PlainSelect plainSelect) {
-    if (selectPipeOperator.getOperatorName().equalsIgnoreCase("SELECT")) {
+    String operatorName = selectPipeOperator.getOperatorName().toUpperCase();
+
+    if (operatorName.equals("SELECT")) {
       if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()) {
         plainSelect.setSelectItems(selectPipeOperator.getSelectItems());
       } else if (plainSelect.getSelectItems().size() == 1
@@ -229,7 +231,7 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
         return new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
             .withSelectItems(selectPipeOperator.getSelectItems());
       }
-    } else if (selectPipeOperator.getOperatorName().equalsIgnoreCase("EXTEND")) {
+    } else if (operatorName.equals("EXTEND") || operatorName.equals("WINDOW")) {
       if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()) {
         plainSelect.addSelectItems(new AllColumns())
             .addSelectItems(selectPipeOperator.getSelectItems());
@@ -310,15 +312,23 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
     for (ParenthesedSelect select : setOperationPipeOperator.getSelects()) {
       switch (setOperationPipeOperator.getSetOperationType()) {
-        // @todo: implement correct modifiers for INTERSET and EXCEPT and MINUS
         case INTERSECT:
-          setOperationList.addOperations(new IntersectOp());
+          setOperationList.addOperations(new IntersectOp()
+              .withAll(setOperationPipeOperator.getModifier().toUpperCase().contains("ALL"))
+              .withDistinct(
+                  setOperationPipeOperator.getModifier().toUpperCase().contains("DISTINCT")));
           break;
         case EXCEPT:
-          setOperationList.addOperations(new ExceptOp());
+          setOperationList.addOperations(new ExceptOp()
+              .withAll(setOperationPipeOperator.getModifier().toUpperCase().contains("ALL"))
+              .withDistinct(
+                  setOperationPipeOperator.getModifier().toUpperCase().contains("DISTINCT")));
           break;
         case MINUS:
-          setOperationList.addOperations(new MinusOp());
+          setOperationList.addOperations(new MinusOp()
+              .withAll(setOperationPipeOperator.getModifier().toUpperCase().contains("ALL"))
+              .withDistinct(
+                  setOperationPipeOperator.getModifier().toUpperCase().contains("DISTINCT")));
           break;
         case UNION:
           setOperationList.addOperations(new UnionOp()
