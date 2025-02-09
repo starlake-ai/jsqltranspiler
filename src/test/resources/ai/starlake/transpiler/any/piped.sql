@@ -408,3 +408,17 @@ ORDER BY 1
 "apple","Q2","10"
 "kale","Q1","55"
 "kale","Q2","45"
+
+
+-- provided
+FROM sales
+|> TABLESAMPLE SYSTEM (0.0 PERCENT);
+
+-- expected
+SELECT *
+FROM sales
+USING SAMPLE SYSTEM (0.0 PERCENT);
+
+-- result
+"salesid","listid","sellerid","buyerid","eventid","dateid","qtysold","pricepaid","commission","saletime"
+

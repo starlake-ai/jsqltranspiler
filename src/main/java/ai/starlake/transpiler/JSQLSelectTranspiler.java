@@ -27,6 +27,7 @@ import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.Pivot;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.SampleClause;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.statement.select.TableFunction;
@@ -130,6 +131,11 @@ public class JSQLSelectTranspiler extends SelectDeParser {
       }
     }
 
+    if (select.getSampleClause() != null) {
+      SampleClause sampleClause = select.getSampleClause();
+      sampleClause.setKeyword(SampleClause.SampleKeyword.USING_SAMPLE);
+    }
+
     this.builder.append("(");
     select.getSelect().accept((SelectVisitor<StringBuilder>) this, params);
     this.builder.append(")");
@@ -194,6 +200,11 @@ public class JSQLSelectTranspiler extends SelectDeParser {
           break;
         }
       }
+    }
+
+    if (table.getSampleClause() != null) {
+      SampleClause sampleClause = table.getSampleClause();
+      sampleClause.setKeyword(SampleClause.SampleKeyword.USING_SAMPLE);
     }
 
     super.visit(table, params);

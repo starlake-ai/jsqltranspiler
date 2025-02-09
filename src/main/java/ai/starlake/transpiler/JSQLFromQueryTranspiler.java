@@ -21,6 +21,7 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.piped.AggregatePipeOperator;
 import net.sf.jsqlparser.statement.piped.AsPipeOperator;
 import net.sf.jsqlparser.statement.piped.CallPipeOperator;
@@ -51,6 +52,7 @@ import net.sf.jsqlparser.statement.select.MinusOp;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.Pivot;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.SampleClause;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SetOperationList;
 import net.sf.jsqlparser.statement.select.UnPivot;
@@ -315,6 +317,21 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
   @Override
   public PlainSelect visit(TableSamplePipeOperator tableSamplePipeOperator,
       PlainSelect plainSelect) {
+    SampleClause sampleClause = new SampleClause("TABLESAMPLE", "SYSTEM",
+        tableSamplePipeOperator.getPercent(), "PERCENT", null, null);
+
+    if (plainSelect.getFromItem() instanceof Table) {
+      Table table = plainSelect.getFromItem(Table.class);
+      table.setSampleClause(sampleClause);
+    } else if (plainSelect.getFromItem() instanceof ParenthesedSelect) {
+      ParenthesedSelect parenthesedSelect = plainSelect.getFromItem(ParenthesedSelect.class);
+      parenthesedSelect.setSampleClause(sampleClause);
+    } else {
+      plainSelect = new PlainSelect()
+          .withFromItem(
+              new ParenthesedSelect().withSelect(plainSelect).withSampleClause(sampleClause))
+          .addSelectItem(new AllColumns());
+    }
     return plainSelect;
   }
 
