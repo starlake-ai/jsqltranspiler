@@ -133,10 +133,6 @@ public class JSQLSelectTranspiler extends SelectDeParser {
     this.builder.append("(");
     select.getSelect().accept((SelectVisitor<StringBuilder>) this, params);
     this.builder.append(")");
-    if (select.getOrderByElements() != null) {
-      new OrderByDeParser(this.getExpressionVisitor(), this.builder)
-          .deParse(select.isOracleSiblings(), select.getOrderByElements());
-    }
 
     Alias alias = select.getAlias();
     if (alias != null) {
@@ -151,6 +147,11 @@ public class JSQLSelectTranspiler extends SelectDeParser {
     UnPivot unpivot = select.getUnPivot();
     if (unpivot != null) {
       unpivot.accept(this, params);
+    }
+
+    if (select.getOrderByElements() != null) {
+      new OrderByDeParser(this.getExpressionVisitor(), this.builder)
+          .deParse(select.isOracleSiblings(), select.getOrderByElements());
     }
 
     if (select.getLimit() != null) {

@@ -53,6 +53,7 @@ import net.sf.jsqlparser.statement.select.Pivot;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SetOperationList;
+import net.sf.jsqlparser.statement.select.UnPivot;
 import net.sf.jsqlparser.statement.select.UnionOp;
 import net.sf.jsqlparser.statement.update.UpdateSet;
 
@@ -203,7 +204,8 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
     Pivot pivot = new Pivot()
         .withFunctionItems(List.of(new SelectItem<>(pivotPipeOperator.getAggregateExpression())))
         .addForColumns(pivotPipeOperator.getInputColumn())
-        .withSingleInItems(pivotPipeOperator.getPivotColumns());
+        .withSingleInItems(pivotPipeOperator.getPivotColumns())
+        .withAlias(pivotPipeOperator.getAlias());
 
     if (plainSelect.getPivot() == null) {
       plainSelect.setPivot(pivot);
@@ -358,7 +360,21 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
 
   @Override
   public PlainSelect visit(UnPivotPipeOperator unPivotPipeOperator, PlainSelect plainSelect) {
+    UnPivot unPivot = new UnPivot();
+    unPivot.setUnPivotClause(new ExpressionList<>(unPivotPipeOperator.getValuesColumn()));
+    unPivot.setUnPivotForClause(new ExpressionList<>(unPivotPipeOperator.getNameColumn()));
+    unPivot.setUnPivotInClause(unPivotPipeOperator.getPivotColumns());
+    unPivot.setAlias(unPivotPipeOperator.getAlias());
+
+    if (plainSelect.getUnPivot() == null) {
+      plainSelect.setUnPivot(unPivot);
+    } else {
+      plainSelect = new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
+          .addSelectItem(new AllColumns());
+      plainSelect.setUnPivot(unPivot);
+    }
     return plainSelect;
+
   }
 
   @Override
