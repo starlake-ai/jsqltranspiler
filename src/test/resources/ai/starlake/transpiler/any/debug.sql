@@ -1,24 +1,28 @@
--- result
-"item","sales"
-"apples","2"
-
 -- provided
 (
-  SELECT 1 AS x, 11 AS y
+  SELECT 'kale' as product, 55 AS Q1, 45 AS Q2
   UNION ALL
-  SELECT 2 AS x, 22 AS y
+  SELECT 'apple', 8, 10
 )
-|> SET x = x * x, y = 3;
+|> UNPIVOT(sales FOR quarter IN (Q1, Q2))
+|> ORDER BY 1
+|> SELECT DISTINCT product;
 
 -- expected
-SELECT * REPLACE ( x * x AS x,  3 AS y )
+SELECT DISTINCT product
 FROM (
-       SELECT 1 AS x, 11 AS y
-       UNION ALL
-       SELECT 2 AS x, 22 AS y
-     );
+    SELECT *
+    FROM (
+           SELECT 'kale' as product, 55 AS Q1, 45 AS Q2
+           UNION ALL
+           SELECT 'apple', 8, 10
+         )
+    UNPIVOT(sales FOR quarter IN (Q1, Q2))
+ORDER BY 1
+)
+;
 
--- results
-"x","y"
-"1","3"
-"4","3"
+-- result
+"product"
+"apple"
+"kale"

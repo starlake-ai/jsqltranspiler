@@ -44,6 +44,7 @@ import net.sf.jsqlparser.statement.piped.UnPivotPipeOperator;
 import net.sf.jsqlparser.statement.piped.WherePipeOperator;
 import net.sf.jsqlparser.statement.piped.WindowPipeOperator;
 import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.Distinct;
 import net.sf.jsqlparser.statement.select.ExceptOp;
 import net.sf.jsqlparser.statement.select.GroupByElement;
 import net.sf.jsqlparser.statement.select.IntersectOp;
@@ -229,7 +230,14 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
     String operatorName = selectPipeOperator.getOperatorName().toUpperCase();
 
     if (operatorName.equals("SELECT")) {
-      if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()) {
+      if (plainSelect.getPivot() != null || plainSelect.getUnPivot() != null) {
+        if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()) {
+          plainSelect.addSelectItem(new AllColumns());
+        }
+        plainSelect =
+            new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
+                .withSelectItems(selectPipeOperator.getSelectItems());
+      } else if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()) {
         plainSelect.setSelectItems(selectPipeOperator.getSelectItems());
       } else if (plainSelect.getSelectItems().size() == 1
           && plainSelect.getSelectItem(0).getExpression() instanceof AllColumns) {
@@ -245,9 +253,16 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
         }
 
       } else {
-        return new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
-            .withSelectItems(selectPipeOperator.getSelectItems());
+        plainSelect =
+            new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
+                .withSelectItems(selectPipeOperator.getSelectItems());
       }
+
+      String modifier = selectPipeOperator.getModifier();
+      if (modifier != null && modifier.equalsIgnoreCase("DISTINCT")) {
+        plainSelect.setDistinct(new Distinct());
+      }
+
     } else if (operatorName.equals("EXTEND") || operatorName.equals("WINDOW")) {
       if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()) {
         plainSelect.addSelectItems(new AllColumns())
