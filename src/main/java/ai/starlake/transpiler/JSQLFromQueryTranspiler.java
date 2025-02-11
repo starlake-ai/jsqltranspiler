@@ -95,7 +95,7 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
     if (plainSelect.getSelectItems() == null || plainSelect.getSelectItems().isEmpty()) {
       plainSelect.setSelectItems(aggregatePipeOperator.getSelectItems());
     } else {
-      plainSelect = plainSelect.withFromItem(plainSelect)
+      plainSelect = new PlainSelect().withFromItem(new ParenthesedSelect().withSelect(plainSelect))
           .withSelectItems(aggregatePipeOperator.getSelectItems());
     }
 
@@ -120,7 +120,7 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
         && plainSelect.getFromItem().getAlias() == null) {
       plainSelect.getFromItem().setAlias(asPipeOperator.getAlias());
     } else {
-      return new PlainSelect()
+      plainSelect = new PlainSelect()
           .withFromItem(
               new ParenthesedSelect().withSelect(plainSelect).withAlias(asPipeOperator.getAlias()))
           .addSelectItem(new AllColumns());
