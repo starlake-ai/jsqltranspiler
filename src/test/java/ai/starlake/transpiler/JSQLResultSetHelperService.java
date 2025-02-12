@@ -34,12 +34,15 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 public class JSQLResultSetHelperService extends ResultSetHelperService {
+
+  public static final String DEFAULT_NULL_VALUE = "JSQL_NULL";
+
   private final String defaultValue;
 
   public TreeMap<Integer, NumberFormat> numberFormatters = null;
 
   public JSQLResultSetHelperService() {
-    this.defaultValue = "JSQL_NULL";
+    this.defaultValue = DEFAULT_NULL_VALUE;
   }
 
   public JSQLResultSetHelperService(String defaultValue) {

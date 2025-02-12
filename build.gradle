@@ -66,6 +66,9 @@ dependencies {
     //calling external python
     testImplementation 'org.apache.commons:commons-exec:+'
 
+    // executing sql bigquery
+    testImplementation 'com.google.cloud:google-cloud-bigquery:+'
+
     // Java Doc in XML Format
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:1.+'
 }
