@@ -88,7 +88,7 @@ public abstract class SQLGlotTest extends JSQLTranspilerTest {
     // For any JSON related test we want to distinguish the SQL NULL, while for anything else it
     // does not matter
     executeTest(connDuck, t, output.toString(),
-        f.getName().toLowerCase().contains("json") ? "JSQL_NULL" : "");
+        f.getName().toLowerCase().contains("json") ? JSQLResultSetHelperService.DEFAULT_NULL_VALUE : "");
   }
 
 }
