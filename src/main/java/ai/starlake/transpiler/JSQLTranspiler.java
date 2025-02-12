@@ -28,9 +28,13 @@ import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.merge.Merge;
+import net.sf.jsqlparser.statement.piped.FromQuery;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.statement.update.Update;
+import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
+import net.sf.jsqlparser.util.deparser.SelectDeParser;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 import java.io.BufferedReader;
@@ -524,6 +528,76 @@ public class JSQLTranspiler extends StatementDeParser {
       // this should really never happen
       throw new RuntimeException("Failed to initiate the Transpiler Classes", e);
     }
+  }
+
+  /**
+   * @param sqlStr the original query string written in `PipedSQL`
+   * @param executorService the ExecutorService to use for running and observing JSQLParser
+   * @param consumer the parser configuration to use for the parsing
+   * @return the rewritten query string in plain legacy SQL
+   * @throws JSQLParserException a parser exception when the statement can't be parsed due to syntax
+   *         errors
+   */
+  public static String unpipe(String sqlStr, ExecutorService executorService,
+      Consumer<CCJSqlParser> consumer) throws JSQLParserException {
+    StringBuilder b = new StringBuilder();
+
+    SelectDeParser selectDeParser = new SelectDeParser(b) {
+      @Override
+      public <S> StringBuilder visit(FromQuery fromQuery, S context) {
+        PlainSelect select = fromQuery.accept(new JSQLFromQueryTranspiler(), null);
+        select.accept(this);
+        return b;
+      }
+    };
+
+    ExpressionDeParser expressionDeParser = new ExpressionDeParser(selectDeParser, b);
+    selectDeParser.setExpressionVisitor(expressionDeParser);
+
+    StatementDeParser statementDeParser =
+        new StatementDeParser(expressionDeParser, selectDeParser, b);
+
+    // @todo: we may need to split this manually to salvage any not parseable statements
+    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
+    for (Statement st : statements) {
+      st.accept(statementDeParser);
+      statementDeParser.getBuilder().append("\n;\n\n");
+    }
+
+    String transpiledSqlStr = statementDeParser.getBuilder().toString();
+    LOGGER.fine("-- Transpiled SQL:\n" + transpiledSqlStr);
+
+    return transpiledSqlStr;
+  }
+
+  /**
+   * @param sqlStr the original query string written in `PipedSQL`
+   * @param consumer the parser configuration to use for the parsing
+   * @return the rewritten query string in plain legacy SQL
+   * @throws JSQLParserException a parser exception when the statement can't be parsed due to syntax
+   *         errors
+   * @throws InterruptedException a time-out exception when the parser won't return in time
+   */
+  public static String unpipe(String sqlStr, Consumer<CCJSqlParser> consumer)
+      throws JSQLParserException, InterruptedException {
+    ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    String result = unpipe(sqlStr, executorService, consumer);
+    executorService.shutdown();
+    executorService.awaitTermination(1, TimeUnit.MINUTES);
+    return result;
+  }
+
+  /**
+   * @param sqlStr the original query string written in `PipedSQL`
+   * @return the rewritten query string in plain legacy SQL
+   * @throws JSQLParserException a parser exception when the statement can't be parsed due to syntax
+   *         errors
+   * @throws InterruptedException a time-out exception when the parser won't return in time
+   */
+  public static String unpipe(String sqlStr) throws JSQLParserException, InterruptedException {
+    String result = unpipe(sqlStr, parser -> {
+    });
+    return result;
   }
 
   public <S> StringBuilder visit(Select select, S context) {

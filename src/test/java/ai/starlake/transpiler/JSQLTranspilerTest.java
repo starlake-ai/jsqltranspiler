@@ -29,6 +29,7 @@ import org.apache.commons.io.IOUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -622,5 +623,39 @@ public class JSQLTranspilerTest {
         }
       }
     }
+  }
+
+  @Test
+  void testUnPipe() throws JSQLParserException, InterruptedException {
+    //@formatter:off
+    String providedStr =
+            "FROM customer\n" +
+            "|> LEFT OUTER JOIN orders ON c_custkey = o_custkey AND o_comment NOT LIKE '%unusual%packages%'\n" +
+            "|> AGGREGATE COUNT(o_orderkey) c_count GROUP BY c_custkey\n" +
+            "|> AGGREGATE COUNT(*) AS custdist GROUP BY c_count\n" +
+            "|> ORDER BY custdist DESC, c_count DESC;\n";
+
+    String expectedStr =
+            "SELECT  Count( * ) AS custdist\n" +
+            "        , c_count\n" +
+            "FROM (  SELECT  Count( o_orderkey ) c_count\n" +
+            "                , c_custkey\n" +
+            "        FROM customer\n" +
+            "            LEFT OUTER JOIN orders\n" +
+            "                ON c_custkey = o_custkey\n" +
+            "                    AND o_comment NOT LIKE '%unusual%packages%'\n" +
+            "        GROUP BY c_custkey )\n" +
+            "GROUP BY c_count\n" +
+            "ORDER BY    custdist DESC\n" +
+            "            , c_count DESC\n" +
+            ";";
+    //@formatter:on
+
+    // only rewrite the `FromQuery` and the `PipedOperators` but don't transpile expressions or
+    // functions
+    String transpiledSqlStr = JSQLTranspiler.unpipe(providedStr);
+
+    // compare output ignoring white space
+    Assertions.assertThat(sanitize(transpiledSqlStr, true)).isEqualTo(sanitize(expectedStr, true));
   }
 }

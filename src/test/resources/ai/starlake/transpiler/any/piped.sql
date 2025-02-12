@@ -431,7 +431,9 @@ USING SAMPLE SYSTEM (0.0 PERCENT);
 )
 |> UNPIVOT(sales FOR quarter IN (Q1, Q2))
 |> ORDER BY 1
-|> SELECT DISTINCT product;
+|> SELECT DISTINCT product
+|> ORDER BY 1
+;
 
 -- expected
 SELECT DISTINCT product
@@ -443,8 +445,9 @@ FROM (
            SELECT 'apple', 8, 10
          )
     UNPIVOT(sales FOR quarter IN (Q1, Q2))
-ORDER BY 1
+    ORDER BY 1
 )
+ORDER BY 1
 ;
 
 -- result
