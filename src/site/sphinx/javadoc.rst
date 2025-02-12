@@ -198,6 +198,14 @@ JSQLColumResolver
 |          PlainSelect plainSelect
 
 
+| *@Override*
+| **visit** (fromQuery, s) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
+|          FromQuery fromQuery
+|          S s
+|          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
+
+
+
 | **visit** (select) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
 |          Select select
 |          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
@@ -468,9 +476,9 @@ JSQLExpressionTranspiler
 
 | The type Expression transpiler.
 
-| **JSQLExpressionTranspiler** (deParser, buffer)
+| **JSQLExpressionTranspiler** (deParser, builder)
 |          SelectDeParser deParser
-|          :ref:`StringBuilder<java.lang.StringBuilder>` buffer
+|          :ref:`StringBuilder<java.lang.StringBuilder>` builder
 
 
 | **isDatePart** (expression, dialect) → boolean
@@ -754,6 +762,162 @@ JSQLExpressionTranspiler
 
 
 
+..  _ai.starlake.transpiler.JSQLFromQueryTranspiler:
+
+=======================================================================
+JSQLFromQueryTranspiler
+=======================================================================
+
+*extends:* :ref:`Object<java.lang.Object>` 
+
+| **JSQLFromQueryTranspiler** ()
+
+
+| *@Override*
+| **visit** (fromQuery, plainSelect) → PlainSelect
+|          FromQuery fromQuery
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (aggregatePipeOperator, plainSelect) → PlainSelect
+|          AggregatePipeOperator aggregatePipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (asPipeOperator, plainSelect) → PlainSelect
+|          AsPipeOperator asPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (callPipeOperator, plainSelect) → PlainSelect
+|          CallPipeOperator callPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (dropPipeOperator, plainSelect) → PlainSelect
+|          DropPipeOperator dropPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (extendPipeOperator, plainSelect) → PlainSelect
+|          ExtendPipeOperator extendPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (joinPipeOperator, plainSelect) → PlainSelect
+|          JoinPipeOperator joinPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (limitPipeOperator, plainSelect) → PlainSelect
+|          LimitPipeOperator limitPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (orderByPipeOperator, plainSelect) → PlainSelect
+|          OrderByPipeOperator orderByPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (pivotPipeOperator, plainSelect) → PlainSelect
+|          PivotPipeOperator pivotPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (renamePipeOperator, plainSelect) → PlainSelect
+|          RenamePipeOperator renamePipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (selectPipeOperator, plainSelect) → PlainSelect
+|          SelectPipeOperator selectPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (setPipeOperator, plainSelect) → PlainSelect
+|          SetPipeOperator setPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (tableSamplePipeOperator, plainSelect) → PlainSelect
+|          TableSamplePipeOperator tableSamplePipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (setOperationPipeOperator, plainSelect) → PlainSelect
+|          SetOperationPipeOperator setOperationPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (unPivotPipeOperator, plainSelect) → PlainSelect
+|          UnPivotPipeOperator unPivotPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (wherePipeOperator, plainSelect) → PlainSelect
+|          WherePipeOperator wherePipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+| *@Override*
+| **visit** (windowPipeOperator, plainSelect) → PlainSelect
+|          WindowPipeOperator windowPipeOperator
+|          PlainSelect plainSelect
+|          returns PlainSelect
+
+
+
+
 ..  _ai.starlake.transpiler.JSQLInsertTranspiler:
 
 =======================================================================
@@ -844,6 +1008,21 @@ JSQLSelectTranspiler
 |          <any> selectItem
 |          S context
 |          returns :ref:`StringBuilder<java.lang.StringBuilder>`
+
+
+
+| *@Override*
+| **visit** (fromQuery, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
+|          FromQuery fromQuery
+|          S context
+|          returns :ref:`StringBuilder<java.lang.StringBuilder>`
+
+
+
+| **visit** (selectPipeOperator, select) → PlainSelect
+|          SelectPipeOperator selectPipeOperator
+|          PlainSelect select
+|          returns PlainSelect
 
 
 
@@ -1007,6 +1186,27 @@ JSQLTranspiler
 |          Statement statement  | statement the statement
 |          :ref:`Map<java.util.Map>` parameters
 |          returns :ref:`String<java.lang.String>`  | the string
+
+
+
+| **unpipe** (sqlStr, executorService, consumer) → :ref:`String<java.lang.String>`
+|          :ref:`String<java.lang.String>` sqlStr  | sqlStr the original query string written in `PipedSQL`
+|          :ref:`ExecutorService<java.util.concurrent.ExecutorService>` executorService  | executorService the ExecutorService to use for running and observing JSQLParser
+|          :ref:`Consumer<java.util.function.Consumer>` consumer  | consumer the parser configuration to use for the parsing
+|          returns :ref:`String<java.lang.String>`  | the rewritten query string in plain legacy SQL
+
+
+
+| **unpipe** (sqlStr, consumer) → :ref:`String<java.lang.String>`
+|          :ref:`String<java.lang.String>` sqlStr  | sqlStr the original query string written in `PipedSQL`
+|          :ref:`Consumer<java.util.function.Consumer>` consumer  | consumer the parser configuration to use for the parsing
+|          returns :ref:`String<java.lang.String>`  | the rewritten query string in plain legacy SQL
+
+
+
+| **unpipe** (sqlStr) → :ref:`String<java.lang.String>`
+|          :ref:`String<java.lang.String>` sqlStr  | sqlStr the original query string written in `PipedSQL`
+|          returns :ref:`String<java.lang.String>`  | the rewritten query string in plain legacy SQL
 
 
 
