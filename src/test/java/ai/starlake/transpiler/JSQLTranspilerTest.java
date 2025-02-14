@@ -19,8 +19,10 @@ package ai.starlake.transpiler;
 import ai.starlake.transpiler.bigquery.BigqueryResultSet;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import com.google.cloud.bigquery.*;
+import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.opencsv.ResultSetHelperService;
+import com.opencsv.exceptions.CsvException;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statements;
@@ -51,23 +53,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
@@ -741,6 +734,7 @@ public class JSQLTranspilerTest {
   protected static void generateTestCase(JSQLTranspiler.Dialect inputDialect,
       JSQLTranspiler.Dialect outputDialect, String inputQuery, String outputFilePath,
       int queryIndex, boolean supported) throws IOException {
+    boolean generationSuccess = true;
     ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     File outputFile = new File(outputFilePath);
     File parentDir = outputFile.getParentFile();
@@ -753,7 +747,7 @@ public class JSQLTranspilerTest {
         writer.write("/*\n");
       }
       // Write the provided input to the file
-      writer.write("-- provided\n");
+      writer.write("-- provided test case " + queryIndex + "\n");
       writer.write(inputQuery.trim() + "\n\n");
 
       // Transpile the input
@@ -765,18 +759,21 @@ public class JSQLTranspilerTest {
             });
       } catch (JSQLParserException e) {
         transpilationSuccess = false;
+        generationSuccess= false;
         expectedSqlStr = "UNSUPPORTED" + e.getMessage().split("\\n|\\.")[0];
       }
 
       // Write the transpiled string to the file
       writer.write("-- expected\n");
       writer.write(expectedSqlStr + "\n\n");
+      String transpiledQueryResult = "";
       if (transpilationSuccess) {
         writer.write("-- output\n");
         try {
-          String transpilationOutput = executeQuery(outputDialect, expectedSqlStr);
-          writer.write(transpilationOutput + "\n\n");
+          transpiledQueryResult = executeQuery(outputDialect, expectedSqlStr);
+          writer.write(transpiledQueryResult + "\n\n");
         } catch (Exception e) {
+          generationSuccess=false;
           StringWriter sw = new StringWriter();
           PrintWriter pw = new PrintWriter(sw);
           e.printStackTrace(pw);
@@ -788,10 +785,12 @@ public class JSQLTranspilerTest {
         writer.write("NOT TRANSPILED" + "\n\n");
       }
       writer.write("-- result\n");
+      String inputQueryResult = "";
       try {
-        String output = executeQuery(inputDialect, inputQuery);
-        writer.write(output + "\n\n");
+        inputQueryResult = executeQuery(inputDialect, inputQuery);
+        writer.write(inputQueryResult + "\n\n");
       } catch (Exception e) {
+        generationSuccess=false;
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);
@@ -803,8 +802,52 @@ public class JSQLTranspilerTest {
       }
       // Flush the writer to ensure data is saved
       writer.flush();
+      if(supported){
+        if(generationSuccess){
+            assertCSV(inputQueryResult, transpiledQueryResult, true);
+        } else {
+          throw new RuntimeException("A step during the generation was not successful");
+        }
+      }
     } finally {
       executorService.shutdown();
     }
+  }
+
+  private static void assertCSV(String inputCSV, String expectedCSV, boolean ignoreLineOrder) {
+    List<String> inputRecords = parseCSV(inputCSV);
+    List<String> expectedRecords = parseCSV(expectedCSV);
+    if(ignoreLineOrder){
+      Assertions.assertThat(inputRecords).containsExactlyInAnyOrder(expectedRecords.toArray(String[]::new));
+    } else {
+      Assertions.assertThat(inputRecords).isEqualTo(expectedRecords);
+    }
+  }
+
+  private static List<String> parseCSV(String csvLines) {
+    try (CSVReader reader = new CSVReader(new StringReader(csvLines))) {
+      final List<String[]> records = reader.readAll();
+      if (records.isEmpty())
+        return new ArrayList<>();
+
+      String[] headers = records.get(0);
+      List<Integer> orderedIndexes = getSortedHeaderIndexes(headers);
+      // don't skip first line which is header, we want to compare header output names as well
+      return records.stream()
+              .map(record -> {
+                List<String> sortedColumns = new java.util.ArrayList<>();
+                orderedIndexes.stream().forEach(i -> sortedColumns.add(record[i]));
+                return String.join(",", sortedColumns);
+              })
+              .collect(Collectors.toList());
+    } catch (IOException e) {
+        throw new RuntimeException(e);
+    } catch (CsvException e) {
+        throw new RuntimeException(e);
+    }
+  }
+
+  public static List<Integer> getSortedHeaderIndexes(String[] headers) {
+    return IntStream.range(0, headers.length).mapToObj(i -> Map.entry(headers[i], i)).sorted(Map.Entry.comparingByKey()).map(e -> e.getValue()).collect(Collectors.toList());
   }
 }
