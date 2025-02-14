@@ -128,14 +128,16 @@ public class JSQLTranspilerTest {
     }
   }
 
-  protected static Stream<Arguments> getInputQueries(File inputFile, FilenameFilter filenameFilter) {
-    return Arrays.stream(Objects.requireNonNull(inputFile.listFiles(filenameFilter))).flatMap(sqlFile -> {
-      try {
-        return Stream.generate(new InputQuerySupplier(sqlFile)).takeWhile(Objects::nonNull);
-      } catch (FileNotFoundException e) {
-        throw new RuntimeException(e);
-      }
-    });
+  protected static Stream<Arguments> getInputQueries(File inputFile,
+      FilenameFilter filenameFilter) {
+    return Arrays.stream(Objects.requireNonNull(inputFile.listFiles(filenameFilter)))
+        .flatMap(sqlFile -> {
+          try {
+            return Stream.generate(new InputQuerySupplier(sqlFile)).takeWhile(Objects::nonNull);
+          } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   static Stream<Arguments> getSqlTestMap() {
@@ -564,7 +566,8 @@ public class JSQLTranspilerTest {
     // For any JSON related test we want to distinguish the SQL NULL, while for anything else it
     // does not matter
     executeTest(connDuck, t, transpiledSqlStr,
-        f.getName().toLowerCase().contains("json") ? JSQLResultSetHelperService.DEFAULT_NULL_VALUE : "");
+        f.getName().toLowerCase().contains("json") ? JSQLResultSetHelperService.DEFAULT_NULL_VALUE
+            : "");
   }
 
   public static void executeTest(Connection connDuck, SQLTest t, String transpiledSqlStr,
@@ -645,42 +648,48 @@ public class JSQLTranspilerTest {
     Assertions.assertThat(sanitize(transpiledSqlStr, true)).isEqualTo(sanitize(expectedStr, true));
   }
 
-  private static String executeJdbcQuery(Connection conn, String transpiledSqlStr) throws SQLException, IOException {
+  private static String executeJdbcQuery(Connection conn, String transpiledSqlStr)
+      throws SQLException, IOException {
     return executeJdbcQuery(conn, transpiledSqlStr, JSQLResultSetHelperService.DEFAULT_NULL_VALUE);
   }
 
-  private static String executeJdbcQuery(Connection conn, String transpiledSqlStr, String nullValue) throws SQLException, IOException {
+  private static String executeJdbcQuery(Connection conn, String transpiledSqlStr, String nullValue)
+      throws SQLException, IOException {
     try (Statement st = conn.createStatement();) {
       st.executeUpdate("set timezone='Asia/Bangkok'");
-      try (ResultSet rs = st.executeQuery(transpiledSqlStr)){
+      try (ResultSet rs = st.executeQuery(transpiledSqlStr)) {
         return formatAsCSV(rs, nullValue);
       }
     }
   }
 
-  private static String executeQuery(JSQLTranspiler.Dialect dialect, String query) throws InterruptedException, SQLException, IOException {
+  private static String executeQuery(JSQLTranspiler.Dialect dialect, String query)
+      throws InterruptedException, SQLException, IOException {
     String result = "";
-    if(dialect == JSQLTranspiler.Dialect.DUCK_DB){
+    if (dialect == JSQLTranspiler.Dialect.DUCK_DB) {
       result = executeJdbcQuery(connDuck, query);
-    }else if(dialect == JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY){
+    } else if (dialect == JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY) {
       result = executeBQQuery(query);
     } else {
       String dbJdbcURL = System.getenv(dialect.name().toUpperCase() + "_JDBC_URL");
       String dbUserName = System.getenv(dialect.name().toUpperCase() + "_USERNAME");
       String dbPassword = System.getenv(dialect.name().toUpperCase() + "_PASSWORD");
-      try(Connection jdbcConnection = DriverManager.getConnection(dbJdbcURL, dbUserName, dbPassword)) {
+      try (Connection jdbcConnection =
+          DriverManager.getConnection(dbJdbcURL, dbUserName, dbPassword)) {
         result = executeJdbcQuery(jdbcConnection, query);
       }
     }
     return result;
   }
 
-  private static String executeBQQuery(String sqlStr) throws InterruptedException, SQLException, IOException {
+  private static String executeBQQuery(String sqlStr)
+      throws InterruptedException, SQLException, IOException {
     // Initialize BigQuery service
     BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
 
     // Configure the query
-    QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(sqlStr).setUseLegacySql(false).build();
+    QueryJobConfiguration queryConfig =
+        QueryJobConfiguration.newBuilder(sqlStr).setUseLegacySql(false).build();
     JobId jobId = JobId.newBuilder().build();
     Job queryJob = bigquery.create(JobInfo.newBuilder(queryConfig).setJobId(jobId).build());
 
@@ -702,14 +711,15 @@ public class JSQLTranspilerTest {
     return formatAsCSV(rs, JSQLResultSetHelperService.DEFAULT_NULL_VALUE);
   }
 
-  private static String formatAsCSV(ResultSet rs, String nullValue) throws SQLException, IOException {
+  private static String formatAsCSV(ResultSet rs, String nullValue)
+      throws SQLException, IOException {
     DecimalFormat floatingPointFormat = (DecimalFormat) DecimalFormat.getInstance(Locale.US);
     floatingPointFormat.setGroupingUsed(false);
     floatingPointFormat.setMaximumFractionDigits(9);
     floatingPointFormat.setMinimumFractionDigits(1);
     floatingPointFormat.setMinimumIntegerDigits(1);
     StringWriter stringWriter = new StringWriter();
-    try(CSVWriter csvWriter = new CSVWriter(stringWriter)){
+    try (CSVWriter csvWriter = new CSVWriter(stringWriter)) {
       // enforce SQL compliant format
       ResultSetHelperService resultSetHelperService = new JSQLResultSetHelperService(nullValue);
       resultSetHelperService.setDateFormat("yyyy-MM-dd");
@@ -722,23 +732,28 @@ public class JSQLTranspilerTest {
     }
   }
 
-  protected static void generateTestCase(JSQLTranspiler.Dialect inputDialect, String inputQuery, String outputFilePath, int queryIndex, boolean supported) throws IOException {
-    generateTestCase(inputDialect, JSQLTranspiler.Dialect.DUCK_DB, inputQuery, outputFilePath, queryIndex, supported);
+  protected static void generateTestCase(JSQLTranspiler.Dialect inputDialect, String inputQuery,
+      String outputFilePath, int queryIndex, boolean supported) throws IOException {
+    generateTestCase(inputDialect, JSQLTranspiler.Dialect.DUCK_DB, inputQuery, outputFilePath,
+        queryIndex, supported);
   }
 
-  protected static void generateTestCase(JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect, String inputQuery, String outputFilePath, int queryIndex, boolean supported) throws IOException {
+  protected static void generateTestCase(JSQLTranspiler.Dialect inputDialect,
+      JSQLTranspiler.Dialect outputDialect, String inputQuery, String outputFilePath,
+      int queryIndex, boolean supported) throws IOException {
     ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     File outputFile = new File(outputFilePath);
     File parentDir = outputFile.getParentFile();
     if (parentDir != null && !parentDir.exists()) {
       parentDir.mkdirs(); // Create missing directories
     }
-    try(BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath, queryIndex > 1))){
+    try (BufferedWriter writer =
+        new BufferedWriter(new FileWriter(outputFilePath, queryIndex > 1))) {
       if (!supported) {
         writer.write("/*\n");
       }
       // Write the provided input to the file
-      writer.write("--provided\n");
+      writer.write("-- provided\n");
       writer.write(inputQuery.trim() + "\n\n");
 
       // Transpile the input
@@ -746,18 +761,18 @@ public class JSQLTranspilerTest {
       String expectedSqlStr = "";
       try {
         expectedSqlStr = JSQLTranspiler.transpileQuery(inputQuery, inputDialect,
-                Collections.emptyMap(), executorService, parser -> {
-                });
+            Collections.emptyMap(), executorService, parser -> {
+            });
       } catch (JSQLParserException e) {
         transpilationSuccess = false;
-        expectedSqlStr = "UNSUPPORTED" + e.getMessage();
+        expectedSqlStr = "UNSUPPORTED" + e.getMessage().split("\\n|\\.")[0];
       }
 
       // Write the transpiled string to the file
-      writer.write("--expected\n");
+      writer.write("-- expected\n");
       writer.write(expectedSqlStr + "\n\n");
       if (transpilationSuccess) {
-        writer.write("--output\n");
+        writer.write("-- output\n");
         try {
           String transpilationOutput = executeQuery(outputDialect, expectedSqlStr);
           writer.write(transpilationOutput + "\n\n");
@@ -765,13 +780,14 @@ public class JSQLTranspilerTest {
           StringWriter sw = new StringWriter();
           PrintWriter pw = new PrintWriter(sw);
           e.printStackTrace(pw);
-          writer.write("INVALID_TRANSLATION " + e.getMessage() + "\n" + sw + "\n\n");
+          writer.write(
+              "INVALID_TRANSLATION " + e.getMessage().split("\\n|\\.")[0] + "\n" + sw + "\n\n");
         }
       } else {
-        writer.write("--output\n");
+        writer.write("-- output\n");
         writer.write("NOT TRANSPILED" + "\n\n");
       }
-      writer.write("--result\n");
+      writer.write("-- result\n");
       try {
         String output = executeQuery(inputDialect, inputQuery);
         writer.write(output + "\n\n");
@@ -779,7 +795,8 @@ public class JSQLTranspilerTest {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);
-        writer.write("INVALID_INPUT_QUERY " + e.getMessage() + "\n" + sw + "\n\n");
+        writer.write(
+            "INVALID_INPUT_QUERY " + e.getMessage().split("\\n|\\.")[0] + "\n" + sw + "\n\n");
       }
       if (!supported) {
         writer.write("*/\n");

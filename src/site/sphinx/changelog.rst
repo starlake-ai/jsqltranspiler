@@ -8,6 +8,9 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **feat: Update DuckDB to 1.2.0**
+    
+    Andreas Reichel, 2025-02-12
   * **feat: add `unpipe` methods for rewriting `FromQueries` without transpiling Expressions or Functions**
     
     Andreas Reichel, 2025-02-12

@@ -36,9 +36,10 @@ import java.util.stream.Stream;
 
 // The purpose of this facility is to run Pipe
 public class PipedTest extends JSQLTranspilerTest {
-  public final static String INPUT_FOLDER_STR = "build/resources/test/ai/starlake/test_generator/any";
+  public final static String INPUT_FOLDER_STR = "build/resources/test/ai/starlake/any/generated";
   public final static String TEST_FOLDER_STR = "build/resources/test/ai/starlake/transpiler/any";
-  public final static String GENERATED_TEST_FOLDER_STR = "src/test/resources/ai/starlake/transpiler/generated_any";
+  public final static String GENERATED_TEST_FOLDER_STR =
+      "src/test/resources/ai/starlake/transpiler/any/generated";
 
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override
@@ -66,8 +67,11 @@ public class PipedTest extends JSQLTranspilerTest {
   @ParameterizedTest(name = "{index} {0} {1} {2}: {3}")
   @MethodSource("getInputs")
   @Disabled
-  protected void generate(File f, int idx, boolean supported, String inputQuery) throws IOException {
-    generateTestCase(JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY, JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY, inputQuery, Path.of(GENERATED_TEST_FOLDER_STR, f.getName()).toString(), idx, supported);
+  protected void generate(File f, int idx, boolean supported, String inputQuery)
+      throws IOException {
+    generateTestCase(JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY,
+        JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY, inputQuery,
+        Path.of(GENERATED_TEST_FOLDER_STR, f.getName()).toString(), idx, supported);
   }
 
   @Test
