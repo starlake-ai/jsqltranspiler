@@ -1,3 +1,4 @@
+--- works!
 with produce as (
     SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
     UNION ALL
@@ -9,7 +10,7 @@ with produce as (
 )
 FROM Produce;
 
-
+-- works!
 with produce as (
     SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
     UNION ALL
@@ -20,14 +21,13 @@ with produce as (
     SELECT 'bananas' AS item, 5 AS sales, 'fruit' AS category
 )
 FROM Produce
-|> WHERE
-    item != 'bananas'
+|> WHERE item != 'bananas'
      AND category IN ('fruit', 'nut')
-    |> AGGREGATE COUNT(*) AS num_items, SUM(sales) AS total_sales
-GROUP BY item
-    |> ORDER BY item DESC;
+|> AGGREGATE COUNT(*) AS num_items, SUM(sales) AS total_sales
+    GROUP BY item
+|> ORDER BY item DESC;
 
-
+-- works!
 with produce as (
     SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
     UNION ALL
@@ -44,6 +44,7 @@ FROM
 |> WHERE item = 'bananas'
 |> SELECT p1.item, p2.sales;
 
+-- works!
 FROM (SELECT 'apples' AS item, 2 AS sales)
 |> SELECT item AS fruit_name;
 
@@ -54,6 +55,7 @@ FROM (SELECT 'apples' AS item, 2 AS sales)
     SELECT 'carrots' AS item, 8 AS sales
 )
 |> EXTEND item IN ('carrots', 'oranges') AS is_orange;
+
 
 (
     SELECT 'apples' AS item, 2 AS sales
@@ -227,36 +229,36 @@ FROM Produce
 
 
 SELECT * FROM UNNEST(ARRAY<INT64>[1, 2, 3]) AS number
-    |> UNION ALL (SELECT 1);
+|> UNION ALL (SELECT 1);
 
 SELECT * FROM UNNEST(ARRAY<INT64>[1, 2, 3]) AS number
-    |> UNION DISTINCT (SELECT 1);
+|> UNION DISTINCT (SELECT 1);
 
 SELECT * FROM UNNEST(ARRAY<INT64>[1, 2, 3]) AS number
-    |> UNION DISTINCT
-        (SELECT 1),
-        (SELECT 2);
+|> UNION DISTINCT
+    (SELECT 1),
+    (SELECT 2);
 
 
 SELECT 1 AS one_digit, 10 AS two_digit
-    |> UNION ALL BY NAME
-        (SELECT 20 AS two_digit, 2 AS one_digit);
+|> UNION ALL BY NAME
+    (SELECT 20 AS two_digit, 2 AS one_digit);
 
 
 SELECT 1 AS one_digit, 10 AS two_digit
-    |> UNION ALL
-        (SELECT 20 AS two_digit, 2 AS one_digit);
+|> UNION ALL
+    (SELECT 20 AS two_digit, 2 AS one_digit);
 
 
 SELECT * FROM UNNEST(ARRAY<INT64>[1, 2, 3, 3, 4]) AS number
-    |> INTERSECT DISTINCT
-        (SELECT * FROM UNNEST(ARRAY<INT64>[2, 3, 3, 5]) AS number);
+|> INTERSECT DISTINCT
+    (SELECT * FROM UNNEST(ARRAY<INT64>[2, 3, 3, 5]) AS number);
 
 
 SELECT * FROM UNNEST(ARRAY<INT64>[1, 2, 3, 3, 4]) AS number
-    |> INTERSECT DISTINCT
-        (SELECT * FROM UNNEST(ARRAY<INT64>[2, 3, 3, 5]) AS number),
-        (SELECT * FROM UNNEST(ARRAY<INT64>[3, 3, 4, 5]) AS number);
+|> INTERSECT DISTINCT
+    (SELECT * FROM UNNEST(ARRAY<INT64>[2, 3, 3, 5]) AS number),
+    (SELECT * FROM UNNEST(ARRAY<INT64>[3, 3, 4, 5]) AS number);
 
 
 WITH
@@ -268,8 +270,8 @@ WITH
         SELECT 3, 30
     )
 SELECT one_digit, two_digit FROM NumbersTable
-    |> INTERSECT ALL BY NAME
-        (SELECT 10 AS two_digit, 1 AS one_digit);
+|> INTERSECT ALL BY NAME
+    (SELECT 10 AS two_digit, 1 AS one_digit);
 
 
 WITH
@@ -281,19 +283,19 @@ WITH
         SELECT 3, 30
     )
 SELECT one_digit, two_digit FROM NumbersTable
-    |> INTERSECT ALL
-        (SELECT 10 AS two_digit, 1 AS one_digit);
+|> INTERSECT ALL
+    (SELECT 10 AS two_digit, 1 AS one_digit);
 
 
 SELECT * FROM UNNEST(ARRAY<INT64>[1, 2, 3, 3, 4]) AS number
-    |> EXCEPT DISTINCT
-        (SELECT * FROM UNNEST(ARRAY<INT64>[1, 2]) AS number);
+|> EXCEPT DISTINCT
+    (SELECT * FROM UNNEST(ARRAY<INT64>[1, 2]) AS number);
 
-
+-- works!
 SELECT * FROM UNNEST(ARRAY<INT64>[1, 2, 3, 3, 4]) AS number
-    |> EXCEPT DISTINCT
-        (SELECT * FROM UNNEST(ARRAY<INT64>[1, 2]) AS number),
-        (SELECT * FROM UNNEST(ARRAY<INT64>[1, 4]) AS number);
+|> EXCEPT DISTINCT
+    (SELECT * FROM UNNEST(ARRAY<INT64>[1, 2]) AS number),
+    (SELECT * FROM UNNEST(ARRAY<INT64>[1, 4]) AS number);
 
 
 SELECT * FROM UNNEST(ARRAY<INT64>[1, 2, 3, 3, 4]) AS number
@@ -384,6 +386,7 @@ FROM Produce
 |> UNPIVOT(sales FOR quarter IN (Q1, Q2));
 
 
+-- works, except `ARRAY_AGG((SELECT AS STRUCT item_id, name, bought_item))`
 WITH client_info AS (
     WITH client AS (
         SELECT 1 AS client_id

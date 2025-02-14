@@ -79,6 +79,10 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
       plainSelect.setFromItem(fromQuery.getFromItem());
     }
 
+    plainSelect.setJoins(fromQuery.getJoins());
+    plainSelect.setLateralViews(fromQuery.getLateralViews());
+    plainSelect.setWithItemsList(fromQuery.getWithItemsList());
+
     for (PipeOperator operator : fromQuery.getPipeOperators()) {
       plainSelect = operator.accept(this, plainSelect);
     }

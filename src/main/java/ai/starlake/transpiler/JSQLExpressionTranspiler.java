@@ -2895,4 +2895,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return builder;
   }
 
+  public <S> StringBuilder visit(ArrayConstructor arrayConstructor, S context) {
+    if (arrayConstructor.getDataType() != null) {
+      warning("DATA TYPE is unsupported for ArrayContructor");
+      arrayConstructor.setDataType(null);
+    }
+    return super.visit(arrayConstructor, context);
+  }
+
 }

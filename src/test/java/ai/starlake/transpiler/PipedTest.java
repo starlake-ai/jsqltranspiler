@@ -36,10 +36,10 @@ import java.util.stream.Stream;
 
 // The purpose of this facility is to run Pipe
 public class PipedTest extends JSQLTranspilerTest {
-  public final static String INPUT_FOLDER_STR = "build/resources/test/ai/starlake/any/generated";
-  public final static String TEST_FOLDER_STR = "build/resources/test/ai/starlake/transpiler/any";
+  public final static String INPUT_FOLDER_STR = "build/resources/test/ai/starlake/piped/generated";
+  public final static String TEST_FOLDER_STR = "build/resources/test/ai/starlake/transpiler/piped";
   public final static String GENERATED_TEST_FOLDER_STR =
-      "src/test/resources/ai/starlake/transpiler/any/generated";
+      "src/test/resources/ai/starlake/transpiler/piped/generated";
 
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override

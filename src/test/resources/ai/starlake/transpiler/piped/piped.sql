@@ -517,3 +517,241 @@ ORDER BY custdist DESC, c_count DESC
 "1","40"
 "1","37"
 "1","36"
+
+
+-- provided
+with produce as (
+    SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
+    UNION ALL
+    SELECT 'carrots' AS item, 8 AS sales, 'vegetable' AS category
+    UNION ALL
+    SELECT 'apples' AS item, 7 AS sales, 'fruit' AS category
+    UNION ALL
+    SELECT 'bananas' AS item, 5 AS sales, 'fruit' AS category
+)
+FROM Produce;
+
+-- expected
+with produce as (
+    SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
+    UNION ALL
+    SELECT 'carrots' AS item, 8 AS sales, 'vegetable' AS category
+    UNION ALL
+    SELECT 'apples' AS item, 7 AS sales, 'fruit' AS category
+    UNION ALL
+    SELECT 'bananas' AS item, 5 AS sales, 'fruit' AS category
+)
+SELECT *
+FROM Produce;
+
+-- result
+"item","sales","category"
+"apples","2","fruit"
+"carrots","8","vegetable"
+"apples","7","fruit"
+"bananas","5","fruit"
+
+
+-- provided
+with produce as (
+    SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
+    UNION ALL
+    SELECT 'carrots' AS item, 8 AS sales, 'vegetable' AS category
+    UNION ALL
+    SELECT 'apples' AS item, 7 AS sales, 'fruit' AS category
+    UNION ALL
+    SELECT 'bananas' AS item, 5 AS sales, 'fruit' AS category
+)
+FROM Produce
+|> WHERE item != 'bananas'
+     AND category IN ('fruit', 'nut')
+|> AGGREGATE COUNT(*) AS num_items, SUM(sales) AS total_sales
+    GROUP BY item
+|> ORDER BY item DESC;
+
+-- expected
+with produce
+    as (
+        SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
+        UNION ALL
+        SELECT 'carrots' AS item, 8 AS sales, 'vegetable' AS category
+        UNION ALL
+        SELECT 'apples' AS item, 7 AS sales, 'fruit' AS category
+        UNION ALL
+        SELECT 'bananas' AS item, 5 AS sales, 'fruit' AS category )
+SELECT COUNT(*) AS num_items, SUM(sales) AS total_sales, item
+FROM Produce
+WHERE item != 'bananas'
+     AND category IN ('fruit', 'nut')
+GROUP BY item
+ORDER BY item DESC;
+
+-- result
+"num_items","total_sales","item"
+"2","9","apples"
+
+
+-- provided
+with
+    produce as (
+        SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
+        UNION ALL
+        SELECT 'carrots' AS item, 8 AS sales, 'vegetable' AS category
+        UNION ALL
+        SELECT 'apples' AS item, 7 AS sales, 'fruit' AS category
+        UNION ALL
+        SELECT 'bananas' AS item, 5 AS sales, 'fruit' AS category
+    )
+FROM Produce AS p1
+  JOIN Produce AS p2
+    USING (item)
+|> WHERE item = 'bananas'
+|> SELECT p1.item, p2.sales;
+
+-- expected
+with
+    produce as (
+        SELECT 'apples' AS item, 2 AS sales, 'fruit' AS category
+        UNION ALL
+        SELECT 'carrots' AS item, 8 AS sales, 'vegetable' AS category
+        UNION ALL
+        SELECT 'apples' AS item, 7 AS sales, 'fruit' AS category
+        UNION ALL
+        SELECT 'bananas' AS item, 5 AS sales, 'fruit' AS category
+    )
+SELECT p1.item, p2.sales
+FROM Produce AS p1
+  JOIN Produce AS p2
+    USING (item)
+WHERE item = 'bananas';
+
+-- result
+"item","sales"
+"bananas","5"
+
+
+-- provided
+FROM (SELECT 'apples' AS item, 2 AS sales)
+|> SELECT item AS fruit_name;
+
+-- expected
+SELECT item AS fruit_name
+FROM (SELECT 'apples' AS item, 2 AS sales)
+;
+
+-- result
+"fruit_name"
+"apples"
+
+
+-- provided
+SELECT * FROM UNNEST(ARRAY<INT64>[1, 2, 3]) AS number
+|> UNION DISTINCT
+    (SELECT 1),
+    (SELECT 2)
+|> ORDER BY 1
+;
+
+-- expected
+SELECT *
+FROM (
+    SELECT * FROM ( SELECT UNNEST(ARRAY[1,2,3])AS NUMBER) AS NUMBER
+    UNION DISTINCT SELECT 1
+    UNION DISTINCT SELECT 2
+)
+ORDER BY 1
+;
+
+-- result
+"number"
+"1"
+"2"
+"3"
+
+
+-- provided
+WITH client_info AS (
+    WITH client AS (
+        SELECT 1 AS client_id
+        |> UNION ALL
+            ( SELECT 2) ,
+            ( SELECT 3)
+    ),
+    basket AS (
+        SELECT 1 AS basket_id, 1 AS client_id
+            |> UNION ALL
+                ( SELECT 2, 2)
+        ),
+    basket_item AS (
+        SELECT 1 AS item_id, 1 AS basket_id
+        |> UNION ALL
+            ( SELECT 2, 1),
+            ( SELECT 3, 1),
+            ( SELECT 4, 2)
+        ),
+    item AS (
+        SELECT 1 AS item_id, 'milk' AS name
+        |> UNION ALL
+            (SELECT 2, "chocolate"),
+            (SELECT 3, "donut"),
+            (SELECT 4, "croissant")
+        )
+    FROM
+        client c
+            LEFT JOIN basket b USING (client_id)
+            LEFT JOIN basket_item bi USING (basket_id)
+            LEFT JOIN item i
+    ON
+        i.item_id = bi.item_id
+        |> AGGREGATE COUNT(i.item_id) AS bought_item
+           GROUP BY c.client_id, i.item_id, i.name
+    )
+FROM client_info
+|> ORDER BY 1,2,3
+;
+
+-- expected
+WITH CLIENT_INFO AS (
+    WITH CLIENT AS(
+            SELECT*FROM(
+                SELECT 1 AS CLIENT_ID
+                UNION ALL SELECT 2
+                UNION ALL SELECT 3)
+            )
+        , BASKET AS(
+            SELECT*FROM(
+                SELECT 1 AS BASKET_ID,1 AS CLIENT_ID
+                UNION ALL SELECT 2,2)
+            )
+        , BASKET_ITEM AS(
+            SELECT*FROM(
+                SELECT 1 AS ITEM_ID,1 AS BASKET_ID
+                UNION ALL SELECT 2,1
+                UNION ALL SELECT 3,1
+                UNION ALL SELECT 4,2)
+            )
+        , ITEM AS(
+            SELECT*FROM(
+                SELECT 1 AS ITEM_ID,'milk' AS NAME
+                UNION ALL SELECT 2,'chocolate'
+                UNION ALL SELECT 3,'donut'
+                UNION ALL SELECT 4,'croissant')
+            )
+        SELECT COUNT(I.ITEM_ID)AS BOUGHT_ITEM,C.CLIENT_ID,I.ITEM_ID,I.NAME
+        FROM CLIENT C
+            LEFT JOIN BASKET B USING(CLIENT_ID)
+            LEFT JOIN BASKET_ITEM BI USING(BASKET_ID)
+            LEFT JOIN ITEM I ON I.ITEM_ID=BI.ITEM_ID
+        GROUP BY C.CLIENT_ID,I.ITEM_ID,I.NAME
+    )
+SELECT * FROM CLIENT_INFO
+ORDER BY 1,2,3
+;
+
+-- result
+"bought_item","client_id","item_id","name"
+"0","3","",""
+"1","1","1","milk"
+"1","1","2","chocolate"
+"1","1","3","donut"
+"1","2","4","croissant"
