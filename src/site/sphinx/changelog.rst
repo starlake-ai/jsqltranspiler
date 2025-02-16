@@ -8,6 +8,18 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **feat: `FromQuery` with `Join` and `WithItem`**
+    
+    Andreas Reichel, 2025-02-14
+  * **feat: incorporate Boun's Test Generator (for BigQuery)**
+    
+    Andreas Reichel, 2025-02-14
+  * **style: properly format the queries**
+    
+    Andreas Reichel, 2025-02-14
+  * **feat: have an overview of pipe sql coverage**
+    
+    tiboun, 2025-02-12
   * **feat: Update DuckDB to 1.2.0**
     
     Andreas Reichel, 2025-02-12

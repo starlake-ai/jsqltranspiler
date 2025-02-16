@@ -759,7 +759,7 @@ public class JSQLTranspilerTest {
             });
       } catch (JSQLParserException e) {
         transpilationSuccess = false;
-        generationSuccess= false;
+        generationSuccess = false;
         expectedSqlStr = "UNSUPPORTED" + e.getMessage().split("\\n|\\.")[0];
       }
 
@@ -773,7 +773,7 @@ public class JSQLTranspilerTest {
           transpiledQueryResult = executeQuery(outputDialect, expectedSqlStr);
           writer.write(transpiledQueryResult + "\n\n");
         } catch (Exception e) {
-          generationSuccess=false;
+          generationSuccess = false;
           StringWriter sw = new StringWriter();
           PrintWriter pw = new PrintWriter(sw);
           e.printStackTrace(pw);
@@ -790,7 +790,7 @@ public class JSQLTranspilerTest {
         inputQueryResult = executeQuery(inputDialect, inputQuery);
         writer.write(inputQueryResult + "\n\n");
       } catch (Exception e) {
-        generationSuccess=false;
+        generationSuccess = false;
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);
@@ -802,9 +802,9 @@ public class JSQLTranspilerTest {
       }
       // Flush the writer to ensure data is saved
       writer.flush();
-      if(supported){
-        if(generationSuccess){
-            assertCSV(inputQueryResult, transpiledQueryResult, true);
+      if (supported) {
+        if (generationSuccess) {
+          assertCSV(inputQueryResult, transpiledQueryResult, true);
         } else {
           throw new RuntimeException("A step during the generation was not successful");
         }
@@ -817,8 +817,9 @@ public class JSQLTranspilerTest {
   private static void assertCSV(String inputCSV, String expectedCSV, boolean ignoreLineOrder) {
     List<String> inputRecords = parseCSV(inputCSV);
     List<String> expectedRecords = parseCSV(expectedCSV);
-    if(ignoreLineOrder){
-      Assertions.assertThat(inputRecords).containsExactlyInAnyOrder(expectedRecords.toArray(String[]::new));
+    if (ignoreLineOrder) {
+      Assertions.assertThat(inputRecords)
+          .containsExactlyInAnyOrder(expectedRecords.toArray(String[]::new));
     } else {
       Assertions.assertThat(inputRecords).isEqualTo(expectedRecords);
     }
@@ -827,27 +828,27 @@ public class JSQLTranspilerTest {
   private static List<String> parseCSV(String csvLines) {
     try (CSVReader reader = new CSVReader(new StringReader(csvLines))) {
       final List<String[]> records = reader.readAll();
-      if (records.isEmpty())
+      if (records.isEmpty()) {
         return new ArrayList<>();
+      }
 
       String[] headers = records.get(0);
       List<Integer> orderedIndexes = getSortedHeaderIndexes(headers);
       // don't skip first line which is header, we want to compare header output names as well
-      return records.stream()
-              .map(record -> {
-                List<String> sortedColumns = new java.util.ArrayList<>();
-                orderedIndexes.stream().forEach(i -> sortedColumns.add(record[i]));
-                return String.join(",", sortedColumns);
-              })
-              .collect(Collectors.toList());
+      return records.stream().map(record -> {
+        List<String> sortedColumns = new ArrayList<>();
+        orderedIndexes.stream().forEach(i -> sortedColumns.add(record[i]));
+        return String.join(",", sortedColumns);
+      }).collect(Collectors.toList());
     } catch (IOException e) {
-        throw new RuntimeException(e);
+      throw new RuntimeException(e);
     } catch (CsvException e) {
-        throw new RuntimeException(e);
+      throw new RuntimeException(e);
     }
   }
 
   public static List<Integer> getSortedHeaderIndexes(String[] headers) {
-    return IntStream.range(0, headers.length).mapToObj(i -> Map.entry(headers[i], i)).sorted(Map.Entry.comparingByKey()).map(e -> e.getValue()).collect(Collectors.toList());
+    return IntStream.range(0, headers.length).mapToObj(i -> Map.entry(headers[i], i))
+        .sorted(Map.Entry.comparingByKey()).map(e -> e.getValue()).collect(Collectors.toList());
   }
 }

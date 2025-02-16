@@ -761,6 +761,13 @@ JSQLExpressionTranspiler
 
 
 
+| **visit** (arrayConstructor, context) → :ref:`StringBuilder<java.lang.StringBuilder>`
+|          ArrayConstructor arrayConstructor
+|          S context
+|          returns :ref:`StringBuilder<java.lang.StringBuilder>`
+
+
+
 
 ..  _ai.starlake.transpiler.JSQLFromQueryTranspiler:
 
