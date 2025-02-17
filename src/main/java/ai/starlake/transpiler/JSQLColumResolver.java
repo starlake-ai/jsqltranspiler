@@ -63,8 +63,8 @@ import java.util.logging.Logger;
 public class JSQLColumResolver
     implements SelectVisitor<JdbcResultSetMetaData>, FromItemVisitor<JdbcResultSetMetaData> {
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
-  private final JdbcMetaData metaData;
-  private final JSQLExpressionColumnResolver expressionColumnResolver;
+  final JdbcMetaData metaData;
+  final JSQLExpressionColumnResolver expressionColumnResolver;
 
 
   /**
