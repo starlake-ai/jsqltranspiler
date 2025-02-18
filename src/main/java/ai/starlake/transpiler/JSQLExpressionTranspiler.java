@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,8 +92,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   public final HashMap<String, Object> parameterMap = new LinkedHashMap<>();
 
-  public JSQLExpressionTranspiler(SelectDeParser deParser, StringBuilder buffer) {
-    super(deParser, buffer);
+  public JSQLExpressionTranspiler(SelectDeParser deParser, StringBuilder builder) {
+    super(deParser, builder);
   }
 
   // select ', { "' || keyword_name || '", "' || keyword_category || '" }'
@@ -148,7 +148,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     , FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY
     , JSON_EXTRACT, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING, NVL
     , UNNEST, ST_GEOGPOINT, ST_GEOGFROMTEXT, ST_GEOGFROMGEOJSON, ST_GEOGFROMWKB, ST_ASBINARY, ST_ASGEOJSON, ST_ASTEXT
-    , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_MAXDISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER, ST_LENGTH, ST_CLOSESTPOINT
+    , ST_builder, ST_NUMPOINTS, ST_DISTANCE, ST_MAXDISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER, ST_LENGTH, ST_CLOSESTPOINT
     // GEO_MODE
     , ST_AREA
     ;
@@ -175,7 +175,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     //@formatter:off
     ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH, APPROX_QUANTILES
     , APPROX_TOP_COUNT, APPROX_TOP_SUM, SEARCH, VECTOR_SEARCH
-    , S2_CELLIDFROMPOINT, S2_COVERINGCELLIDS, ST_ANGLE, ST_AZIMUTH, ST_BUFFERWITHTOLERANCE, ST_CENTROID_AGG
+    , S2_CELLIDFROMPOINT, S2_COVERINGCELLIDS, ST_ANGLE, ST_AZIMUTH, ST_builderWITHTOLERANCE, ST_CENTROID_AGG
     , ST_CLUSTERDBSCAN, ST_GEOGFROM, ST_GEOGPOINTFROMGEOHASH, ST_GEOHASH, ST_HAUSDORFFDISTANCE
     , ST_INTERIORRINGS, ST_INTERSECTSBOX, ST_ISCOLLECTION, ST_LINEINTERPOLATEPOINT, ST_LINELOCATEPOINT, ST_LINESUBSTRING
     , ST_MAKEPOLYGONORIENTED, ST_SNAPTOGRID
@@ -1339,7 +1339,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           // SELECT ST_AsText(ST_MakeEnvelope(0,0,1,1));
           function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
-        case ST_BUFFER:
+        case ST_builder:
           if (paramCount > 3) {
             warning("USE_SPHEROID, ENDCAP, SIDE are not supported.");
           }
@@ -1351,11 +1351,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                       parameters.get(1));
                   break;
                 case GEOGRAPHY:
-                  // SELECT ST_TRANSFORM(ST_BUFFER(ST_TRANSFORM(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1,
+                  // SELECT ST_TRANSFORM(ST_builder(ST_TRANSFORM(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1,
                   // 1 1, 1 0, 0 0))'), 'EPSG:4326', 'EPSG:6933'), 20), 'EPSG:6933', 'EPSG:4326') as
-                  // buffer
+                  // builder
                   rewrittenExpression = new Function("ST_TRANSFORM",
-                      new Function("ST_Buffer$$",
+                      new Function("ST_builder$$",
                           new Function("ST_TRANSFORM",
                               new CastExpression(parameters.get(0), "GEOMETRY"),
                               new StringValue("EPSG:4326"), new StringValue("EPSG:6933")),
@@ -1372,7 +1372,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                   break;
                 case GEOGRAPHY:
                   rewrittenExpression = new Function("ST_TRANSFORM",
-                      new Function("ST_Buffer$$",
+                      new Function("ST_builder$$",
                           new Function("ST_TRANSFORM",
                               new CastExpression(parameters.get(0), "GEOMETRY"),
                               new StringValue("EPSG:4326"), new StringValue("EPSG:6933")),
@@ -1489,21 +1489,21 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       rewrittenExpression.accept(this, null);
     }
-    return buffer;
+    return builder;
   }
 
   @Override
   public <S> StringBuilder visit(AllColumns allColumns, S context) {
-    if (allColumns.getReplaceExpressions() != null) {
-      warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
-      allColumns.setReplaceExpressions(null);
-    }
+    // if (allColumns.getReplaceExpressions() != null) {
+    // warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
+    // allColumns.setReplaceExpressions(null);
+    // }
 
     // DuckDB uses "EXCLUDE" instead "EXCEPT", because why not?!
     super.visit(
         allColumns.getExceptColumns() != null ? allColumns.setExceptKeyword("EXCLUDE") : allColumns,
         null);
-    return buffer;
+    return builder;
   }
 
   @SuppressWarnings({"PMD.ExcessiveMethodLength"})
@@ -1667,7 +1667,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       rewrittenExpression.accept(this, null);
     }
-    return buffer;
+    return builder;
   }
 
   private Expression rewriteLength(ExpressionList<?> parameters) {
@@ -2233,7 +2233,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       super.visit(extractExpression, null);
     }
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -2261,13 +2261,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
 
     super.visit(stringValue.withPrefix(null), null);
-    return buffer;
+    return builder;
   }
 
   @Override
   public <S> StringBuilder visit(HexValue hexValue, S context) {
     super.visit(hexValue.getLongValue(), null);
-    return buffer;
+    return builder;
   }
 
   public static String convertUnicode(String input) {
@@ -2306,9 +2306,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     // CAST has been rewritten before already
     if ("$$".equalsIgnoreCase(castExpression.keyword)) {
       castExpression.getLeftExpression().accept(this, null);
-      this.buffer.append("::");
-      this.buffer.append(rewriteType(castExpression.getColDataType()));
-      return this.buffer;
+      this.builder.append("::");
+      this.builder.append(rewriteType(castExpression.getColDataType()));
+      return this.builder;
     }
 
     // same cast
@@ -2329,7 +2329,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                   CastExpression.DataType.TIME_WITHOUT_TIME_ZONE)) {
 
         castExpression.getLeftExpression().accept(this, null);
-        return buffer;
+        return builder;
       }
     }
 
@@ -2348,7 +2348,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       Function f = new Function("Encode$$", castExpression.getLeftExpression());
       f.accept(this, null);
 
-      return buffer;
+      return builder;
     }
 
     if (castExpression.keyword != null && castExpression.keyword.endsWith("$$")) {
@@ -2357,86 +2357,86 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
 
     if (castExpression.isImplicitCast()) {
-      this.buffer.append(rewriteType(castExpression.getColDataType()));
-      this.buffer.append(" ");
+      this.builder.append(rewriteType(castExpression.getColDataType()));
+      this.builder.append(" ");
       castExpression.getLeftExpression().accept(this, null);
     } else if (castExpression.isUseCastKeyword()) {
-      this.buffer.append(castExpression.keyword).append("(");
+      this.builder.append(castExpression.keyword).append("(");
       castExpression.getLeftExpression().accept(this, null);
-      this.buffer.append(" AS ");
-      this.buffer.append(castExpression.getColumnDefinitions().size() > 1
+      this.builder.append(" AS ");
+      this.builder.append(castExpression.getColumnDefinitions().size() > 1
           ? "ROW(" + Select.getStringList(castExpression.getColumnDefinitions()) + ")"
           : rewriteType(castExpression.getColDataType()).toString());
-      this.buffer.append(")");
+      this.builder.append(")");
     } else {
       castExpression.getLeftExpression().accept(this, null);
-      this.buffer.append("::");
-      this.buffer.append(rewriteType(castExpression.getColDataType()));
+      this.builder.append("::");
+      this.builder.append(rewriteType(castExpression.getColDataType()));
     }
-    return buffer;
+    return builder;
   }
 
   @Override
   public <S> StringBuilder visit(StructType structType, S context) {
     if (structType.getArguments() != null && !structType.getArguments().isEmpty()) {
-      buffer.append("{ ");
+      builder.append("{ ");
       int i = 0;
       for (SelectItem<?> e : structType.getArguments()) {
         if (0 < i) {
-          buffer.append(",");
+          builder.append(",");
         }
         if (e.getAlias() != null) {
-          buffer.append(e.getAlias().getName());
+          builder.append(e.getAlias().getName());
         } else if (structType.getParameters() != null && i < structType.getParameters().size()) {
-          buffer.append(structType.getParameters().get(i).getKey());
+          builder.append(structType.getParameters().get(i).getKey());
         }
 
-        buffer.append(":");
+        builder.append(":");
         e.getExpression().accept(this, null);
 
         i++;
       }
-      buffer.append(" }");
+      builder.append(" }");
     }
 
     if (structType.getParameters() != null && !structType.getParameters().isEmpty()) {
-      buffer.append("::STRUCT( ");
+      builder.append("::STRUCT( ");
       int i = 0;
       for (Map.Entry<String, ColDataType> e : structType.getParameters()) {
         if (0 < i++) {
-          buffer.append(",");
+          builder.append(",");
         }
-        buffer.append(e.getKey()).append(" ");
-        buffer.append(e.getValue());
+        builder.append(e.getKey()).append(" ");
+        builder.append(e.getValue());
       }
-      buffer.append(")");
+      builder.append(")");
     }
-    return buffer;
+    return builder;
   }
 
   public <S> StringBuilder visit(JsonFunction jsonFunction, S context) {
     switch (jsonFunction.getType()) {
       case OBJECT:
-        buffer.append("JSON_OBJECT( ");
+        builder.append("JSON_OBJECT( ");
         int i = 0;
 
         for (JsonKeyValuePair keyValuePair : jsonFunction.getKeyValuePairs()) {
           if (i > 0) {
-            buffer.append(", ");
+            builder.append(", ");
           }
 
           if (keyValuePair.isUsingValueKeyword()) {
             if (keyValuePair.isUsingKeyKeyword()) {
-              buffer.append("KEY ");
+              builder.append("KEY ");
             }
 
-            buffer.append(keyValuePair.getKey()).append(" VALUE ").append(keyValuePair.getValue());
+            builder.append(keyValuePair.getKey()).append(" VALUE ").append(keyValuePair.getValue());
           } else {
-            buffer.append(keyValuePair.getKey()).append(":").append(keyValuePair.getValue());
+            builder.append(keyValuePair.getKey()).append(":").append(keyValuePair.getValue());
           }
 
           if (keyValuePair.isUsingFormatJson()) {
-            buffer.append(" FORMAT JSON");
+            builder.append(" FORMAT JSON");
           }
 
           ++i;
@@ -2445,55 +2445,55 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         if (jsonFunction.getOnNullType() != null) {
           switch (jsonFunction.getOnNullType()) {
             case NULL:
-              buffer.append(" NULL ON NULL");
+              builder.append(" NULL ON NULL");
               break;
             case ABSENT:
-              buffer.append(" ABSENT On NULL");
+              builder.append(" ABSENT On NULL");
           }
         }
 
         if (jsonFunction.getUniqueKeysType() != null) {
           switch (jsonFunction.getUniqueKeysType()) {
             case WITH:
-              buffer.append(" WITH UNIQUE KEYS");
+              builder.append(" WITH UNIQUE KEYS");
               break;
             case WITHOUT:
-              buffer.append(" WITHOUT UNIQUE KEYS");
+              builder.append(" WITHOUT UNIQUE KEYS");
           }
         }
 
-        buffer.append(" ) ");
+        builder.append(" ) ");
         break;
 
       case ARRAY:
-        buffer.append("JSON_ARRAY( ");
+        builder.append("JSON_ARRAY( ");
         int k = 0;
 
         for (JsonFunctionExpression expr : jsonFunction.getExpressions()) {
           if (k > 0) {
-            buffer.append(", ");
+            builder.append(", ");
           }
           expr.getExpression().accept(this, context);
-          buffer.append(expr.isUsingFormatJson() ? " FORMAT JSON" : "");
+          builder.append(expr.isUsingFormatJson() ? " FORMAT JSON" : "");
           ++k;
         }
 
         if (jsonFunction.getOnNullType() != null) {
           switch (jsonFunction.getOnNullType()) {
             case NULL:
-              buffer.append(" NULL ON NULL ");
+              builder.append(" NULL ON NULL ");
               break;
             case ABSENT:
-              buffer.append(" ABSENT ON NULL ");
+              builder.append(" ABSENT ON NULL ");
           }
         }
-        buffer.append(") ");
+        builder.append(") ");
         break;
 
       default:
-        jsonFunction.appendTo(buffer);
+        jsonFunction.appendTo(builder);
     }
-    return buffer;
+    return builder;
   }
 
 
@@ -2521,7 +2521,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   public final void warning(String s) {
-    buffer.append("/* Approximation: ").append(s).append(" */ ");
+    builder.append("/* Approximation: ").append(s).append(" */ ");
   }
 
   public static String convertByteStringToUnicode(String byteString) {
@@ -2781,7 +2781,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       super.visit(expression, null);
     }
 
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -2793,7 +2793,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         likeExpression.setLikeKeyWord("SIMILAR TO");
     }
     super.visit(likeExpression, null);
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -2801,7 +2801,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     CastExpression castExpression =
         new CastExpression("Cast", function.getExpression(), function.getColDataType().toString());
     castExpression.accept(this, null);
-    return buffer;
+    return builder;
   }
 
   public static boolean isEmpty(Collection<?> collection) {
@@ -2834,10 +2834,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
 
     if (tableName != null && !tableName.isEmpty()) {
-      buffer.append(tableName).append(column.getTableDelimiter());
+      builder.append(tableName).append(column.getTableDelimiter());
     }
 
-    buffer.append(column.getColumnName());
+    builder.append(column.getColumnName());
     if (column.getArrayConstructor() != null) {
       ArrayConstructor arrayConstructor = column.getArrayConstructor();
 
@@ -2848,7 +2848,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
       column.getArrayConstructor().accept(this, null);
     }
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -2861,7 +2861,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       super.visit(expressionList, null);
     }
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -2872,9 +2872,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     for (Map.Entry<Expression, String> ident : e.getIdentList()) {
       String operatorStr = ident.getValue();
       if (operatorStr.equalsIgnoreCase(":")) {
-        buffer.append("->");
+        builder.append("->");
       } else {
-        buffer.append(operatorStr);
+        builder.append(operatorStr);
       }
 
       Expression expr = ident.getKey();
@@ -2892,7 +2892,15 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         expr.accept(this, context);
       }
     }
-    return buffer;
+    return builder;
+  }
+
+  public <S> StringBuilder visit(ArrayConstructor arrayConstructor, S context) {
+    if (arrayConstructor.getDataType() != null) {
+      warning("DATA TYPE is unsupported for ArrayContructor");
+      arrayConstructor.setDataType(null);
+    }
+    return super.visit(arrayConstructor, context);
   }
 
 }

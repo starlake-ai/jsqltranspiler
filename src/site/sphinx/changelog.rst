@@ -8,6 +8,66 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **feat: `FromQuery` with `Join` and `WithItem`**
+    
+    Andreas Reichel, 2025-02-14
+  * **feat: incorporate Boun's Test Generator (for BigQuery)**
+    
+    Andreas Reichel, 2025-02-14
+  * **style: properly format the queries**
+    
+    Andreas Reichel, 2025-02-14
+  * **feat: have an overview of pipe sql coverage**
+    
+    tiboun, 2025-02-12
+  * **feat: Update DuckDB to 1.2.0**
+    
+    Andreas Reichel, 2025-02-12
+  * **feat: add `unpipe` methods for rewriting `FromQueries` without transpiling Expressions or Functions**
+    
+    Andreas Reichel, 2025-02-12
+  * **fix: better rewrite of `Aggregate` pipe operator**
+    
+    Andreas Reichel, 2025-02-11
+  * **feat: `SELECT` piper operator to support `ALL | DISTINCT`**
+    
+    Andreas Reichel, 2025-02-11
+  * **feat: transpile PipedSQL**
+    
+    Andreas Reichel, 2025-02-09
+  * **feat: transpile PipedSQL**
+    
+    Andreas Reichel, 2025-02-09
+  * **fix: use `Function` and `SelectItem`**
+    
+    Andreas Reichel, 2025-02-08
+  * **feat: transpile PipedSQL**
+    
+    Andreas Reichel, 2025-02-08
+  * **feat: transpile PipedSQL**
+    
+    Andreas Reichel, 2025-02-07
+  * **feat: transpile PipedSQL**
+    
+    Andreas Reichel, 2025-02-07
+  * **feat: transpile PipedSQL**
+    
+    Andreas Reichel, 2025-02-07
+  * **feat: rewrite Piped SQL, WIP**
+    
+    Andreas Reichel, 2025-02-06
+  * **feat: rewrite Piped SQL, WIP**
+    
+    Andreas Reichel, 2025-02-06
+  * **feat: rewrite Piped SQL, WIP**
+    
+    Andreas Reichel, 2025-02-06
+  * **Fix url  from https://starlake.ai to https://app.starlake.ai in README (#67)**
+    
+    Hayssam Saleh, 2025-02-01
+  * **Fix url  from https://starlake.ai to https://app.starlake.ai in README**
+    
+    Hayssam Saleh, 2025-02-01
   * **feat: additional Spatial functions `ST_DWITHIN`, `ST_CLOSESTPOINT`, `ST_BUFFER`**
     
     manticore-projects, 2024-12-09

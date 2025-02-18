@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import net.sf.jsqlparser.util.deparser.InsertDeParser;
 public class JSQLInsertTranspiler extends InsertDeParser {
 
   JSQLInsertTranspiler(ExpressionVisitor expressionVisitor, SelectVisitor selectVisitor,
-      StringBuilder buffer) {
-    this.buffer = buffer;
+      StringBuilder builder) {
+    this.builder = builder;
     this.setExpressionVisitor(expressionVisitor);
     this.setSelectVisitor(selectVisitor);
   }

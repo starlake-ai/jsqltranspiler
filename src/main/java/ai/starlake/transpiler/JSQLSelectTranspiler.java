@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,15 @@ package ai.starlake.transpiler;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.parser.SimpleNode;
 import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.piped.FromQuery;
+import net.sf.jsqlparser.statement.piped.SelectPipeOperator;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.FromItemVisitor;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.Pivot;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.SampleClause;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.statement.select.TableFunction;
@@ -70,7 +73,7 @@ public class JSQLSelectTranspiler extends SelectDeParser {
    * @return the result builder
    */
   public StringBuilder getResultBuilder() {
-    return getBuffer();
+    return builder;
   }
 
   @Override
@@ -100,7 +103,7 @@ public class JSQLSelectTranspiler extends SelectDeParser {
     } else {
       super.visit(tableFunction, params);
     }
-    return buffer;
+    return builder;
   }
 
   public <S> StringBuilder visit(PlainSelect plainSelect, S params) {
@@ -113,32 +116,33 @@ public class JSQLSelectTranspiler extends SelectDeParser {
       }
     }
     super.visit(plainSelect, params);
-    return buffer;
+    return builder;
   }
 
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public <S> StringBuilder visit(ParenthesedSelect select, S params) {
     List<WithItem<?>> withItemsList = select.getWithItemsList();
     if (withItemsList != null && !withItemsList.isEmpty()) {
-      this.buffer.append("WITH ");
+      this.builder.append("WITH ");
 
       for (WithItem<?> withItem : withItemsList) {
         withItem.accept(this, params);
-        this.buffer.append(" ");
+        this.builder.append(" ");
       }
     }
 
-    this.buffer.append("(");
-    select.getSelect().accept((SelectVisitor<StringBuilder>) this, params);
-    this.buffer.append(")");
-    if (select.getOrderByElements() != null) {
-      new OrderByDeParser(this.getExpressionVisitor(), this.buffer)
-          .deParse(select.isOracleSiblings(), select.getOrderByElements());
+    if (select.getSampleClause() != null) {
+      SampleClause sampleClause = select.getSampleClause();
+      sampleClause.setKeyword(SampleClause.SampleKeyword.USING_SAMPLE);
     }
+
+    this.builder.append("(");
+    select.getSelect().accept((SelectVisitor<StringBuilder>) this, params);
+    this.builder.append(")");
 
     Alias alias = select.getAlias();
     if (alias != null) {
-      this.buffer.append(alias);
+      this.builder.append(alias);
     }
 
     Pivot pivot = select.getPivot();
@@ -151,8 +155,13 @@ public class JSQLSelectTranspiler extends SelectDeParser {
       unpivot.accept(this, params);
     }
 
+    if (select.getOrderByElements() != null) {
+      new OrderByDeParser(this.getExpressionVisitor(), this.builder)
+          .deParse(select.isOracleSiblings(), select.getOrderByElements());
+    }
+
     if (select.getLimit() != null) {
-      new LimitDeparser(this.getExpressionVisitor(), this.buffer).deParse(select.getLimit());
+      new LimitDeparser(this.getExpressionVisitor(), this.builder).deParse(select.getLimit());
     }
 
     if (select.getOffset() != null) {
@@ -164,10 +173,10 @@ public class JSQLSelectTranspiler extends SelectDeParser {
     }
 
     if (select.getIsolation() != null) {
-      this.buffer.append(select.getIsolation().toString());
+      this.builder.append(select.getIsolation().toString());
     }
 
-    return this.buffer;
+    return this.builder;
   }
 
   @Override
@@ -193,8 +202,13 @@ public class JSQLSelectTranspiler extends SelectDeParser {
       }
     }
 
+    if (table.getSampleClause() != null) {
+      SampleClause sampleClause = table.getSampleClause();
+      sampleClause.setKeyword(SampleClause.SampleKeyword.USING_SAMPLE);
+    }
+
     super.visit(table, params);
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -211,9 +225,32 @@ public class JSQLSelectTranspiler extends SelectDeParser {
 
     selectItem.getExpression().accept(this.getExpressionVisitor(), context);
     if (selectItem.getAlias() != null) {
-      buffer.append(selectItem.getAlias().toString());
+      builder.append(selectItem.getAlias().toString());
     }
 
-    return buffer;
+    return builder;
   }
+
+  @Override
+  public <S> StringBuilder visit(FromQuery fromQuery, S context) {
+    PlainSelect select = fromQuery.accept(new JSQLFromQueryTranspiler(), null);
+    select.accept(this);
+    return builder;
+  }
+
+  public PlainSelect visit(SelectPipeOperator selectPipeOperator, PlainSelect select) {
+    if (selectPipeOperator.getOperatorName().equalsIgnoreCase("SELECT")) {
+      List<SelectItem<?>> selectItems = select.getSelectItems();
+
+      if (selectItems.isEmpty()) {
+        selectItems.addAll(selectPipeOperator.getSelectItems());
+      } else {
+        select = new PlainSelect(new ParenthesedSelect().withSelect(select))
+            .withSelectItems(selectPipeOperator.getSelectItems());
+      }
+    }
+
+    return select;
+  };
+
 }

@@ -149,6 +149,52 @@ System.out.println(resultSetMetaData.toString());
 
 ```
 
+## PipedSQL Example
+
+Piped SQL is a much saner and more logical way to write queries in its semantic order.
+```sql
+FROM Produce
+|> WHERE
+    item != 'bananas'
+    AND category IN ('fruit', 'nut')
+|> AGGREGATE COUNT(*) AS num_items, SUM(sales) AS total_sales
+   GROUP BY item
+|> ORDER BY item DESC;
+```
+
+For details, please see https://storage.googleapis.com/gweb-research2023-media/pubtools/1004848.pdf,  https://cloud.google.com/bigquery/docs/reference/standard-sql/pipe-syntax and https://duckdb.org/docs/sql/query_syntax/from.html#from-first-syntax
+
+JSQLTranspiler can rewrite PipedSQL into regular SQL, which can be executed on any normal RDBMS.
+
+```java
+String sql =
+            "(\n" +
+            "  SELECT '000123' AS id, 'apples' AS item, 2 AS sales\n" +
+            "  UNION ALL\n" +
+            "  SELECT '000456' AS id, 'bananas' AS item, 5 AS sales\n" +
+            ") AS sales_table\n" +
+            "|> AGGREGATE SUM(sales) AS total_sales GROUP BY id, item\n" +
+            "|> AS t1\n" +
+            "|> JOIN (SELECT 456 AS id, 'yellow' AS color) AS t2\n" +
+            "   ON CAST(t1.id AS INT64) = t2.id\n" +
+            "|> SELECT t2.id, total_sales, color;";
+
+    try (Statement st = connDuck.createStatement();
+         ResultSet rs = st.executeQuery( JSQLTranspiler.transpileQuery(sql, JSQLTranspiler.Dialect.ANY) );
+    ) {
+      ResultSetMetaData resultSetMetaData = rs.getMetaData();
+      Assertions.assertEquals(3, resultSetMetaData.getColumnCount());
+      Assertions.assertEquals( "id", resultSetMetaData.getColumnLabel(1));
+      Assertions.assertEquals( "total_sales", resultSetMetaData.getColumnLabel(2));
+      Assertions.assertEquals( "color", resultSetMetaData.getColumnLabel(3));
+
+      Assertions.assertTrue( rs.next() );
+      Assertions.assertEquals(456, rs.getInt(1) );
+      Assertions.assertEquals(5, rs.getInt(2) );
+      Assertions.assertEquals("yellow", rs.getString(3) );
+    }
+```
+
 ## How to use
 
 ### Java Library
@@ -186,7 +232,7 @@ assertEquals(expectedSQL, result);
 ### Web API
 ```shell
 curl -X 'POST'                                                                   \
-  'https://starlake.ai/api/v1/transpiler/transpile?dialect=SNOWFLAKE'            \
+  'https://app.starlake.ai/api/v1/transpiler/transpile?dialect=SNOWFLAKE'            \
   -H 'accept: text/plain'                                                        \
   -H 'Content-Type: text/plain'                                                  \
   -d 'SELECT Nvl(null, 1) a'

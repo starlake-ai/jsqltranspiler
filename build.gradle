@@ -1,5 +1,7 @@
 import se.bjurr.gitchangelog.plugin.gradle.GitChangelogTask
 
+
+
 plugins {
     id 'java'
     id 'application'
@@ -17,8 +19,8 @@ plugins {
     id "de.undercouch.download" version "latest.release"
     id 'org.hidetake.ssh' version "latest.release"
     id "com.github.hierynomus.license" version "latest.release"
-    id "se.bjurr.gitchangelog.git-changelog-gradle-plugin" version "2.0.0" //later depends on JDK 17
-    id 'biz.aQute.bnd.builder' version '6.4.0' //later depends on JDK 17
+    id "se.bjurr.gitchangelog.git-changelog-gradle-plugin" version "latest.release"
+    id 'biz.aQute.bnd.builder' version "latest.release"
 }
 
 repositories {
@@ -49,11 +51,11 @@ dependencies {
     //for JSON (de)serialization
     implementation 'org.json:json:+'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.3'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.11.3'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.11.3'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.11.+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.11.+'
 
-    testImplementation 'org.duckdb:duckdb_jdbc:1.1.3'
+    testImplementation 'org.duckdb:duckdb_jdbc:1.2.0'
     testImplementation 'org.apache.commons:commons-compress:+'
     testImplementation 'com.opencsv:opencsv:+'
 
@@ -65,6 +67,9 @@ dependencies {
 
     //calling external python
     testImplementation 'org.apache.commons:commons-exec:+'
+
+    // executing sql bigquery
+    testImplementation 'com.google.cloud:google-cloud-bigquery:+'
 
     // Java Doc in XML Format
     xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
@@ -84,54 +89,52 @@ def getVersion = { boolean considerSnapshot ->
     Integer minor = 0
     Integer patch = null
     Integer build = null
-    def commit = null
-    def snapshot = ""
-    new ByteArrayOutputStream().withStream { os ->
-        exec {
-            args = [
-                    "--no-pager"
-                    , "describe"
-                    , "--tags"
-                    , "--always"
-                    , "--dirty=-SNAPSHOT"
-            ]
-            executable "git"
-            standardOutput = os
-        }
-        def versionStr = os.toString().trim()
-        def pattern = /(?<major>\d*)\.(?<minor>\d*)(\.(?<patch>\d*))?(-(?<build>\d*)-(?<commit>[a-zA-Z\d]*))?/
-        def matcher = versionStr =~ pattern
-        if (matcher.find()) {
-            major = matcher.group('major') as Integer
-            minor = matcher.group('minor') as Integer
-            patch = matcher.group('patch') as Integer
-            build = matcher.group('build') as Integer
-            commit = matcher.group('commit')
-        }
+    String commit = null
+    String snapshot = ""
 
-        if (considerSnapshot && ( versionStr.endsWith('SNAPSHOT') || build!=null) ) {
-            minor++
-            if (patch!=null) patch = 0
-            snapshot = "-SNAPSHOT"
-        }
+    def versionStr = providers.exec {
+        commandLine "git", "--no-pager", "-C", project.projectDir,  "describe", "--tags", "--always", "--dirty=-SNAPSHOT"
+    }.standardOutput.asText.get().trim()
+
+    def pattern = /(?<major>\d*)\.(?<minor>\d*)(\.(?<patch>\d*))?(-(?<build>\d*)-(?<commit>[a-zA-Z\d]*))?/
+    def matcher = versionStr =~ pattern
+
+    if (matcher.find()) {
+        major = matcher.group('major') as Integer ?: 0
+        minor = matcher.group('minor') as Integer ?: 0
+        patch = matcher.group('patch') as Integer ?: null
+        build = matcher.group('build') as Integer ?: null
+        commit = matcher.group('commit') ?: null
     }
-    return patch!=null
+
+    if (considerSnapshot && (versionStr.endsWith('SNAPSHOT') || build != null)) {
+        minor++
+        if (patch != null) patch = 0
+        snapshot = "-SNAPSHOT"
+    }
+
+    return patch != null
             ? "${major}.${minor}.${patch}${snapshot}"
-            :  "${major}.${minor}${snapshot}"
+            : "${major}.${minor}${snapshot}"
 }
-version = getVersion(true)
+
+
+// for publishing a release, call Gradle with Environment Variable RELEASE:
+// RELEASE=true gradle JSQLTranspiler:publish
+version = getVersion( !System.getenv("RELEASE") )
 group = 'ai.starlake.jsqltranspiler'
 description = 'JSQLTranspiler'
 
 java {
     withSourcesJar()
     withJavadocJar()
-    sourceCompatibility(JavaVersion.VERSION_11)
-    targetCompatibility(JavaVersion.VERSION_11)
+
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
 
     // needed for XML-Doclet to work (since Doclet changed again with Java 13)
     toolchain {
-        languageVersion = JavaLanguageVersion.of(11)
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
@@ -150,8 +153,8 @@ tasks.register('xmldoc', Javadoc) {
     source = sourceSets.main.allJava
     destinationDir = reporting.file("xmlDoclet")
     options.docletpath = configurations.xmlDoclet.files as List
-    options.doclet = "com.github.markusbernhardt.xmldoclet.XmlDoclet"
-
+    options.doclet = "com.manticore.tools.xmldoclet.XmlDoclet"
+    title = "API $version"
     options.addBooleanOption("rst", true)
     options.addBooleanOption("withFloatingToc", true)
     options.addStringOption("basePackage", "ai.starlake.jsqltranspiler")
@@ -166,12 +169,23 @@ tasks.register('xmldoc', Javadoc) {
 }
 
 jar {
-	bnd("Created-By": System.properties.get('user.name'),
-        "Main-Class": "ai.starlake.transpiler.JSQLTranspiler",
-        "Bundle-SymbolicName": "ai.starlake.transpiler", 
-        "Import-Package": "*",
-        "Export-Package": "ai.starlake.transpiler.*"
-	)
+    manifest {
+        attributes(
+            "Created-By": System.properties['user.name'],
+            "Main-Class": "ai.starlake.transpiler.JSQLTranspiler"
+        )
+    }
+
+    bundle {
+        properties.empty()
+        bnd(
+            "Created-By": System.properties.get('user.name'),
+            "Main-Class": "ai.starlake.transpiler.JSQLTranspiler",
+            "Bundle-SymbolicName": "ai.starlake.transpiler",
+            "Import-Package": "*",
+            "Export-Package": "ai.starlake.transpiler.*"
+        )
+    }
 }
 
 shadowJar {
@@ -183,8 +197,8 @@ test {
     useJUnitPlatform()
 
     // set heap size for the test JVM(s)
-    minHeapSize = "128m"
-    maxHeapSize = "1G"
+    minHeapSize = "1G"
+    maxHeapSize = "4G"
 
     jacoco {
         excludes = ['net/sf/jsqlparser/parser/CCJSqlParserTokenManager']
@@ -335,11 +349,11 @@ spotless {
 
         // define the steps to apply to those files
         trimTrailingWhitespace()
-        indentWithSpaces(4) // or spaces. Takes an integer argument if you don't like 4
+        leadingTabsToSpaces(4) // or spaces. Takes an integer argument if you don't like 4
         endWithNewline()
     }
     java {
-        indentWithSpaces(4)
+        leadingTabsToSpaces(4)
         eclipse().configFile('config/formatter/eclipse-java-google-style.xml')
     }
 }
@@ -412,11 +426,9 @@ tasks.withType(Test).configureEach {
 }
 
 tasks.register('gitChangelogTask', GitChangelogTask) {
-    fromRepo = file("$projectDir")
-    file = new File("${projectDir}/src/site/sphinx/changelog.rst")
-    //fromRef = "4.0";
-    //toRef = "1.1";
-    templateContent = """
+    fromRepo.set( file("$projectDir").toString() )
+    file.set( new File("${projectDir}/src/site/sphinx/changelog.rst") )
+    templateContent.set ("""
 ************************
 Changelog
 ************************
@@ -443,7 +455,7 @@ Version {{name}}
 
  {{/issues}}
 {{/tags}}
-"""
+""")
 }
 
 remotes {

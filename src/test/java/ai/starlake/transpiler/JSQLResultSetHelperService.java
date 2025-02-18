@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,12 +34,15 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 public class JSQLResultSetHelperService extends ResultSetHelperService {
+
+  public static final String DEFAULT_NULL_VALUE = "JSQL_NULL";
+
   private final String defaultValue;
 
   public TreeMap<Integer, NumberFormat> numberFormatters = null;
 
   public JSQLResultSetHelperService() {
-    this.defaultValue = "JSQL_NULL";
+    this.defaultValue = DEFAULT_NULL_VALUE;
   }
 
   public JSQLResultSetHelperService(String defaultValue) {

@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import ai.starlake.transpiler.bigquery.BigQueryTranspiler;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -32,19 +33,18 @@ import java.util.stream.Stream;
 // The purpose of this facility is to debug one single test line by line
 // Since this is not easy when using the parametrised tests
 public class DebugTest extends JSQLTranspilerTest {
-  public final static String TEST_FOLDER_STR =
-      "build/resources/test/ai/starlake/transpiler/bigquery";
+  public final static String TEST_FOLDER_STR = "build/resources/test/ai/starlake/transpiler/any";
 
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override
     public boolean accept(File dir, String name) {
-      return name.toLowerCase().endsWith("geometry.sql");
+      return name.equalsIgnoreCase("debug.sql");
     }
   };
 
   static Stream<Arguments> getSqlTestMap() {
     return unrollParameterMap(getSqlTestMap(new File(TEST_FOLDER_STR).listFiles(FILENAME_FILTER),
-        JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY, JSQLTranspiler.Dialect.DUCK_DB));
+        JSQLTranspiler.Dialect.ANY, JSQLTranspiler.Dialect.DUCK_DB));
   }
 
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
@@ -54,10 +54,9 @@ public class DebugTest extends JSQLTranspilerTest {
   }
 
   @Test
+  @Disabled
   void testTranspiled() throws JSQLParserException, InterruptedException {
-    System.setProperty("GEO_MODE", "GEOMETRY");
-    String sqlStr =
-        "SELECT ST_NUMPOINTS(ST_BUFFER(ST_GEOMFROMTEXT('POINT(1 2)')::GEOMETRY,50,2)::GEOMETRY)AS EIGHT_SIDES,ST_NUMPOINTS(ST_BUFFER(ST_GEOMFROMTEXT('POINT(100 2)')::GEOMETRY,50)::GEOMETRY)AS THIRTY_TWO_SIDES;";
+    String sqlStr = "SELECT CURRENT_DATE('America/Los_Angeles') AS the_date;";
 
     PlainSelect select = (PlainSelect) CCJSqlParserUtil.parse(sqlStr);
     System.out.println(select.toString());

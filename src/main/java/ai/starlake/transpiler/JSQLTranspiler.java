@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,13 @@ import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.merge.Merge;
+import net.sf.jsqlparser.statement.piped.FromQuery;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.statement.update.Update;
+import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
+import net.sf.jsqlparser.util.deparser.SelectDeParser;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 import java.io.BufferedReader;
@@ -91,15 +95,15 @@ public class JSQLTranspiler extends StatementDeParser {
     this.expressionTranspiler = expressionTranspilerClass.cast(this.getExpressionDeParser());
     this.selectTranspiler = selectTranspilerClass.cast(this.getSelectDeParser());
 
-    this.insertTranspiler =
-        new JSQLInsertTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
+    this.insertTranspiler = new JSQLInsertTranspiler(this.expressionTranspiler,
+        this.selectTranspiler, this.getBuilder());
 
-    this.updateTranspiler = new JSQLUpdateTranspiler(this.expressionTranspiler, buffer);
+    this.updateTranspiler = new JSQLUpdateTranspiler(this.expressionTranspiler, this.getBuilder());
 
-    this.deleteTranspiler = new JSQLDeleteTranspiler(this.expressionTranspiler, buffer);
+    this.deleteTranspiler = new JSQLDeleteTranspiler(this.expressionTranspiler, this.getBuilder());
 
-    this.mergeTranspiler =
-        new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
+    this.mergeTranspiler = new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler,
+        this.getBuilder());
 
   }
 
@@ -243,10 +247,10 @@ public class JSQLTranspiler extends StatementDeParser {
       Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
       for (Statement st : statements) {
         st.accept(transpiler);
-        transpiler.getBuffer().append("\n;\n\n");
+        transpiler.getBuilder().append("\n;\n\n");
       }
 
-      String transpiledSqlStr = transpiler.getBuffer().toString();
+      String transpiledSqlStr = transpiler.getBuilder().toString();
       LOGGER.fine("-- Transpiled SQL:\n" + transpiledSqlStr);
 
       // write to STDOUT when there is no OUTPUT File
@@ -441,7 +445,7 @@ public class JSQLTranspiler extends StatementDeParser {
       JSQLTranspiler transpiler = new JSQLTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -460,7 +464,7 @@ public class JSQLTranspiler extends StatementDeParser {
       BigQueryTranspiler transpiler = new BigQueryTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -479,7 +483,7 @@ public class JSQLTranspiler extends StatementDeParser {
       DatabricksTranspiler transpiler = new DatabricksTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -498,7 +502,7 @@ public class JSQLTranspiler extends StatementDeParser {
       SnowflakeTranspiler transpiler = new SnowflakeTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -518,7 +522,7 @@ public class JSQLTranspiler extends StatementDeParser {
       RedshiftTranspiler transpiler = new RedshiftTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -526,31 +530,101 @@ public class JSQLTranspiler extends StatementDeParser {
     }
   }
 
+  /**
+   * @param sqlStr the original query string written in `PipedSQL`
+   * @param executorService the ExecutorService to use for running and observing JSQLParser
+   * @param consumer the parser configuration to use for the parsing
+   * @return the rewritten query string in plain legacy SQL
+   * @throws JSQLParserException a parser exception when the statement can't be parsed due to syntax
+   *         errors
+   */
+  public static String unpipe(String sqlStr, ExecutorService executorService,
+      Consumer<CCJSqlParser> consumer) throws JSQLParserException {
+    StringBuilder b = new StringBuilder();
+
+    SelectDeParser selectDeParser = new SelectDeParser(b) {
+      @Override
+      public <S> StringBuilder visit(FromQuery fromQuery, S context) {
+        PlainSelect select = fromQuery.accept(new JSQLFromQueryTranspiler(), null);
+        select.accept(this);
+        return b;
+      }
+    };
+
+    ExpressionDeParser expressionDeParser = new ExpressionDeParser(selectDeParser, b);
+    selectDeParser.setExpressionVisitor(expressionDeParser);
+
+    StatementDeParser statementDeParser =
+        new StatementDeParser(expressionDeParser, selectDeParser, b);
+
+    // @todo: we may need to split this manually to salvage any not parseable statements
+    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
+    for (Statement st : statements) {
+      st.accept(statementDeParser);
+      statementDeParser.getBuilder().append("\n;\n\n");
+    }
+
+    String transpiledSqlStr = statementDeParser.getBuilder().toString();
+    LOGGER.fine("-- Transpiled SQL:\n" + transpiledSqlStr);
+
+    return transpiledSqlStr;
+  }
+
+  /**
+   * @param sqlStr the original query string written in `PipedSQL`
+   * @param consumer the parser configuration to use for the parsing
+   * @return the rewritten query string in plain legacy SQL
+   * @throws JSQLParserException a parser exception when the statement can't be parsed due to syntax
+   *         errors
+   * @throws InterruptedException a time-out exception when the parser won't return in time
+   */
+  public static String unpipe(String sqlStr, Consumer<CCJSqlParser> consumer)
+      throws JSQLParserException, InterruptedException {
+    ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    String result = unpipe(sqlStr, executorService, consumer);
+    executorService.shutdown();
+    executorService.awaitTermination(1, TimeUnit.MINUTES);
+    return result;
+  }
+
+  /**
+   * @param sqlStr the original query string written in `PipedSQL`
+   * @return the rewritten query string in plain legacy SQL
+   * @throws JSQLParserException a parser exception when the statement can't be parsed due to syntax
+   *         errors
+   * @throws InterruptedException a time-out exception when the parser won't return in time
+   */
+  public static String unpipe(String sqlStr) throws JSQLParserException, InterruptedException {
+    String result = unpipe(sqlStr, parser -> {
+    });
+    return result;
+  }
+
   public <S> StringBuilder visit(Select select, S context) {
     select.accept((SelectVisitor<StringBuilder>) selectTranspiler, context);
-    return buffer;
+    return this.getBuilder();
   }
 
   public <S> StringBuilder visit(Insert insert, S context) {
     insertTranspiler.deParse(insert);
-    return buffer;
+    return this.getBuilder();
   }
 
   public <S> StringBuilder visit(Update update, S context) {
     updateTranspiler.deParse(update);
 
-    return buffer;
+    return this.getBuilder();
   }
 
   public <S> StringBuilder visit(Delete delete, S context) {
     deleteTranspiler.deParse(delete);
-    return buffer;
+    return this.getBuilder();
   }
 
 
   public <S> StringBuilder visit(Merge merge, S context) {
     mergeTranspiler.deParse(merge);
-    return buffer;
+    return this.getBuilder();
   }
 
   /**
