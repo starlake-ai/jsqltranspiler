@@ -200,6 +200,13 @@ test {
     minHeapSize = "1G"
     maxHeapSize = "4G"
 
+    // Set maxParallelForks to 1 to ensure only one test process runs at a time
+    maxParallelForks = 1
+
+    // Ensure JUnit 5 executes tests sequentially
+    systemProperty "junit.jupiter.execution.parallel.enabled", "false"
+
+
     jacoco {
         excludes = ['net/sf/jsqlparser/parser/CCJSqlParserTokenManager']
     }
