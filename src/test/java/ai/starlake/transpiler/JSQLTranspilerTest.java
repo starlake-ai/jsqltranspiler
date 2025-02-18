@@ -118,13 +118,13 @@ public class JSQLTranspilerTest {
 
     public String expectedResult = null;
 
-    public Map<String, Object> parameters = new HashMap<>();
+    public Map<String, Object> parameters;
 
     SQLTest(JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect,
         Map<String, Object> parameters) {
       this.inputDialect = inputDialect;
       this.outputDialect = outputDialect;
-      this.parameters.putAll(parameters);
+      this.parameters = parameters;
     }
 
     @Override
@@ -178,7 +178,7 @@ public class JSQLTranspilerTest {
                 ? JSQLExpressionTranspiler.GeoMode.GEOGRAPHY
                 : JSQLExpressionTranspiler.GeoMode.GEOMETRY;
 
-        SQLTest test = new SQLTest(inputDialect, outputDialect, Map.of("GEO_MODE", geoMode.name()));
+        SQLTest test = new SQLTest(inputDialect, outputDialect, Map.of("GEO_MODE", geoMode));
         int r = 0;
         while ((line = bufferedReader.readLine()) != null) {
           r++;
@@ -225,7 +225,7 @@ public class JSQLTranspilerTest {
                     ? JSQLExpressionTranspiler.GeoMode.GEOGRAPHY
                     : JSQLExpressionTranspiler.GeoMode.GEOMETRY;
 
-                test = new SQLTest(inputDialect, outputDialect, Map.of("GEO_MODE", geoMode.name()));
+                test = new SQLTest(inputDialect, outputDialect, Map.of("GEO_MODE", geoMode));
                 test.line = r;
               }
 
@@ -450,13 +450,15 @@ public class JSQLTranspilerTest {
     // delete the DuckDB
     // @todo: maybe we should delete only when all the tests have ran successfully?
     Path folderPath = Paths.get(EXTRACTION_PATH);
-    Files.walk(folderPath).sorted((p1, p2) -> -p1.compareTo(p2)).forEach(p -> {
-      try {
-        Files.delete(p);
-      } catch (IOException ex) {
-        LOGGER.log(Level.WARNING, "Failed to delete " + p, ex);
-      }
-    });
+    try (Stream<Path> stream = Files.walk(folderPath);) {
+      stream.sorted((p1, p2) -> -p1.compareTo(p2)).forEach(p -> {
+        try {
+          Files.delete(p);
+        } catch (IOException ex) {
+          LOGGER.log(Level.WARNING, "Failed to delete " + p, ex);
+        }
+      });
+    }
   }
 
   private static String upperCaseExceptEnclosed(String input) {
@@ -550,7 +552,7 @@ public class JSQLTranspilerTest {
 
     // Assertions.assertNotNull(t.expectedSqlStr);
     String transpiledSqlStr = JSQLTranspiler.transpileQuery(t.providedSqlStr, t.inputDialect,
-        Collections.emptyMap(), executorService, parser -> {
+        t.parameters, executorService, parser -> {
         });
     Assertions.assertThat(transpiledSqlStr).isNotNull();
     Assertions.assertThat(sanitize(transpiledSqlStr, true))

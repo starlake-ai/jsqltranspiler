@@ -8,6 +8,210 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **feat: additional Spatial functions `ST_DWITHIN`, `ST_CLOSESTPOINT`, `ST_BUFFER`**
+    
+    manticore-projects, 2024-12-09
+  * **test: update failing tests**
+    
+    manticore-projects, 2024-12-08
+  * **feat: implement `ST_MaxDistance`**
+    
+    manticore-projects, 2024-12-08
+  * **fix: rework `ST_Area` and `ST_Dinstance` to support `GEO_MODE` `GEOMETRY` vs. `GEOGRAPHY`**
+    
+    manticore-projects, 2024-12-08
+  * **feat: extend the test framework to support `GEO_MODE` `GEOMETRY` vs. `GEOGRAPHY`**
+    
+    manticore-projects, 2024-12-07
+  * **feat: switch `GEO_MODE` to `GEOMETRY` or `GEOGRAPHY`**
+    
+    manticore-projects, 2024-12-07
+  * **fix: Safe divide shall return NULL on division by Zero**
+    
+    manticore-projects, 2024-12-07
+  * **fix: current date with time zone shall return a `Date`**
+    
+    manticore-projects, 2024-12-07
+  * **fix: bigquery select as value**
+    
+    manticore-projects, 2024-12-07
+  * **fix: disable BigQuery Timeseries functions**
+    
+    manticore-projects, 2024-12-07
+  * **build: document JDK 11 requirement**
+    
+    Andreas Reichel, 2024-12-04
+  * **fix: Boun's RedShift Json examples**
+    
+    Andreas Reichel, 2024-12-01
+  * **feat: Update Test framework to reflect the latest improvements**
+    
+    Andreas Reichel, 2024-12-01
+  * **fix: Boun's exceptions on BogQuery JSon**
+    
+    Andreas Reichel, 2024-12-01
+  * **test: additional BigQuery JSon tests**
+    
+    Andreas Reichel, 2024-11-25
+  * **feat: complete DataBricks JSon support**
+    
+    Andreas Reichel, 2024-11-19
+  * **test: move Boun's samples into separate file, WIP**
+    
+    Andreas Reichel, 2024-11-08
+  * **build: bump DuckDB 1.1.3**
+    
+    Andreas Reichel, 2024-11-08
+  * **feat: enhance geography coverage in bigquery (#46)**
+    
+    manticore-projects, 2024-11-08
+  * **feat: enhance geography coverage in bigquery**
+    
+    tiboun, 2024-11-06
+  * **fix: improve the `LENIENT` mode and return scope table, when column points to a table alias**
+    
+    Andreas Reichel, 2024-11-06
+  * **test: Disable 2 RedShift Test which only fail because of DuckDBs unpredictable output order**
+    
+    Andreas Reichel, 2024-11-06
+  * **feat: Snowflake JSON and Geo-Spatial functions**
+    
+    Andreas Reichel, 2024-11-04
+  * **feat: Amazon RedShift JSON**
+    
+    Andreas Reichel, 2024-11-03
+  * **feat: Amazon RedShift Geo-Spatial**
+    
+    Andreas Reichel, 2024-10-28
+  * **feat: Amazon RedShift Geo-Spatial**
+    
+    Andreas Reichel, 2024-10-27
+  * **feat: Amazon RedShift Geo-Spatial**
+    
+    Andreas Reichel, 2024-10-27
+  * **test: Amazon Geo-Spatial sample database**
+    
+    Andreas Reichel, 2024-10-26
+  * **test: limit the DuckDB memory to 250MB**
+    
+    Andreas Reichel, 2024-10-23
+  * **style: re-format source**
+    
+    Andreas Reichel, 2024-10-23
+  * **doc: update license information (e-mail)**
+    
+    Andreas Reichel, 2024-10-23
+  * **feat: Good BigQuery Geo-Spat functions, document all unsupported functions**
+    
+    Andreas Reichel, 2024-10-23
+  * **feat: BigQuery Geo Spatial functions**
+    
+    Andreas Reichel, 2024-10-21
+  * **feat: Support DuckDB 1.1.2**
+    
+    Andreas Reichel, 2024-10-20
+  * **fix: preserve lineage within query blocks**
+    
+    Andreas Reichel, 2024-10-19
+  * **changes merged**
+    
+    David Pavlis, 2024-10-18
+  * **added DatabaseSpecific for DuckDB to allow tests passing.**
+    
+    David Pavlis, 2024-10-18
+  * **style: update PMD and license header**
+    
+    Andreas Reichel, 2024-10-18
+  * **style: update PMD**
+    
+    Andreas Reichel, 2024-10-18
+  * **Revert "Improvements to various DBs compatibility, serialization of JdbcMetaData to/from JSON, small changes to improve lineage" (#40)**
+    
+    manticore-projects, 2024-10-18
+  * **Revert "Improvements to various DBs compatibility, serialization of JdbcMetaData to/from JSON, small changes to improve lineage"**
+    
+    manticore-projects, 2024-10-18
+  * **style: update license information**
+    
+    Andreas Reichel, 2024-10-18
+  * **Improvements to various DBs compatibility, serialization of JdbcMetaData to/from JSON, small changes to improve lineage (#39)**
+    
+    manticore-projects, 2024-10-18
+  * **build: update Gradle plugin**
+    
+    Andreas Reichel, 2024-10-18
+  * **re-implementation of JSON serialization of JdbcMetaData via org.json.**
+    
+    David Pavlis, 2024-10-17
+  * **polished comments**
+    
+    David Pavlis, 2024-10-14
+  * **added scopeColumn attribute to JdbcColumn to track "scope" of column -**
+    
+    David Pavlis, 2024-10-14
+  * **added Snowflake DB specific support. Renamed JsonTreeBuilderConcise to**
+    
+    David Pavlis, 2024-10-14
+  * **code polished - added comments, removed unused code**
+    
+    David Pavlis, 2024-10-09
+  * **initial batch of changes to support various DBs and (de)serialization**
+    
+    David Pavlis, 2024-10-09
+  * **Update README.md**
+    
+    dpavlis, 2024-10-09
+  * **fix: translate `SAFE_CAST` into `TRY_CAST`**
+    
+    Andreas Reichel, 2024-10-03
+  * **chore: Git Changelog dependency Java 11 Version**
+    
+    Andreas Reichel, 2024-10-03
+  * **feat: adopt latest JSQLParser Snapshot**
+    
+    manticore-projects, 2024-09-10
+  * **feat: BigQuery Json support, complete**
+    
+    manticore-projects, 2024-09-10
+  * **feat: BigQuery Json support (WIP)**
+    
+    manticore-projects, 2024-09-10
+  * **feat: BigQuery Json support (WIP)**
+    
+    manticore-projects, 2024-09-10
+  * **test: enforce array sorting**
+    
+    manticore-projects, 2024-09-04
+  * **test: enforce array sorting**
+    
+    manticore-projects, 2024-09-04
+  * **test: enforce array sorting**
+    
+    manticore-projects, 2024-09-04
+  * **feat: finalise the Error Mode**
+    
+    manticore-projects, 2024-09-03
+  * **feat: don't fail on unresolvable columns or tables [WIP]**
+    
+    manticore-projects, 2024-09-02
+  * **feat: don't fail on unresolvable columns or tables [WIP]**
+    
+    manticore-projects, 2024-09-02
+  * **Update verify.yml**
+    
+    manticore-projects, 2024-09-02
+  * **Update verify.yml**
+    
+    manticore-projects, 2024-09-02
+  * **style: fix the 4 failing tests**
+    
+    manticore-projects, 2024-09-02
+  * **style: fix Q/A exceptions**
+    
+    manticore-projects, 2024-09-02
+  * **test: remove dependency on SED command**
+    
+    manticore-projects, 2024-09-02
   * **build: back to JSQLParser Snapshot artifacts**
     
     manticore-projects, 2024-08-24
