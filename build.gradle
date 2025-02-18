@@ -337,6 +337,11 @@ pmd {
 checkstyle {
     sourceSets = [sourceSets.main, sourceSets.test]
     configFile = rootProject.file('config/checkstyle/checkstyle.xml')
+
+}
+
+tasks.withType(Checkstyle).configureEach {
+    exclude '**/module-info.java', '**/package-info.java'
 }
 
 spotless {
