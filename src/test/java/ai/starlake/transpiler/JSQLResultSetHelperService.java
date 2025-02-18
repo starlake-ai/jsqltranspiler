@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,9 +34,21 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 public class JSQLResultSetHelperService extends ResultSetHelperService {
-  private static final String DEFAULT_VALUE = "";
+
+  public static final String DEFAULT_NULL_VALUE = "JSQL_NULL";
+
+  private final String defaultValue;
 
   public TreeMap<Integer, NumberFormat> numberFormatters = null;
+
+  public JSQLResultSetHelperService() {
+    this.defaultValue = DEFAULT_NULL_VALUE;
+  }
+
+  public JSQLResultSetHelperService(String defaultValue) {
+    this.defaultValue = defaultValue;
+  }
+
 
   @Override
   public String[] getColumnValues(ResultSet rs, boolean trim, String dateFormatString,
@@ -75,7 +87,7 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
     if (formatter != null && value != null) {
       return formatter.format(value);
     }
-    return Objects.toString(value, DEFAULT_VALUE);
+    return Objects.toString(value, defaultValue);
   }
 
   /**
@@ -130,7 +142,7 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
    */
   protected String handleDate(ResultSet rs, int colIndex, String dateFormatString)
       throws SQLException {
-    String value = DEFAULT_VALUE;
+    String value = defaultValue;
     Date date = rs.getDate(colIndex);
     if (date != null) {
       SimpleDateFormat df = new SimpleDateFormat(dateFormatString);
@@ -149,7 +161,7 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
    * @throws IOException
    */
   protected String handleClob(ResultSet rs, int colIndex) throws SQLException, IOException {
-    String value = DEFAULT_VALUE;
+    String value = defaultValue;
     Clob c = rs.getClob(colIndex);
     if (c != null) {
       TextStringBuilder sb = new TextStringBuilder();
@@ -169,7 +181,7 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
    * @throws IOException
    */
   protected String handleNClob(ResultSet rs, int colIndex) throws SQLException, IOException {
-    String value = DEFAULT_VALUE;
+    String value = defaultValue;
     NClob nc = rs.getNClob(colIndex);
     if (nc != null) {
       TextStringBuilder sb = new TextStringBuilder();
@@ -216,7 +228,7 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
         value = handleDate(rs, colIndex, dateFormatString);
         break;
       case Types.TIME:
-        value = Objects.toString(rs.getTime(colIndex), DEFAULT_VALUE);
+        value = Objects.toString(rs.getTime(colIndex), defaultValue);
         break;
       case Types.TIMESTAMP:
         value = handleTimestamp(rs.getTimestamp(colIndex), timestampFormatString);
@@ -234,12 +246,12 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
       default:
         // This takes care of Types.BIT, Types.JAVA_OBJECT, and anything
         // unknown.
-        value = Objects.toString(rs.getObject(colIndex), DEFAULT_VALUE);
+        value = Objects.toString(rs.getObject(colIndex), defaultValue);
     }
 
 
     if (rs.wasNull() || value == null) {
-      value = DEFAULT_VALUE;
+      value = defaultValue;
     }
 
     return value;

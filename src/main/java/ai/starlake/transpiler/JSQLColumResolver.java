@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.piped.FromQuery;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
@@ -62,9 +63,9 @@ import java.util.logging.Logger;
 public class JSQLColumResolver
     implements SelectVisitor<JdbcResultSetMetaData>, FromItemVisitor<JdbcResultSetMetaData> {
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
-  private final JdbcMetaData metaData;
-  private final JSQLExpressionColumnResolver expressionColumnResolver;
   private boolean commentFlag = true;
+  final JdbcMetaData metaData;
+  final JSQLExpressionColumnResolver expressionColumnResolver;
 
   /**
    * Instantiates a new JSQLColumnResolver for the provided Database Metadata
@@ -493,6 +494,11 @@ public class JSQLColumResolver
   @Override
   public void visit(PlainSelect plainSelect) {
     SelectVisitor.super.visit(plainSelect);
+  }
+
+  @Override
+  public <S> JdbcResultSetMetaData visit(FromQuery fromQuery, S s) {
+    return null;
   }
 
   // for visiting Column Sub-Selects

@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,12 @@
  */
 package ai.starlake.transpiler;
 
+import ai.starlake.transpiler.bigquery.BigQueryTranspiler;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.select.PlainSelect;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -32,18 +38,32 @@ public class DebugTest extends JSQLTranspilerTest {
   public static final FilenameFilter FILENAME_FILTER = new FilenameFilter() {
     @Override
     public boolean accept(File dir, String name) {
-      return name.toLowerCase().endsWith("debug.sql");
+      return name.equalsIgnoreCase("debug.sql");
     }
   };
 
   static Stream<Arguments> getSqlTestMap() {
     return unrollParameterMap(getSqlTestMap(new File(TEST_FOLDER_STR).listFiles(FILENAME_FILTER),
-        JSQLTranspiler.Dialect.AMAZON_REDSHIFT, JSQLTranspiler.Dialect.DUCK_DB));
+        JSQLTranspiler.Dialect.ANY, JSQLTranspiler.Dialect.DUCK_DB));
   }
 
   @ParameterizedTest(name = "{index} {0} {1}: {2}")
   @MethodSource("getSqlTestMap")
   protected void transpile(File f, int idx, SQLTest t) throws Exception {
     super.transpile(f, idx, t);
+  }
+
+  @Test
+  @Disabled
+  void testTranspiled() throws JSQLParserException, InterruptedException {
+    String sqlStr = "SELECT CURRENT_DATE('America/Los_Angeles') AS the_date;";
+
+    PlainSelect select = (PlainSelect) CCJSqlParserUtil.parse(sqlStr);
+    System.out.println(select.toString());
+
+    String s = BigQueryTranspiler.transpileQuery(sqlStr, JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY);
+    System.out.println(s);
+
+
   }
 }

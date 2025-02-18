@@ -18,7 +18,7 @@ SELECT ID, json_valid(varchar1) v, varchar1 FROM sample_json_table ORDER BY ID;
 "ID","v","varchar1"
 "1","true","{""ValidKey1"": ""ValidValue1""}"
 "2","false","{""Malformed -- Missing value"": }"
-"3","",""
+"3","JSQL_NULL","JSQL_NULL"
 
 -- epilog
 DROP TABLE IF EXISTS sample_json_table;
@@ -43,15 +43,11 @@ SELECT
 
 
 -- expected
-SELECT
-        json_data -> 'level_1_key'
-            AS JSON_EXTRACT_PATH_TEXT
-    FROM demo1
-    ORDER BY id;
+SELECT JSON_DATA->>'level_1_key' AS JSON_EXTRACT_PATH_TEXT FROM DEMO1 ORDER BY ID;
 
 -- result
 "JSON_EXTRACT_PATH_TEXT"
-"""level_1_value"""
+"level_1_value"
 "{""level_2_key"":""level_2_value""}"
 "{""level_2_key"":[""zero"",""one"",""two""]}"
 
@@ -83,7 +79,7 @@ SELECT ID, Try_Cast(v AS JSON) j
 "ID","j"
 "1","[-1, 12, 289, 2188, false,]"
 "2","{ ""x"" : ""abc"", ""y"" : false, ""z"": 10} "
-"3",""
+"3","JSQL_NULL"
 
 -- epilog
 DROP TABLE IF EXISTS vartab;

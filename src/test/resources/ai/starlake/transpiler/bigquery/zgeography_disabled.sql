@@ -1,33 +1,3 @@
--- For Big Query assume everything is a Geography
--- provided
-select st_area(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as area
-
--- expected
-SELECT /*APPROXIMATION: SPHERE */ ST_Area_Spheroid(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as area
-
--- results
-"area"
-12308778361.469452
-
--- provided
-select st_asbinary(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as wkb
-
--- expected
-SELECT ST_aswkb(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as wkb
-
--- results
-"wkb"
-"POLYGON ((0 0, 0 1, 1 1, 1 0, 0 0))"
-
--- provided
-select ST_BUFFER(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), 20) as buffer
-
--- expected
-SELECT /*APPROXIMATION: ST_BUFFER IN METER */ ST_ASGEOJSON(ST_TRANSFORM(ST_BUFFER(ST_TRANSFORM(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), 'EPSG:4326', 'EPSG:6933'), 20), 'EPSG:6933', 'EPSG:4326'))  as buffer
-
--- count
-1
-
 -- provided
 select ST_BUFFERWITHTOLERANCE(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), 20, tolerance_meters => 10) as buffer
 
@@ -36,61 +6,6 @@ SELECT /*APPROXIMATION: ST_BUFFERWITHTOLERANCE AS ST_BUFFER IN METER */ ST_ASGEO
 
 -- count
     1
-
--- provided
-select ST_CLOSESTPOINT(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), ST_GEOGFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))')) as closest_point
-
--- expected
-select ST_STARTPOINT(ST_ShortestLine(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'))) as closest_point
-
--- results
-"closest_point"
-"POINT (1 1)"
-
--- provided
-select ST_DISTANCE(ST_GEOGFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOGFROMTEXT('POINT(11.4594367 48.1549958)'), true) / 1000 as km
-
--- expected
-select st_distance_spheroid(
-               st_startpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOMFROMTEXT('POINT(11.4594367 48.1549958)')))),
-               st_endpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOMFROMTEXT('POINT(11.4594367 48.1549958)'))))
-       ) / 1000 AS km
-
--- results
-"km"
-680.463998149257
-
--- provided
-select ST_DISTANCE(ST_GEOGFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOGFROMTEXT('POINT(11.4594367 48.1549958)')) / 1000 as km
-
--- expected
-select st_distance_sphere(
-               st_startpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOMFROMTEXT('POINT(11.4594367 48.1549958)')))),
-               st_endpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POINT(2.3058359 48.858904)'),ST_GEOMFROMTEXT('POINT(11.4594367 48.1549958)'))))
-       ) / 1000 AS km
-
--- results
-"km"
-678.4515514892884
-
--- provided
-select 'in' AS label, st_dwithin(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOGFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'), 157226) AS within_distance
-UNION ALL
-select 'out' AS label, st_dwithin(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOGFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'), 157225) AS within_distance
-
--- expected
-select 'in' AS label, COALESCE(st_distance_sphere(
-                                       st_startpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))')))),
-                                       st_endpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'))))) <= 157226, FALSE) AS within_distance
-UNION ALL
-select 'out' AS label, COALESCE(st_distance_sphere(
-                                        st_startpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))')))),
-                                        st_endpoint(ST_FLIPCOORDINATES(ST_SHORTESTLINE(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'),ST_GEOMFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))'))))) <= 157225, FALSE) AS within_distance
-
--- results
-"label","within_distance"
-"in","true"
-"out","false"
 
 -- provided
 SELECT ST_GEOGFROMWKB(FROM_HEX('010100000000000000000000400000000000001040')) AS geo
@@ -170,35 +85,9 @@ MultiPolygon,true
 GeometryCollection,true
 Empty GeometryCollection,false
 
--- provided
-SELECT st_length(st_geogfromtext("LINESTRING(0 0, 0 1, 1 1, 1 0, 0 0)")) as geo
 
--- expected
-SELECT /* APPROXIMATION: ST_LENGTH SPHERE */ st_length_spheroid(st_flipcoordinates(st_geomfromtext('LINESTRING(0 0, 0 1, 1 1, 1 0, 0 0)'))) as geo
 
--- results
-"geo"
-443770.91724830196
 
--- provided
-SELECT st_maxdistance(st_geogfromtext('LINESTRING(0 0, 0 1, 1 1, 1 0, 0 0)'), st_geogfromtext('LINESTRING(10 0, 10 1, 11 1, 11 0, 10 0)'))
-
--- expected
-SELECT max(ST_DISTANCE_SPHERE(ST_FlipCoordinates(g1.UNNEST.geom), ST_FlipCoordinates(g2.UNNEST.geom))) AS max_distance FROM UNNEST(st_dump(st_points(st_geomfromtext('LINESTRING(0 0, 0 1, 1 1, 1 0, 0 0)')))) AS g1, UNNEST(st_dump(st_points(st_geomfromtext('LINESTRING(10 0, 10 1, 11 1, 11 0, 10 0)')))) g2
-
--- results
-"max_distance"
-1228126.109277834
-
--- provided
-SELECT st_perimeter(st_geogfromtext('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as perimeter
-
--- expected
-SELECT st_perimeter_spheroid(st_geomfromtext('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as perimeter
-
--- results
-"perimeter"
-443770.91724830196
 
 -- provided
 WITH DATA AS (
@@ -238,3 +127,13 @@ FROM DATA
 "POINT(2 4)"
 "POLYGON ((0 0, 0 2, 2 2, 2 0, 0 0))"
 "POLYGON ((2 0, 2 2, 1 2, 0 2, 0 0, 2 0))"
+
+
+-- provided
+select ST_BUFFER(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), 20) as buffer;
+
+-- expected
+SELECT ST_TRANSFORM(ST_BUFFER(ST_TRANSFORM(ST_GEOMFROMTEXT('POLYGON((0 0,0 1,1 1,1 0,0 0))')::GEOMETRY,'EPSG:4326','EPSG:6933'),20),'EPSG:6933','EPSG:4326')AS BUFFER;
+-- result
+"buffer"
+"POLYGON ((0 -0.000207283356224, 0.999999998883127 -0.000207283356224, 1.00003058824032 -0.000203300464657, 1.000060002065931 -0.000191504850246, 1.000087110003095 -0.000172349811837, 1.000110870308919 -0.000146571466813, 1.000130369888099 -0.000115160462519, 1.00014485938266 -0.000079323906232, 1.000153781969387 -0.000040438976714, 1.00015679475823 0, 1.00015679475823 1, 1.000153781969387 1.000040438976714, 1.00014485938266 1.000079323906232, 1.000130369888099 1.000115160462518, 1.000110870308919 1.000146571466813, 1.000087110003095 1.000172349811836, 1.000060002065931 1.000191504850246, 1.00003058824032 1.000203300464657, 0.999999998883127 1.000207283356224, 0 1.000207283356224, -0.000030584822872 1.000203300464657, -0.000059994288153 1.000191504850246, -0.000087098206586 1.000172349811836, -0.000110854989785 1.000146571466813, -0.000130351677895 1.000115160462518, -0.000144839024125 1.000079323906232, -0.000153760287885 1.000040438976714, -0.000156772630011 1, -0.000156772630011 0, -0.000153760287885 -0.000040438976714, -0.000144839024125 -0.000079323906232, -0.000130351677895 -0.000115160462519, -0.000110854989785 -0.000146571466813, -0.000087098206586 -0.000172349811837, -0.000059994288153 -0.000191504850246, -0.000030584822872 -0.000203300464657, 0 -0.000207283356224))"

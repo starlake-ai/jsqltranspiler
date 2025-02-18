@@ -48,12 +48,11 @@ select Unnest([
 SELECT AS VALUE STRUCT(1 AS a, 2 AS b) xyz;
 
 -- expected
-SELECT {a:1, b:2} xyz;
+SELECT xyz.* FROM (SELECT { a:1,b:2 } xyz);
 
 -- result
-"xyz"
-"{a=1, b=2}"
-
+"a","b"
+"1","2"
 
 
 -- provided

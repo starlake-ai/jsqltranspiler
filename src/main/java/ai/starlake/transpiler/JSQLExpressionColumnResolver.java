@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -166,18 +166,34 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       }
 
       HashMap<JdbcColumn, Alias> replaceMap = new HashMap<>();
-      List<SelectItem<Column>> replaceExpressions = allTableColumns.getReplaceExpressions();
+      List<SelectItem<?>> replaceExpressions = allTableColumns.getReplaceExpressions();
       if (replaceExpressions != null) {
-        for (SelectItem<Column> c : replaceExpressions) {
-          JdbcColumn jdbcColumn = getJdbcColumn(metaData,
-              c.getExpression().getTable() == null ? c.getExpression().withTable(table)
-                  : c.getExpression());
-          if (jdbcColumn != null) {
-            replaceMap.put(jdbcColumn, c.getAlias());
+        for (SelectItem<?> c : replaceExpressions) {
+          if (c.getExpression() instanceof Column) {
+            Column column = (Column) c.getExpression();
+
+            JdbcColumn jdbcColumn = getJdbcColumn(metaData,
+                column.getTable() == null ? column.withTable(table) : column);
+            if (jdbcColumn != null) {
+              replaceMap.put(jdbcColumn, c.getAlias());
+            } else {
+              LOGGER.warning("Could not resolve REPLACE Column " + column.getFullyQualifiedName());
+            }
+
           } else {
-            LOGGER.warning(
-                "Could not resolve REPLACE Column " + c.getExpression().getFullyQualifiedName());
+            c.getExpression().accept(this, null);
           }
+          //
+          //
+          // JdbcColumn jdbcColumn = c getJdbcColumn(metaData,
+          // c.getExpression().getTable() == null ? c.getExpression().withTable(table)
+          // : c.getExpression());
+          // if (jdbcColumn != null) {
+          // replaceMap.put(jdbcColumn, c.getAlias());
+          // } else {
+          // LOGGER.warning(
+          // "Could not resolve REPLACE Column " + c.getExpression().getFullyQualifiedName());
+          // }
         }
       }
 
@@ -266,27 +282,33 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       }
 
       HashMap<JdbcColumn, Alias> replaceMap = new HashMap<>();
-      List<SelectItem<Column>> replaceExpressions = allColumns.getReplaceExpressions();
+      List<SelectItem<?>> replaceExpressions = allColumns.getReplaceExpressions();
       if (replaceExpressions != null) {
-        for (SelectItem<Column> c : replaceExpressions) {
-          if (c.getExpression().getTable() != null) {
-            JdbcColumn jdbcColumn = getJdbcColumn(metaData, c.getExpression());
-            if (jdbcColumn != null) {
-              replaceMap.put(jdbcColumn, c.getAlias());
-            } else {
-              LOGGER.warning(
-                  "Could not resolve REPLACE Column " + c.getExpression().getFullyQualifiedName());
-            }
-          } else {
-            for (Table t : metaData.getFromTables().values()) {
-              JdbcColumn jdbcColumn = getJdbcColumn(metaData, c.getExpression().withTable(t));
+        for (SelectItem<?> c : replaceExpressions) {
+          if (c.getExpression() instanceof Column) {
+            Column column = (Column) c.getExpression();
+
+            if (column.getTable() != null) {
+              JdbcColumn jdbcColumn = getJdbcColumn(metaData, column);
               if (jdbcColumn != null) {
                 replaceMap.put(jdbcColumn, c.getAlias());
               } else {
-                LOGGER.warning("Could not resolve REPLACE Column "
-                    + c.getExpression().getFullyQualifiedName());
+                LOGGER
+                    .warning("Could not resolve REPLACE Column " + column.getFullyQualifiedName());
+              }
+            } else {
+              for (Table t : metaData.getFromTables().values()) {
+                JdbcColumn jdbcColumn = getJdbcColumn(metaData, column.withTable(t));
+                if (jdbcColumn != null) {
+                  replaceMap.put(jdbcColumn, c.getAlias());
+                } else {
+                  LOGGER.warning(
+                      "Could not resolve REPLACE Column " + column.getFullyQualifiedName());
+                }
               }
             }
+          } else {
+            c.getExpression().accept(this, null);
           }
         }
       }

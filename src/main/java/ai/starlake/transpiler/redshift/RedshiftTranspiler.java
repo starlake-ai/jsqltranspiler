@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,6 @@ public class RedshiftTranspiler extends JSQLTranspiler {
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     super(RedshiftSelectTranspiler.class, RedshiftExpressionTranspiler.class);
     this.parameters.putAll(parameters);
-    this.expressionTranspiler.parameters.putAll(parameters);
+    this.expressionTranspiler.parameterMap.putAll(parameters);
   }
 }

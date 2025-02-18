@@ -2,7 +2,7 @@
 SELECT JSON_PARSE('[10001,10002,"abc"]') j;
 
 -- expected
-SELECT '[10001,10002,"abc"]'::JSON  j;
+SELECT JSON('[10001,10002,"abc"]')J;
 
 
 -- result
@@ -17,10 +17,7 @@ SELECT CASE
         END t;
 
 -- expected
-SELECT CASE
-            WHEN try_cast('[10001,10002,"abc"]' AS JSON) is not null
-            THEN '[10001,10002,"abc"]'::JSON
-        END t;
+SELECT CASE WHEN TRY_CAST('[10001,10002,"abc"]' AS JSON)IS NOT NULL THEN JSON('[10001,10002,"abc"]')END T;
 
 
 -- result
@@ -131,8 +128,8 @@ SELECT Try_Cast('[111,112,113]' AS JSON)[2] e;
 SELECT JSON_EXTRACT_PATH_TEXT('{"f2":{"f3":1},"f4":{"f5":99,"f6":"star"}}','f4', 'f6') e;
 
 -- expected
-SELECT  '{"f2":{"f3":1},"f4":{"f5":99,"f6":"star"}}' -> 'f4' -> 'f6' e;
+SELECT '{"f2":{"f3":1},"f4":{"f5":99,"f6":"star"}}'->>'f4'->>'f6' E;
 
 -- result
 "e"
-"""star"""
+"star"

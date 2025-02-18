@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,13 @@ import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.merge.Merge;
+import net.sf.jsqlparser.statement.piped.FromQuery;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.statement.update.Update;
+import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
+import net.sf.jsqlparser.util.deparser.SelectDeParser;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 import java.io.BufferedReader;
@@ -79,9 +83,7 @@ public class JSQLTranspiler extends StatementDeParser {
 
   protected final HashMap<String, Object> parameters = new LinkedHashMap<>();
 
-  private final static Pattern DOUBLE_QUOTES_PATTERN =
-      Pattern.compile("(?=(?:[^']*'[^']*')*[^']*$)\"");
-  private final static Pattern SINGLE_QUOTES_PATTERN =
+  private final static Pattern SINGLE_TICKS_PATTERN =
       Pattern.compile("(?=(?:[^']*'[^']*')*[^']*$)`");
 
   protected JSQLTranspiler(Class<? extends JSQLSelectTranspiler> selectTranspilerClass,
@@ -93,15 +95,15 @@ public class JSQLTranspiler extends StatementDeParser {
     this.expressionTranspiler = expressionTranspilerClass.cast(this.getExpressionDeParser());
     this.selectTranspiler = selectTranspilerClass.cast(this.getSelectDeParser());
 
-    this.insertTranspiler =
-        new JSQLInsertTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
+    this.insertTranspiler = new JSQLInsertTranspiler(this.expressionTranspiler,
+        this.selectTranspiler, this.getBuilder());
 
-    this.updateTranspiler = new JSQLUpdateTranspiler(this.expressionTranspiler, buffer);
+    this.updateTranspiler = new JSQLUpdateTranspiler(this.expressionTranspiler, this.getBuilder());
 
-    this.deleteTranspiler = new JSQLDeleteTranspiler(this.expressionTranspiler, buffer);
+    this.deleteTranspiler = new JSQLDeleteTranspiler(this.expressionTranspiler, this.getBuilder());
 
-    this.mergeTranspiler =
-        new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler, buffer);
+    this.mergeTranspiler = new JSQLMergeTranspiler(this.expressionTranspiler, this.selectTranspiler,
+        this.getBuilder());
 
   }
 
@@ -109,7 +111,7 @@ public class JSQLTranspiler extends StatementDeParser {
       NoSuchMethodException, InstantiationException, IllegalAccessException {
     this(JSQLSelectTranspiler.class, JSQLExpressionTranspiler.class);
     this.parameters.putAll(parameters);
-    this.expressionTranspiler.parameters.putAll(parameters);
+    this.expressionTranspiler.parameterMap.putAll(parameters);
   }
 
   public JSQLTranspiler() throws InvocationTargetException, NoSuchMethodException,
@@ -138,15 +140,29 @@ public class JSQLTranspiler extends StatementDeParser {
     switch (dialect) {
       case GOOGLE_BIG_QUERY:
         // Replace Double quoted string literals with single quoted string literals
-        Matcher matcher = DOUBLE_QUOTES_PATTERN.matcher(qryStr);
         StringBuilder sb = new StringBuilder();
-        while (matcher.find()) {
-          matcher.appendReplacement(sb, matcher.group().replaceAll("^\"|\"$", "'"));
+        boolean inSingleQuote = false; // Tracks if we're inside single quotes
+        boolean inDoubleQuote = false; // Tracks if we're inside double quotes
+
+        for (int i = 0; i < qryStr.length(); i++) {
+          char c = qryStr.charAt(i);
+
+          // Toggle state for single quotes
+          if (c == '\'' && !inDoubleQuote) {
+            inSingleQuote = !inSingleQuote;
+            sb.append(c); // Append the single quote as-is
+          } else /* Toggle state for double quotes */ if (c == '\"' && !inSingleQuote) {
+            inDoubleQuote = !inDoubleQuote;
+            sb.append('\''); // Replace outer double quotes with single quotes
+          } else /*Replace inner single quotes with double quotes if inside double-quoted context */ if (c == '\'') {
+            sb.append('"');
+          } else /* Append everything else as-is */ {
+            sb.append(c);
+          }
         }
-        matcher.appendTail(sb);
 
         // Replace single quoted identifiers with double-quoted identifiers
-        matcher = SINGLE_QUOTES_PATTERN.matcher(sb.toString());
+        Matcher matcher = SINGLE_TICKS_PATTERN.matcher(sb.toString());
         sb = new StringBuilder();
         while (matcher.find()) {
           matcher.appendReplacement(sb, matcher.group().replaceAll("^`|`$", "\""));
@@ -231,10 +247,10 @@ public class JSQLTranspiler extends StatementDeParser {
       Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
       for (Statement st : statements) {
         st.accept(transpiler);
-        transpiler.getBuffer().append("\n;\n\n");
+        transpiler.getBuilder().append("\n;\n\n");
       }
 
-      String transpiledSqlStr = transpiler.getBuffer().toString();
+      String transpiledSqlStr = transpiler.getBuilder().toString();
       LOGGER.fine("-- Transpiled SQL:\n" + transpiledSqlStr);
 
       // write to STDOUT when there is no OUTPUT File
@@ -429,7 +445,7 @@ public class JSQLTranspiler extends StatementDeParser {
       JSQLTranspiler transpiler = new JSQLTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -448,7 +464,7 @@ public class JSQLTranspiler extends StatementDeParser {
       BigQueryTranspiler transpiler = new BigQueryTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -467,7 +483,7 @@ public class JSQLTranspiler extends StatementDeParser {
       DatabricksTranspiler transpiler = new DatabricksTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -486,7 +502,7 @@ public class JSQLTranspiler extends StatementDeParser {
       SnowflakeTranspiler transpiler = new SnowflakeTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -506,7 +522,7 @@ public class JSQLTranspiler extends StatementDeParser {
       RedshiftTranspiler transpiler = new RedshiftTranspiler(parameters);
       statement.accept(transpiler);
 
-      return transpiler.getBuffer().toString();
+      return transpiler.getBuilder().toString();
     } catch (InvocationTargetException | NoSuchMethodException | InstantiationException
         | IllegalAccessException e) {
       // this should really never happen
@@ -514,31 +530,101 @@ public class JSQLTranspiler extends StatementDeParser {
     }
   }
 
+  /**
+   * @param sqlStr the original query string written in `PipedSQL`
+   * @param executorService the ExecutorService to use for running and observing JSQLParser
+   * @param consumer the parser configuration to use for the parsing
+   * @return the rewritten query string in plain legacy SQL
+   * @throws JSQLParserException a parser exception when the statement can't be parsed due to syntax
+   *         errors
+   */
+  public static String unpipe(String sqlStr, ExecutorService executorService,
+      Consumer<CCJSqlParser> consumer) throws JSQLParserException {
+    StringBuilder b = new StringBuilder();
+
+    SelectDeParser selectDeParser = new SelectDeParser(b) {
+      @Override
+      public <S> StringBuilder visit(FromQuery fromQuery, S context) {
+        PlainSelect select = fromQuery.accept(new JSQLFromQueryTranspiler(), null);
+        select.accept(this);
+        return b;
+      }
+    };
+
+    ExpressionDeParser expressionDeParser = new ExpressionDeParser(selectDeParser, b);
+    selectDeParser.setExpressionVisitor(expressionDeParser);
+
+    StatementDeParser statementDeParser =
+        new StatementDeParser(expressionDeParser, selectDeParser, b);
+
+    // @todo: we may need to split this manually to salvage any not parseable statements
+    Statements statements = CCJSqlParserUtil.parseStatements(sqlStr, executorService, consumer);
+    for (Statement st : statements) {
+      st.accept(statementDeParser);
+      statementDeParser.getBuilder().append("\n;\n\n");
+    }
+
+    String transpiledSqlStr = statementDeParser.getBuilder().toString();
+    LOGGER.fine("-- Transpiled SQL:\n" + transpiledSqlStr);
+
+    return transpiledSqlStr;
+  }
+
+  /**
+   * @param sqlStr the original query string written in `PipedSQL`
+   * @param consumer the parser configuration to use for the parsing
+   * @return the rewritten query string in plain legacy SQL
+   * @throws JSQLParserException a parser exception when the statement can't be parsed due to syntax
+   *         errors
+   * @throws InterruptedException a time-out exception when the parser won't return in time
+   */
+  public static String unpipe(String sqlStr, Consumer<CCJSqlParser> consumer)
+      throws JSQLParserException, InterruptedException {
+    ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    String result = unpipe(sqlStr, executorService, consumer);
+    executorService.shutdown();
+    executorService.awaitTermination(1, TimeUnit.MINUTES);
+    return result;
+  }
+
+  /**
+   * @param sqlStr the original query string written in `PipedSQL`
+   * @return the rewritten query string in plain legacy SQL
+   * @throws JSQLParserException a parser exception when the statement can't be parsed due to syntax
+   *         errors
+   * @throws InterruptedException a time-out exception when the parser won't return in time
+   */
+  public static String unpipe(String sqlStr) throws JSQLParserException, InterruptedException {
+    String result = unpipe(sqlStr, parser -> {
+    });
+    return result;
+  }
+
   public <S> StringBuilder visit(Select select, S context) {
     select.accept((SelectVisitor<StringBuilder>) selectTranspiler, context);
-    return buffer;
+    return this.getBuilder();
   }
 
   public <S> StringBuilder visit(Insert insert, S context) {
     insertTranspiler.deParse(insert);
-    return buffer;
+    return this.getBuilder();
   }
 
   public <S> StringBuilder visit(Update update, S context) {
     updateTranspiler.deParse(update);
 
-    return buffer;
+    return this.getBuilder();
   }
 
   public <S> StringBuilder visit(Delete delete, S context) {
     deleteTranspiler.deParse(delete);
-    return buffer;
+    return this.getBuilder();
   }
 
 
   public <S> StringBuilder visit(Merge merge, S context) {
     mergeTranspiler.deParse(merge);
-    return buffer;
+    return this.getBuilder();
   }
 
   /**

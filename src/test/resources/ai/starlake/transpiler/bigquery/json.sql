@@ -97,13 +97,11 @@ SELECT JSON_EXTRACT_ARRAY(
   ) AS json_array;
 
 -- expected
-SELECT JSON_EXTRACT(
-  JSON '{"fruits":["apples","oranges","grapes"]}','$.fruits'
-  ) AS json_array;
+SELECT JSON_EXTRACT(JSON '{"fruits":["apples","oranges","grapes"]}','$.fruits[*]')AS JSON_ARRAY;
 
 -- result
 "json_array"
-"[""apples"",""oranges"",""grapes""]"
+"[""apples"", ""oranges"", ""grapes""]"
 
 
 -- provided
@@ -113,22 +111,25 @@ SELECT JSON_EXTRACT_ARRAY(
 ) AS string_array;
 
 -- expected
-SELECT JSON_EXTRACT(
-  '{"fruit": [{"apples": 5, "oranges": 10}, {"apples": 2, "oranges": 4}], "vegetables": [{"lettuce": 7, "kale": 8}]}',
-  '$.fruit'
-) AS string_array;
+SELECT JSON_EXTRACT('{"fruit":[{"apples":5,"oranges":10},{"apples":2,"oranges":4}],"vegetables":[{"lettuce":7,"kale":8}]}','$.fruit[*]')AS STRING_ARRAY;
 
 
 -- result
 "string_array"
-"[{""apples"":5,""oranges"":10},{""apples"":2,""oranges"":4}]"
+"[{""apples"":5,""oranges"":10}, {""apples"":2,""oranges"":4}]"
 
 
 -- provided
 SELECT JSON_EXTRACT_SCALAR(JSON '{"name": "Jakob", "age": "6" }', '$.age') AS scalar_age;
 
 -- expected
-SELECT JSON_extract_string(JSON '{"name": "Jakob", "age": "6" }', '$.age') AS scalar_age;
+SELECT CASE
+        WHEN Json_Type( Json_Extract( JSON '{"name":"Jakob","age":"6"}', '$.age' ) ) IN (   'VARCHAR', 'DOUBLE', 'BOOLEAN'
+                                                                                            , 'UBIGINT', 'BIGINT' )
+            THEN Json_Extract_String( JSON '{"name":"Jakob","age":"6"}', '$.age' )
+        ELSE Json_Value( JSON '{"name":"Jakob","age":"6"}', '$.age' )
+        END AS scalar_age
+;
 
 -- result
 "scalar_age"
@@ -139,7 +140,13 @@ SELECT JSON_extract_string(JSON '{"name": "Jakob", "age": "6" }', '$.age') AS sc
 SELECT JSON_VALUE(JSON '{"name": "Jakob", "age": "6" }', '$.age') AS scalar_age;
 
 -- expected
-SELECT JSON_EXTRACT_STRING(JSON '{"name": "Jakob", "age": "6" }', '$.age') AS scalar_age;
+SELECT CASE
+        WHEN Json_Type( Json_Extract( JSON '{"name":"Jakob","age":"6"}', '$.age' ) ) IN (   'VARCHAR', 'DOUBLE', 'BOOLEAN'
+                                                                                            , 'UBIGINT', 'BIGINT' )
+            THEN Json_Extract_String( JSON '{"name":"Jakob","age":"6"}', '$.age' )
+        ELSE Json_Value( JSON '{"name":"Jakob","age":"6"}', '$.age' )
+        END AS scalar_age
+;
 
 -- result
 "scalar_age"
@@ -153,10 +160,21 @@ SELECT JSON_QUERY('{"name": "Jakob", "age": "6"}', '$.name') AS json_name,
   JSON_VALUE('{"name": "Jakob", "age": "6"}', '$.age') AS scalar_age;
 
 -- expected
-SELECT JSON_EXTRACT('{"name": "Jakob", "age": "6"}', '$.name') AS json_name,
-  JSON_EXTRACT_STRING('{"name": "Jakob", "age": "6"}', '$.name') AS scalar_name,
-  JSON_EXTRACT('{"name": "Jakob", "age": "6"}', '$.age') AS json_age,
-  JSON_EXTRACT_STRING('{"name": "Jakob", "age": "6"}', '$.age') AS scalar_age;
+SELECT  Json_Extract( '{"name":"Jakob","age":"6"}', '$.name' ) AS json_name
+        , CASE
+            WHEN Json_Type( Json_Extract( '{"name":"Jakob","age":"6"}', '$.name' ) ) IN (   'VARCHAR', 'DOUBLE', 'BOOLEAN'
+                                                                                            , 'UBIGINT', 'BIGINT' )
+                THEN Json_Extract_String( '{"name":"Jakob","age":"6"}', '$.name' )
+            ELSE Json_Value( '{"name":"Jakob","age":"6"}', '$.name' )
+            END AS scalar_name
+        , Json_Extract( '{"name":"Jakob","age":"6"}', '$.age' ) AS json_age
+        , CASE
+            WHEN Json_Type( Json_Extract( '{"name":"Jakob","age":"6"}', '$.age' ) ) IN (    'VARCHAR', 'DOUBLE', 'BOOLEAN'
+                                                                                            , 'UBIGINT', 'BIGINT' )
+                THEN Json_Extract_String( '{"name":"Jakob","age":"6"}', '$.age' )
+            ELSE Json_Value( '{"name":"Jakob","age":"6"}', '$.age' )
+            END AS scalar_age
+;
 
 -- result
 "json_name","scalar_name","json_age","scalar_age"
@@ -167,22 +185,22 @@ SELECT JSON_EXTRACT('{"name": "Jakob", "age": "6"}', '$.name') AS json_name,
 SELECT JSON_EXTRACT_STRING_ARRAY('{"fruits": ["apples", "oranges", "grapes"]}', '$[fruits]') AS string_array;
 
 -- expected
-SELECT JSON_EXTRACT('{"fruits": ["apples", "oranges", "grapes"]}', '/fruits') AS string_array;
+SELECT JSON_EXTRACT_STRING('{"fruits":["apples","oranges","grapes"]}','$.fruits[*]')AS STRING_ARRAY;
 
 -- result
 "string_array"
-"[""apples"",""oranges"",""grapes""]"
+"[apples, oranges, grapes]"
 
 
 -- provided
 SELECT JSON_EXTRACT_STRING_ARRAY('{"fruits": ["apples", "oranges", "grapes"]}', '$.fruits') AS string_array;
 
 -- expected
-SELECT JSON_EXTRACT('{"fruits": ["apples", "oranges", "grapes"]}', '$.fruits') AS string_array;
+SELECT Json_Extract_String( '{"fruits":["apples","oranges","grapes"]}', '$.fruits[*]' ) AS string_array;
 
 -- result
 "string_array"
-"[""apples"",""oranges"",""grapes""]"
+"[apples, oranges, grapes]"
 
 
 -- provided
@@ -253,6 +271,7 @@ SELECT CASE Typeof( JSON '"purple"' )
             THEN Strftime(  Try_Cast( JSON '"purple"' AS TIMESTAMP ), '%c%z' )
         WHEN 'TIMESTAMPTZ'
             THEN Strftime(  Try_Cast( JSON '"purple"' AS TIMESTAMPTZ ), '%c%z' )
+        ELSE  Try_Cast( JSON '"purple"' AS TEXT )
         END AS color
 ;
 

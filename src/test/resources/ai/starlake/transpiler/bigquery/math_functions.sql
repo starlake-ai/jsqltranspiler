@@ -356,11 +356,11 @@ SELECT /* Approximation: SAFE variant not supported */ ADD(5, 4) a;
 SELECT SAFE_DIVIDE(5, 4) a;
 
 -- expected
-SELECT /* Approximation: SAFE variant not supported */ DIVIDE(5, 4) a;
+SELECT IF(4=0.0 OR 4 IS NULL OR 5 IS NULL,NULL,5/4)A;
 
 -- result
 "a"
-"1"
+"1.25"
 
 
 -- provided

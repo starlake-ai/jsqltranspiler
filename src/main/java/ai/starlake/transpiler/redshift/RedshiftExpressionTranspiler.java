@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.ArrayExpression;
 import net.sf.jsqlparser.expression.BinaryExpression;
+import net.sf.jsqlparser.expression.BooleanValue;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
@@ -28,6 +29,8 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.JsonExpression;
 import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.NotExpression;
+import net.sf.jsqlparser.expression.NullValue;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
@@ -71,7 +74,8 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
     , ST_GEOGFROMTEXT, ST_ASEWKB, ST_ASEWKT, ST_ASBINARY, ST_ASGEOJSON, ST_ASHEXEWKB, ST_ASTEXT, ST_BUFFER, ST_COLLECT
     , ST_DISTANCESPHERE, ST_FORCE3D, ST_GEOGFROMWKB, ST_GEOMFROMWKB, ST_GEOMFROMEWKB, ST_GEOMFROMEWKT, ST_LENGTHSPHERE
     , ST_LENGTH2D, ST_MAKEPOINT, ST_NDIMS, ST_PERIMETER2D, ST_POLYGON
-    , JSON_PARSE, CAN_JSON_PARSE, IS_VALID_JSON, IS_VALID_JSON_ARRAY, JSON_EXTRACT_ARRAY_ELEMENT_TEXT, JSON_EXTRACT_PATH_TEXT;
+    , JSON_PARSE, CAN_JSON_PARSE, IS_VALID_JSON, IS_VALID_JSON_ARRAY, JSON_EXTRACT_ARRAY_ELEMENT_TEXT
+    , JSON_EXTRACT_PATH_TEXT, JSON_TYPEOF, JSON_SERIALIZE, JSON_SERIALIZE_TO_VARBYTE, JSON_ARRAY_LENGTH;
     // @formatter:on
 
 
@@ -664,7 +668,7 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           break;
         case JSON_PARSE:
           if (paramCount == 1) {
-            rewrittenExpression = new CastExpression(parameters.get(0), "JSON");
+            function.setName("JSon");
           }
           break;
         case CAN_JSON_PARSE:
@@ -697,19 +701,65 @@ public class RedshiftExpressionTranspiler extends JSQLExpressionTranspiler {
           }
           break;
         case JSON_EXTRACT_ARRAY_ELEMENT_TEXT:
-          if (paramCount == 2) {
-            // SELECT ('[111,112,113]'::JSON)[2] e;
-            rewrittenExpression = new ArrayExpression(
-                new CastExpression("Try_Cast", parameters.get(0), "JSON"), parameters.get(1));
+          switch (paramCount) {
+            case 3:
+              rewrittenExpression = new Function("If",
+                  new AndExpression(parameters.get(2),
+                      new NotExpression(new Function("JSon_Valid", parameters.get(0)))),
+                  new NullValue(),
+                  new ArrayExpression(new CastExpression("Try_Cast", parameters.get(0), "JSON"),
+                      parameters.get(1)));
+              break;
+            case 2:
+              // SELECT ('[111,112,113]'::JSON)[2] e;
+              rewrittenExpression = new ArrayExpression(
+                  new CastExpression("Try_Cast", parameters.get(0), "JSON"), parameters.get(1));
+              break;
           }
           break;
         case JSON_EXTRACT_PATH_TEXT:
           if (paramCount > 1) {
-            rewrittenExpression = parameters.get(0);
-            for (int i = 1; i < paramCount; i++) {
-              rewrittenExpression = new JsonExpression(rewrittenExpression,
-                  List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->")));
+            if (paramCount > 2 && parameters.get(paramCount - 1) instanceof BooleanValue) {
+              rewrittenExpression = parameters.get(0);
+              for (int i = 1; i < paramCount - 1; i++) {
+                rewrittenExpression = new JsonExpression(rewrittenExpression,
+                    List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->>")));
+              }
+
+              rewrittenExpression = new Function("If",
+                  new AndExpression(parameters.get(paramCount - 1),
+                      new NotExpression(new Function("JSon_Valid", parameters.get(0)))),
+                  new NullValue(), rewrittenExpression);
+              break;
+            } else {
+              rewrittenExpression = parameters.get(0);
+              for (int i = 1; i < paramCount; i++) {
+                rewrittenExpression = new JsonExpression(rewrittenExpression,
+                    List.of(new AbstractMap.SimpleEntry<>(parameters.get(i), "->>")));
+              }
             }
+          }
+          break;
+        case JSON_TYPEOF:
+          function.setName("JSon_Type");
+          break;
+        case JSON_SERIALIZE:
+          rewrittenExpression = new CastExpression("Cast", function.getParameters().get(0), "TEXT");
+          break;
+        case JSON_SERIALIZE_TO_VARBYTE:
+          rewrittenExpression = new Function("Encode", function.getParameters().get(0));
+          break;
+        case JSON_ARRAY_LENGTH:
+          switch (paramCount) {
+            case 2:
+              /*
+              SELECT if(true AND NOT json_valid('[11,12,13,{"f1":21,"f2":[25,26]},14'), NULL, JSON_ARRAY_LENGTH('[11,12,13,{"f1":21,"f2":[25,26]},14')) AS result
+               */
+              rewrittenExpression = new Function("If",
+                  new AndExpression(parameters.get(1),
+                      new NotExpression(new Function("JSon_Valid", parameters.get(0)))),
+                  new NullValue(), new Function("JSon_Array_Length", parameters.get(0)));
+              break;
           }
       }
     }

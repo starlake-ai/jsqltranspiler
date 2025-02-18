@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
+import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.ExtractExpression;
@@ -30,6 +31,9 @@ import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.HexValue;
 import net.sf.jsqlparser.expression.IntervalExpression;
 import net.sf.jsqlparser.expression.JsonExpression;
+import net.sf.jsqlparser.expression.JsonFunction;
+import net.sf.jsqlparser.expression.JsonFunctionExpression;
+import net.sf.jsqlparser.expression.JsonKeyValuePair;
 import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.NullValue;
@@ -43,9 +47,12 @@ import net.sf.jsqlparser.expression.WhenClause;
 import net.sf.jsqlparser.expression.WindowDefinition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.arithmetic.Concat;
+import net.sf.jsqlparser.expression.operators.arithmetic.Division;
 import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.expression.operators.relational.InExpression;
+import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
 import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
 import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
@@ -58,6 +65,7 @@ import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
 
@@ -82,10 +90,10 @@ import java.util.regex.Pattern;
 public class JSQLExpressionTranspiler extends ExpressionDeParser {
   final private Pattern ARRAY_COLUMN_TYPE_PATTERN = Pattern.compile("ARRAY<(.+)>");
 
-  public final HashMap<String, Object> parameters = new LinkedHashMap<>();
+  public final HashMap<String, Object> parameterMap = new LinkedHashMap<>();
 
-  public JSQLExpressionTranspiler(SelectDeParser deParser, StringBuilder buffer) {
-    super(deParser, buffer);
+  public JSQLExpressionTranspiler(SelectDeParser deParser, StringBuilder builder) {
+    super(deParser, builder);
   }
 
   // select ', { "' || keyword_name || '", "' || keyword_category || '" }'
@@ -118,6 +126,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   };
 
+  enum GeoMode {
+    GEOGRAPHY, GEOMETRY;
+  }
+
   enum TranspiledFunction {
     //@formatter:off
     CURRENT_DATE, CURRENT_DATETIME, CURRENT_TIME, CURRENT_TIMESTAMP, DATE, DATETIME, TIME, TIMESTAMP, DATE_ADD
@@ -134,9 +146,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     , ARRAY_TO_STRING, GENERATE_ARRAY, GENERATE_DATE_ARRAY, GENERATE_TIMESTAMP_ARRAY, ARRAY_DISTINCT
     , ARRAY_INTERSECT, FIRST_VALUE, LAST_VALUE, PERCENTILE_CONT, PERCENTILE_DISC, GENERATE_UUID, BOOL, LAX_BOOL
     , FLOAT64, LAX_FLOAT64, INT64, LAX_INT64, LAX_STRING, JSON_QUERY, JSON_VALUE, JSON_QUERY_ARRAY, JSON_VALUE_ARRAY
-    , JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING, NVL
+    , JSON_EXTRACT, JSON_EXTRACT_ARRAY, JSON_EXTRACT_SCALAR, JSON_EXTRACT_STRING_ARRAY, PARSE_JSON, TO_JSON, TO_JSON_STRING, NVL
     , UNNEST, ST_GEOGPOINT, ST_GEOGFROMTEXT, ST_GEOGFROMGEOJSON, ST_GEOGFROMWKB, ST_ASBINARY, ST_ASGEOJSON, ST_ASTEXT
-    , ST_BUFFER, ST_NUMPOINTS, ST_DISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER;
+    , ST_builder, ST_NUMPOINTS, ST_DISTANCE, ST_MAXDISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER, ST_LENGTH, ST_CLOSESTPOINT
+    // GEO_MODE
+    , ST_AREA
+    ;
     //@formatter:on
 
 
@@ -159,11 +174,15 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   enum UnsupportedFunction {
     //@formatter:off
     ASINH, ACOSH, COSH, SINH, COTH, COSINE_DISTANCE, CSC, CSCH, EUCLIDEAN_DISTANCE, SEC, SECH, APPROX_QUANTILES
-    , APPROX_TOP_COUNT, APPROX_TOP_SUM, SEARCH, VECTOR_SEARCH, APPENDS, EXTERNAL_OBJECT_TRANSFORM, GAP_FILL
-    , S2_CELLIDFROMPOINT, S2_COVERINGCELLIDS, ST_ANGLE, ST_AZIMUTH, ST_BUFFERWITHTOLERANCE, ST_CENTROID_AGG
-    , ST_CLOSESTPOINT, ST_CLUSTERDBSCAN, ST_GEOGFROM, ST_GEOGPOINTFROMGEOHASH, ST_GEOHASH, ST_HAUSDORFFDISTANCE
+    , APPROX_TOP_COUNT, APPROX_TOP_SUM, SEARCH, VECTOR_SEARCH
+    , S2_CELLIDFROMPOINT, S2_COVERINGCELLIDS, ST_ANGLE, ST_AZIMUTH, ST_builderWITHTOLERANCE, ST_CENTROID_AGG
+    , ST_CLUSTERDBSCAN, ST_GEOGFROM, ST_GEOGPOINTFROMGEOHASH, ST_GEOHASH, ST_HAUSDORFFDISTANCE
     , ST_INTERIORRINGS, ST_INTERSECTSBOX, ST_ISCOLLECTION, ST_LINEINTERPOLATEPOINT, ST_LINELOCATEPOINT, ST_LINESUBSTRING
-    , ST_MAKEPOLYGONORIENTED, ST_SNAPTOGRID;
+    , ST_MAKEPOLYGONORIENTED, ST_SNAPTOGRID
+    // time series
+    // https://cloud.google.com/bigquery/docs/reference/standard-sql/table-functions-built-in#appends
+    , APPENDS, CHANGES, EXTERNAL_OBJECT_TRANSFORM, GAP_FILL, RANGE_SESSIONIZE
+    ;
     //@formatter:on
 
     @SuppressWarnings({"PMD.EmptyCatchBlock"})
@@ -480,7 +499,16 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   public <S> StringBuilder visit(Function function, S params) {
     String functionName = function.getName();
     boolean hasParameters = hasParameters(function);
+    boolean hasSafePrefix = false;
     int paramCount = hasParameters ? function.getParameters().size() : 0;
+
+    GeoMode geoMode = GeoMode.GEOMETRY;
+    if ("GEOGRAPHY".equalsIgnoreCase(String.valueOf(parameterMap.get("GEO_MODE")))) {
+      geoMode = GeoMode.GEOGRAPHY;
+    } else if ("GEOGRAPHY"
+        .equalsIgnoreCase(String.valueOf(System.getProperties().get("GEO_MODE")))) {
+      geoMode = GeoMode.GEOGRAPHY;
+    }
 
     if (UnsupportedFunction.from(function) != null) {
       throw new RuntimeException(
@@ -496,7 +524,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (function.getMultipartName().size() > 1
         && function.getMultipartName().get(0).equalsIgnoreCase("SAFE")) {
       warning("SAFE prefix is not supported.");
+      hasSafePrefix = true;
       function.getMultipartName().remove(0);
+      functionName = function.getName();
     }
 
     if (function.isIgnoreNullsOutside()) {
@@ -511,6 +541,19 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (f != null) {
       switch (f) {
         case CURRENT_DATE:
+          if (parameters != null) {
+            switch (parameters.size()) {
+              case 0:
+                rewrittenExpression = new CastExpression("Cast", new Column(functionName), "DATE");
+                break;
+              case 1:
+                // CURRENT_DATE(timezone)
+                rewrittenExpression = new CastExpression("Cast",
+                    new TimezoneExpression(new Column(functionName), parameters.get(0)), "DATE");
+                break;
+            }
+          }
+          break;
         case CURRENT_DATETIME:
         case CURRENT_TIME:
         case CURRENT_TIMESTAMP:
@@ -520,7 +563,6 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                 rewrittenExpression = new Column(functionName);
                 break;
               case 1:
-                // CURRENT_DATE(timezone)
                 // CURRENT_DATETIME(timezone)
                 rewrittenExpression =
                     new TimezoneExpression(new Column(functionName), parameters.get(0));
@@ -883,8 +925,15 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
             }
           }
           break;
-        case SAFE_ADD:
         case SAFE_DIVIDE:
+          Expression p0 = parameters.get(0);
+          Expression p1 = parameters.get(1);
+          Expression orExpression = BinaryExpression.or(new EqualsTo(p1, new DoubleValue(0)),
+              new IsNullExpression(p1), new IsNullExpression(p0));
+          rewrittenExpression = new Function("If", orExpression, new NullValue(),
+              new Division(parameters.get(0), parameters.get(1)));
+          break;
+        case SAFE_ADD:
         case SAFE_MULTIPLY:
         case SAFE_SUBTRACT:
           warning("SAFE variant not supported");
@@ -959,13 +1008,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           if (parameters != null) {
             switch (parameters.size()) {
               case 3:
-                Expression p1 = parameters.get(0);
-                Expression p2 = parameters.get(1);
+                p0 = parameters.get(0);
+                p1 = parameters.get(1);
 
                 // turn it into a Lambda replacing the NULL values with 3rd parameter
-                p1 = new Function("List_Transform", p1, new LambdaExpression("x",
+                p0 = new Function("List_Transform", p0, new LambdaExpression("x",
                     new Function("Coalesce", new Column("x"), parameters.get(2))));
-                function.setParameters(p1, p2);
+                function.setParameters(p0, p1);
             }
           }
           break;
@@ -1002,25 +1051,66 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("UUID");
           break;
         case BOOL:
-        case LAX_BOOL:
           if (parameters.size() == 1) {
-            rewrittenExpression = new CastExpression("Cast", parameters.get(0), "Boolean");
+            rewrittenExpression = new CastExpression(hasSafePrefix ? "Try_Cast" : "Cast",
+                parameters.get(0), "Boolean");
           }
           break;
+        case LAX_BOOL:
+          rewrittenExpression = new CaseExpression(
+              new WhenClause(new StringValue("JSON"),
+                  new CastExpression("Try_Cast",
+                      new Function("Trim",
+                          new Function("JSON_EXTRACT_STRING", parameters.get(0),
+                              new StringValue("$"))),
+                      "BOOLEAN")),
+              new WhenClause(new StringValue("TEXT"),
+                  new CastExpression("Try_Cast", new Function("Trim", parameters.get(0)),
+                      "BOOLEAN")))
+              .withElseExpression(new CastExpression("Try_Cast", parameters.get(0), "BOOLEAN"))
+              .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+          break;
         case FLOAT64:
-        case LAX_FLOAT64:
           switch (parameters.size()) {
             case 2:
               warning("WIDE_NUMBER_MODE is not supported.");
             case 1:
-              rewrittenExpression = new CastExpression("Cast", parameters.get(0), "Double");
+              rewrittenExpression = new CastExpression(hasSafePrefix ? "Try_Cast" : "Cast",
+                  parameters.get(0), "Double");
           }
           break;
+        case LAX_FLOAT64:
+          rewrittenExpression = new CaseExpression(
+              new WhenClause(new StringValue("JSON"),
+                  new CastExpression("Try_Cast",
+                      new Function("Trim",
+                          new Function("JSON_EXTRACT_STRING", parameters.get(0),
+                              new StringValue("$"))),
+                      "FLOAT")),
+              new WhenClause(new StringValue("TEXT"),
+                  new CastExpression("Try_Cast", new Function("Trim", parameters.get(0)), "FLOAT")))
+              .withElseExpression(new CastExpression("Try_Cast", parameters.get(0), "FLOAT"))
+              .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
+          break;
         case INT64:
-        case LAX_INT64:
           if (parameters.size() == 1) {
-            rewrittenExpression = new CastExpression("Cast", parameters.get(0), "HugeInt");
+            rewrittenExpression = new CastExpression(hasSafePrefix ? "Try_Cast" : "Cast",
+                parameters.get(0), "HugeInt");
           }
+          break;
+        case LAX_INT64:
+          rewrittenExpression = new CaseExpression(
+              new WhenClause(new StringValue("JSON"),
+                  new CastExpression("Try_Cast",
+                      new Function("Trim",
+                          new Function("JSON_EXTRACT_STRING", parameters.get(0),
+                              new StringValue("$"))),
+                      "HUGEINT")),
+              new WhenClause(new StringValue("TEXT"),
+                  new CastExpression("Try_Cast", new Function("Trim", parameters.get(0)),
+                      "HUGEINT")))
+              .withElseExpression(new CastExpression("Try_Cast", parameters.get(0), "HUGEINT"))
+              .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
           break;
         case STRING:
         case LAX_STRING:
@@ -1048,6 +1138,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                               new CastExpression("Try_Cast", castDateTime(parameters.get(0)),
                                   "TIMESTAMPTZ"),
                               new StringValue("%c%z"))))
+                      .withElseExpression(new CastExpression("Try_Cast", parameters.get(0), "TEXT"))
                       .withSwitchExpression(new Function("TypeOf", parameters.get(0)));
               break;
 
@@ -1059,23 +1150,127 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               break;
           }
           break;
-
+        case JSON_EXTRACT:
+          switch (paramCount) {
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", ".\"$1\"");
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract");
+              break;
+          }
+          break;
         case JSON_EXTRACT_STRING_ARRAY:
+          function.setName("JSon_Extract_String");
+          switch (paramCount) {
+            case 1:
+              function.setParameters(parameters.get(0), new StringValue("$[*]"));
+              break;
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                jsonPath += "[*]";
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract_String");
+              break;
+          }
+          break;
+        case JSON_VALUE_ARRAY:
+          function.setName("JSon_Extract_String");
+          switch (paramCount) {
+            case 1:
+              function.setParameters(parameters.get(0), new StringValue("$[*]"));
+              break;
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                jsonPath += "[*]";
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract_String");
+              break;
+          }
+          rewrittenExpression = new Function("If", new Function("JSon_Valid", parameters.get(0)),
+              function, new ArrayConstructor());
+          break;
         case JSON_QUERY:
+          switch (paramCount) {
+            case 1:
+              function.setParameters(parameters.get(0), new StringValue("$"));
+              function.setName("JSon_Extract");
+              break;
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract");
+              break;
+          }
+          break;
         case JSON_EXTRACT_ARRAY:
         case JSON_QUERY_ARRAY:
-          if (paramCount == 2 && parameters.get(1) instanceof StringValue) {
-            String jsonPath = ((StringValue) parameters.get(1)).getValue();
-            jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "/$1");
-            function.setParameters(parameters.get(0), new StringValue(jsonPath));
+          switch (paramCount) {
+            case 1:
+              function.setParameters(parameters.get(0), new StringValue("$[*]"));
+              function.setName("JSon_Extract");
+              break;
+            case 2:
+              if (parameters.get(1) instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"\\]", "\"$1\"");
+                jsonPath += "[*]";
+                function.setParameters(parameters.get(0), new StringValue(jsonPath));
+              }
+              function.setName("JSon_Extract");
+              break;
           }
-          function.setName("JSon_Extract");
           break;
         case JSON_EXTRACT_SCALAR:
         case JSON_VALUE:
-          function.setName("JSon_Extract_String");
-          break;
-        case JSON_VALUE_ARRAY:
+          /*
+            SELECT
+            CASE
+            WHEN Json_type(JSON_EXTRACT('{"a.b":{"c":"world"}}','$."a.b".c')) IN ('VARCHAR', 'DOUBLE', 'BOOLEAN', 'UBIGINT', 'BIGINT')
+            THEN JSON_EXTRACT_STRING('{"a.b":{"c":"world"}}','$."a.b".c')
+            ELSE JSON_VALUE('{"a.b":{"c":"world"}}','$."a.b".c')
+            END AS HELLO;
+           */
+          switch (paramCount) {
+            case 2:
+              p1 = parameters.get(1);
+              if (p1 instanceof StringValue) {
+                String jsonPath = ((StringValue) parameters.get(1)).getValue();
+                if (jsonPath.trim().equalsIgnoreCase("$")) {
+                  function.setParameters(parameters.get(0), new StringValue("$"));
+                } else {
+                  jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+                  jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"]", "\"$1\"");
+                  p1 = new StringValue(jsonPath);
+                }
+              }
+
+              ParenthesedExpressionList<?> types = new ParenthesedExpressionList<>(
+                  new StringValue("VARCHAR"), new StringValue("DOUBLE"), new StringValue("BOOLEAN"),
+                  new StringValue("UBIGINT"), new StringValue("BIGINT"));
+              rewrittenExpression =
+                  new CaseExpression(new Function("JSON_VALUE$$", parameters.get(0), p1),
+                      new WhenClause(
+                          new InExpression(new Function("JSon_Type",
+                              new Function("JSon_Extract", parameters.get(0), p1)), types),
+                          new Function("JSON_EXTRACT_STRING", parameters.get(0), p1)));
+              break;
+          }
           break;
         case PARSE_JSON:
           switch (paramCount) {
@@ -1095,6 +1290,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                   new CastExpression(new Function("To_Json", parameters.get(0)), "TEXT");
               break;
           }
+          break;
+        case TO_JSON:
+          if (paramCount > 1) {
+            warning("No additional flags supported.");
+          }
+          function.setParameters(parameters.get(0));
           break;
         case ST_GEOGPOINT:
           function.setName("ST_POINT");
@@ -1127,8 +1328,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           break;
         case ST_ASBINARY:
           // SELECT ST_AsWKB('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'::GEOMETRY)::BLOB;
-          rewrittenExpression = new CastExpression(
-              new Function("ST_AsWKB", new CastExpression(parameters.get(0), "GEOMETRY")), "BLOB");
+          rewrittenExpression =
+              new Function("ST_AsWKB", new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
         case ST_ASGEOJSON:
           // ST_AsGeoJSON('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'::GEOMETRY);
@@ -1138,18 +1339,47 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           // SELECT ST_AsText(ST_MakeEnvelope(0,0,1,1));
           function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
-        case ST_BUFFER:
+        case ST_builder:
           if (paramCount > 3) {
             warning("USE_SPHEROID, ENDCAP, SIDE are not supported.");
           }
           switch (paramCount) {
             case 2:
-              function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
-                  parameters.get(1));
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
+                      parameters.get(1));
+                  break;
+                case GEOGRAPHY:
+                  // SELECT ST_TRANSFORM(ST_builder(ST_TRANSFORM(ST_GEOMFROMTEXT('POLYGON((0 0, 0 1,
+                  // 1 1, 1 0, 0 0))'), 'EPSG:4326', 'EPSG:6933'), 20), 'EPSG:6933', 'EPSG:4326') as
+                  // builder
+                  rewrittenExpression = new Function("ST_TRANSFORM",
+                      new Function("ST_builder$$",
+                          new Function("ST_TRANSFORM",
+                              new CastExpression(parameters.get(0), "GEOMETRY"),
+                              new StringValue("EPSG:4326"), new StringValue("EPSG:6933")),
+                          parameters.get(1)),
+                      new StringValue("EPSG:6933"), new StringValue("EPSG:4326"));
+                  break;
+              }
               break;
             case 3:
-              function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
-                  parameters.get(1), parameters.get(2));
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"),
+                      parameters.get(1), parameters.get(2));
+                  break;
+                case GEOGRAPHY:
+                  rewrittenExpression = new Function("ST_TRANSFORM",
+                      new Function("ST_builder$$",
+                          new Function("ST_TRANSFORM",
+                              new CastExpression(parameters.get(0), "GEOMETRY"),
+                              new StringValue("EPSG:4326"), new StringValue("EPSG:6933")),
+                          parameters.get(1), parameters.get(2)),
+                      new StringValue("EPSG:6933"), new StringValue("EPSG:4326"));
+                  break;
+              }
               break;
           }
           break;
@@ -1157,10 +1387,64 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("ST_NUMPOINTS");
           function.setParameters(new CastExpression(parameters.get(0), "GEOMETRY"));
           break;
-        case ST_DISTANCE:
-          if (paramCount > 2) {
-            warning("USE_SPHEROID is not supported.");
+        case ST_LENGTH:
+          switch (paramCount) {
+            case 1:
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setName("St_Length");
+                  break;
+                case GEOGRAPHY:
+                  function.setName("ST_Length_Spheroid");
+                  break;
+              }
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)));
+              break;
+            case 2:
+              function.setName("ST_Length_Spheroid");
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)));
+              break;
           }
+          break;
+        case ST_CLOSESTPOINT:
+          if (paramCount == 2) {
+            rewrittenExpression = new Function("ST_StartPoint",
+                new Function("ST_ShortestLine", parameters.get(0), parameters.get(1)));
+          }
+          break;
+        case ST_DISTANCE:
+          switch (paramCount) {
+            case 2:
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setName("ST_Distance");
+                  break;
+                case GEOGRAPHY:
+                  function.setName("ST_Distance_Sphere");
+                  break;
+              }
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)),
+                  new Function("ST_FLIPCOORDINATES", parameters.get(1)));
+              break;
+            case 3:
+              rewrittenExpression = new Function("If", parameters.get(2),
+                  new Function("ST_Distance_Spheroid",
+                      new Function("ST_FLIPCOORDINATES", parameters.get(0)),
+                      new Function("ST_FLIPCOORDINATES", parameters.get(1))),
+                  new Function("ST_Distance_Sphere",
+                      new Function("ST_FLIPCOORDINATES", parameters.get(0)),
+                      new Function("ST_FLIPCOORDINATES", parameters.get(1))));
+              break;
+          }
+          break;
+        case ST_MAXDISTANCE:
+          // SELECT ( select max_distance from ST_MaxDistance(st_geomfromtext('LINESTRING(0 0, 0 1,
+          // 1 1, 1 0, 0 0)'), st_geomfromtext('LINESTRING(10 0, 10 1, 11 1, 11 0, 10 0)')) )
+          // max_distance;
+          TableFunction tableFunction =
+              new TableFunction("ST_MaxDistance$$", parameters.get(0), parameters.get(1));
+          rewrittenExpression =
+              new ParenthesedSelect(List.of(new Column("max_distance")), tableFunction);
           break;
         case ST_BOUNDINGBOX:
           // not aggregated version of EXTEND
@@ -1172,8 +1456,31 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("ST_Extent_Agg");
           break;
         case ST_PERIMETER:
-          if (paramCount > 3) {
-            warning("USE_SPHEROID is not supported.");
+          switch (paramCount) {
+            case 1:
+              switch (geoMode) {
+                case GEOMETRY:
+                  function.setName("St_Perimeter");
+                  break;
+                case GEOGRAPHY:
+                  function.setName("ST_Perimeter_Spheroid");
+                  break;
+              }
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)));
+              break;
+            case 2:
+              function.setName("ST_Perimeter_Spheroid");
+              function.setParameters(new Function("ST_FLIPCOORDINATES", parameters.get(0)));
+              break;
+          }
+          break;
+        case ST_AREA:
+          switch (geoMode) {
+            case GEOMETRY:
+              break;
+            case GEOGRAPHY:
+              function.setName("ST_Area_Spheroid");
+              break;
           }
       }
     }
@@ -1182,21 +1489,21 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       rewrittenExpression.accept(this, null);
     }
-    return buffer;
+    return builder;
   }
 
   @Override
   public <S> StringBuilder visit(AllColumns allColumns, S context) {
-    if (allColumns.getReplaceExpressions() != null) {
-      warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
-      allColumns.setReplaceExpressions(null);
-    }
+    // if (allColumns.getReplaceExpressions() != null) {
+    // warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
+    // allColumns.setReplaceExpressions(null);
+    // }
 
     // DuckDB uses "EXCLUDE" instead "EXCEPT", because why not?!
     super.visit(
         allColumns.getExceptColumns() != null ? allColumns.setExceptKeyword("EXCLUDE") : allColumns,
         null);
-    return buffer;
+    return builder;
   }
 
   @SuppressWarnings({"PMD.ExcessiveMethodLength"})
@@ -1360,7 +1667,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       rewrittenExpression.accept(this, null);
     }
-    return buffer;
+    return builder;
   }
 
   private Expression rewriteLength(ExpressionList<?> parameters) {
@@ -1926,7 +2233,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       super.visit(extractExpression, null);
     }
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -1954,13 +2261,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
 
     super.visit(stringValue.withPrefix(null), null);
-    return buffer;
+    return builder;
   }
 
   @Override
   public <S> StringBuilder visit(HexValue hexValue, S context) {
     super.visit(hexValue.getLongValue(), null);
-    return buffer;
+    return builder;
   }
 
   public static String convertUnicode(String input) {
@@ -1999,9 +2306,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     // CAST has been rewritten before already
     if ("$$".equalsIgnoreCase(castExpression.keyword)) {
       castExpression.getLeftExpression().accept(this, null);
-      this.buffer.append("::");
-      this.buffer.append(rewriteType(castExpression.getColDataType()));
-      return this.buffer;
+      this.builder.append("::");
+      this.builder.append(rewriteType(castExpression.getColDataType()));
+      return this.builder;
     }
 
     // same cast
@@ -2022,7 +2329,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
                   CastExpression.DataType.TIME_WITHOUT_TIME_ZONE)) {
 
         castExpression.getLeftExpression().accept(this, null);
-        return buffer;
+        return builder;
       }
     }
 
@@ -2041,7 +2348,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       Function f = new Function("Encode$$", castExpression.getLeftExpression());
       f.accept(this, null);
 
-      return buffer;
+      return builder;
     }
 
     if (castExpression.keyword != null && castExpression.keyword.endsWith("$$")) {
@@ -2050,62 +2357,145 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
 
     if (castExpression.isImplicitCast()) {
-      this.buffer.append(rewriteType(castExpression.getColDataType()));
-      this.buffer.append(" ");
+      this.builder.append(rewriteType(castExpression.getColDataType()));
+      this.builder.append(" ");
       castExpression.getLeftExpression().accept(this, null);
     } else if (castExpression.isUseCastKeyword()) {
-      this.buffer.append(castExpression.keyword).append("(");
+      this.builder.append(castExpression.keyword).append("(");
       castExpression.getLeftExpression().accept(this, null);
-      this.buffer.append(" AS ");
-      this.buffer.append(castExpression.getColumnDefinitions().size() > 1
+      this.builder.append(" AS ");
+      this.builder.append(castExpression.getColumnDefinitions().size() > 1
           ? "ROW(" + Select.getStringList(castExpression.getColumnDefinitions()) + ")"
           : rewriteType(castExpression.getColDataType()).toString());
-      this.buffer.append(")");
+      this.builder.append(")");
     } else {
       castExpression.getLeftExpression().accept(this, null);
-      this.buffer.append("::");
-      this.buffer.append(rewriteType(castExpression.getColDataType()));
+      this.builder.append("::");
+      this.builder.append(rewriteType(castExpression.getColDataType()));
     }
-    return buffer;
+    return builder;
   }
 
   @Override
   public <S> StringBuilder visit(StructType structType, S context) {
     if (structType.getArguments() != null && !structType.getArguments().isEmpty()) {
-      buffer.append("{ ");
+      builder.append("{ ");
       int i = 0;
       for (SelectItem<?> e : structType.getArguments()) {
         if (0 < i) {
-          buffer.append(",");
+          builder.append(",");
         }
         if (e.getAlias() != null) {
-          buffer.append(e.getAlias().getName());
+          builder.append(e.getAlias().getName());
         } else if (structType.getParameters() != null && i < structType.getParameters().size()) {
-          buffer.append(structType.getParameters().get(i).getKey());
+          builder.append(structType.getParameters().get(i).getKey());
         }
 
-        buffer.append(":");
+        builder.append(":");
         e.getExpression().accept(this, null);
 
         i++;
       }
-      buffer.append(" }");
+      builder.append(" }");
     }
 
     if (structType.getParameters() != null && !structType.getParameters().isEmpty()) {
-      buffer.append("::STRUCT( ");
+      builder.append("::STRUCT( ");
       int i = 0;
       for (Map.Entry<String, ColDataType> e : structType.getParameters()) {
         if (0 < i++) {
-          buffer.append(",");
+          builder.append(",");
         }
-        buffer.append(e.getKey()).append(" ");
-        buffer.append(e.getValue());
+        builder.append(e.getKey()).append(" ");
+        builder.append(e.getValue());
       }
-      buffer.append(")");
+      builder.append(")");
     }
-    return buffer;
+    return builder;
   }
+
+  public <S> StringBuilder visit(JsonFunction jsonFunction, S context) {
+    switch (jsonFunction.getType()) {
+      case OBJECT:
+        builder.append("JSON_OBJECT( ");
+        int i = 0;
+
+        for (JsonKeyValuePair keyValuePair : jsonFunction.getKeyValuePairs()) {
+          if (i > 0) {
+            builder.append(", ");
+          }
+
+          if (keyValuePair.isUsingValueKeyword()) {
+            if (keyValuePair.isUsingKeyKeyword()) {
+              builder.append("KEY ");
+            }
+
+            builder.append(keyValuePair.getKey()).append(" VALUE ").append(keyValuePair.getValue());
+          } else {
+            builder.append(keyValuePair.getKey()).append(":").append(keyValuePair.getValue());
+          }
+
+          if (keyValuePair.isUsingFormatJson()) {
+            builder.append(" FORMAT JSON");
+          }
+
+          ++i;
+        }
+
+        if (jsonFunction.getOnNullType() != null) {
+          switch (jsonFunction.getOnNullType()) {
+            case NULL:
+              builder.append(" NULL ON NULL");
+              break;
+            case ABSENT:
+              builder.append(" ABSENT On NULL");
+          }
+        }
+
+        if (jsonFunction.getUniqueKeysType() != null) {
+          switch (jsonFunction.getUniqueKeysType()) {
+            case WITH:
+              builder.append(" WITH UNIQUE KEYS");
+              break;
+            case WITHOUT:
+              builder.append(" WITHOUT UNIQUE KEYS");
+          }
+        }
+
+        builder.append(" ) ");
+        break;
+
+      case ARRAY:
+        builder.append("JSON_ARRAY( ");
+        int k = 0;
+
+        for (JsonFunctionExpression expr : jsonFunction.getExpressions()) {
+          if (k > 0) {
+            builder.append(", ");
+          }
+          expr.getExpression().accept(this, context);
+          builder.append(expr.isUsingFormatJson() ? " FORMAT JSON" : "");
+          ++k;
+        }
+
+        if (jsonFunction.getOnNullType() != null) {
+          switch (jsonFunction.getOnNullType()) {
+            case NULL:
+              builder.append(" NULL ON NULL ");
+              break;
+            case ABSENT:
+              builder.append(" ABSENT ON NULL ");
+          }
+        }
+        builder.append(") ");
+        break;
+
+      default:
+        jsonFunction.appendTo(builder);
+    }
+    return builder;
+  }
+
 
 
   // @todo: complete the data type mapping
@@ -2131,7 +2521,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   public final void warning(String s) {
-    buffer.append("/* Approximation: ").append(s).append(" */ ");
+    builder.append("/* Approximation: ").append(s).append(" */ ");
   }
 
   public static String convertByteStringToUnicode(String byteString) {
@@ -2377,9 +2767,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   public <S> StringBuilder visit(TimeKeyExpression expression, S context) {
     String value = expression.getStringValue().toUpperCase().replaceAll("[()]", "");
 
-    if (parameters.containsKey(value)) {
+    if (parameterMap.containsKey(value)) {
       // @todo: Cast Date/Time types
-      castDateTime(parameters.get(value).toString()).accept(this, null);
+      castDateTime(parameterMap.get(value).toString()).accept(this, null);
     } else if (System.getProperties().containsKey(value)) {
       castDateTime(System.getProperty(value)).accept(this, null);
     } else if (value.equals("CURRENT_TIMEZONE")) {
@@ -2391,7 +2781,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       super.visit(expression, null);
     }
 
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -2403,7 +2793,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         likeExpression.setLikeKeyWord("SIMILAR TO");
     }
     super.visit(likeExpression, null);
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -2411,7 +2801,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     CastExpression castExpression =
         new CastExpression("Cast", function.getExpression(), function.getColDataType().toString());
     castExpression.accept(this, null);
-    return buffer;
+    return builder;
   }
 
   public static boolean isEmpty(Collection<?> collection) {
@@ -2444,10 +2834,10 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
 
     if (tableName != null && !tableName.isEmpty()) {
-      buffer.append(tableName).append(column.getTableDelimiter());
+      builder.append(tableName).append(column.getTableDelimiter());
     }
 
-    buffer.append(column.getColumnName());
+    builder.append(column.getColumnName());
     if (column.getArrayConstructor() != null) {
       ArrayConstructor arrayConstructor = column.getArrayConstructor();
 
@@ -2458,7 +2848,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
       column.getArrayConstructor().accept(this, null);
     }
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -2471,7 +2861,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     } else {
       super.visit(expressionList, null);
     }
-    return buffer;
+    return builder;
   }
 
   @Override
@@ -2482,9 +2872,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     for (Map.Entry<Expression, String> ident : e.getIdentList()) {
       String operatorStr = ident.getValue();
       if (operatorStr.equalsIgnoreCase(":")) {
-        buffer.append("->");
+        builder.append("->");
       } else {
-        buffer.append(operatorStr);
+        builder.append(operatorStr);
       }
 
       Expression expr = ident.getKey();
@@ -2502,7 +2892,15 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         expr.accept(this, context);
       }
     }
-    return buffer;
+    return builder;
+  }
+
+  public <S> StringBuilder visit(ArrayConstructor arrayConstructor, S context) {
+    if (arrayConstructor.getDataType() != null) {
+      warning("DATA TYPE is unsupported for ArrayContructor");
+      arrayConstructor.setDataType(null);
+    }
+    return super.visit(arrayConstructor, context);
   }
 
 }

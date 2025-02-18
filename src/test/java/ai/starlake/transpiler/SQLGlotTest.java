@@ -1,6 +1,6 @@
 /**
  * Starlake.AI JSQLTranspiler is a SQL to DuckDB Transpiler.
- * Copyright (C) 2024 Starlake.AI <hayssam.saleh@starlake.ai>
+ * Copyright (C) 2025 Starlake.AI <hayssam.saleh@starlake.ai>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,7 +85,11 @@ public abstract class SQLGlotTest extends JSQLTranspilerTest {
       Assertions.assertThat(i).isEqualTo(t.expectedTally).as("Returned records do not tally.");
     }
 
-    executeTest(connDuck, t, output.toString());
+    // For any JSON related test we want to distinguish the SQL NULL, while for anything else it
+    // does not matter
+    executeTest(connDuck, t, output.toString(),
+        f.getName().toLowerCase().contains("json") ? JSQLResultSetHelperService.DEFAULT_NULL_VALUE
+            : "");
   }
 
 }
