@@ -63,9 +63,9 @@ import java.util.logging.Logger;
 public class JSQLColumResolver
     implements SelectVisitor<JdbcResultSetMetaData>, FromItemVisitor<JdbcResultSetMetaData> {
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
+  private boolean commentFlag = true;
   final JdbcMetaData metaData;
   final JSQLExpressionColumnResolver expressionColumnResolver;
-
 
   /**
    * Instantiates a new JSQLColumnResolver for the provided Database Metadata
@@ -466,8 +466,11 @@ public class JSQLColumResolver
         Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
         if (selectItem.getExpression() instanceof AllColumns
             || selectItem.getExpression() instanceof AllTableColumns) {
-          newSelectItems.add(new SelectItem<>(
-              new Column(t, col.columnName).withCommentText("Resolved Column"), alias));
+          Column column = new Column(t, col.columnName);
+          if (isCommentFlag()) {
+            column.setCommentText("Resolved Column");
+          }
+          newSelectItems.add(new SelectItem<>(column, alias));
         } else {
           newSelectItems.add(selectItem);
         }
@@ -644,4 +647,19 @@ public class JSQLColumResolver
   public Set<String> getUnresolvedObjects() {
     return this.metaData.getUnresolvedObjects();
   }
+
+  /**
+   * @return the comment columns flag
+   */
+  public boolean isCommentFlag() {
+    return commentFlag;
+  }
+
+  /**
+   * @param commentFlag the comment columns flag
+   */
+  public void setCommentFlag(boolean commentFlag) {
+    this.commentFlag = commentFlag;
+  }
+
 }
