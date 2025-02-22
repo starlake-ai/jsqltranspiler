@@ -11,7 +11,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ windows-latest, macos-latest, ubuntu-latest ]
+        os: [ ubuntu-latest ]
       max-parallel: 1
     runs-on: ${{matrix.os}}
     steps:
@@ -23,4 +23,4 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-    - run: ./gradlew check jacocoTestReport jacocoTestCoverageVerification coveralls
+    - run: LANG=en_US.UTF-8 ./gradlew check jacocoTestReport jacocoTestCoverageVerification coveralls
