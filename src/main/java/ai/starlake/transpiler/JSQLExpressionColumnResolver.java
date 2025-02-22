@@ -84,9 +84,24 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     if (columnTableName != null) {
       // column has a table name prefix, which could be the actual table name or the table's
       // alias
-      String actualColumnTableName = fromTables.containsKey(columnTableName)
-          ? fromTables.get(columnTableName).getUnquotedName()
-          : null;
+      String actualColumnTableName = null;
+      if (!fromTables.containsKey(columnTableName)) {
+        switch (metaData.getErrorMode()) {
+          case STRICT:
+            throw new TableNotDeclaredException(columnTableName, fromTables.keySet());
+          case LENIENT:
+            LOGGER.warning("Table " + columnTableName + " has not been declared in "
+                + Arrays.deepToString(fromTables.keySet().toArray(new String[0])));
+            break;
+          case IGNORE:
+            LOGGER.fine("Table " + columnTableName + " has not been declared in "
+                + Arrays.deepToString(fromTables.keySet().toArray(new String[0])));
+            break;
+        }
+      } else {
+        actualColumnTableName = fromTables.get(columnTableName).getUnquotedName();
+      }
+
 
       String actualColumnSchemaName = fromTables.containsKey(columnTableName)
           ? fromTables.get(columnTableName).getUnquotedSchemaName()
@@ -373,8 +388,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       if (jdbcColumn == null) {
         switch (columResolver.getErrorMode()) {
           case STRICT:
-            throw new RuntimeException("Column " + column + " not found in tables "
-                + Arrays.deepToString(metaData.getFromTables().values().toArray()));
+            throw new ColumnNotFoundException(column.getFullyQualifiedName(),
+                metaData.getFromTables().keySet());
           case LENIENT:
             boolean found = false;
 

@@ -12,11 +12,10 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.select.AllColumns;
-import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.GroupByElement;
 import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
@@ -24,7 +23,9 @@ import net.sf.jsqlparser.statement.select.SelectVisitor;
 import net.sf.jsqlparser.statement.select.WithItem;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class JSQLResolver extends JSQLColumResolver {
   List<JdbcColumn> withColumns = new ArrayList<>();
@@ -33,6 +34,7 @@ public class JSQLResolver extends JSQLColumResolver {
   List<JdbcColumn> groupByColumns = new ArrayList<>();
   List<JdbcColumn> havingColumns = new ArrayList<>();
   List<JdbcColumn> joinedOnColumns = new ArrayList<>();
+  List<JdbcColumn> orderByColumns = new ArrayList<>();
 
   public JSQLResolver(JdbcMetaData metaData) {
     super(metaData);
@@ -144,36 +146,25 @@ public class JSQLResolver extends JSQLColumResolver {
     }
 
 
-    // column positions in MetaData start at 1
-    ArrayList<SelectItem<?>> newSelectItems = new ArrayList<>();
-    for (SelectItem<?> selectItem : select.getSelectItems()) {
-      Alias alias = selectItem.getAlias();
-      List<JdbcColumn> jdbcColumns =
-          selectItem.getExpression().accept(expressionColumnResolver, metaData);
-
-      for (JdbcColumn col : jdbcColumns) {
-        resultSetMetaData.add(col, alias != null ? alias.getUnquotedName() : null);
-        Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
-        if (selectItem.getExpression() instanceof AllColumns
-            || selectItem.getExpression() instanceof AllTableColumns) {
-          newSelectItems.add(new SelectItem<>(
-              new Column(t, col.columnName).withCommentText("Resolved Column"), alias));
-        } else {
-          newSelectItems.add(selectItem);
-        }
+    if (select.getWithItemsList() != null) {
+      for (WithItem<?> withItem : select.getWithItemsList()) {
+        withColumns.addAll(withItem.accept(expressionColumnResolver, select));
       }
-
     }
-    select.setSelectItems(newSelectItems);
+
+    // column positions in MetaData start at 1
+    for (SelectItem<?> selectItem : select.getSelectItems()) {
+      selectColumns.addAll(selectItem.getExpression().accept(expressionColumnResolver, metaData));
+    }
 
     // Join expressions
     if (joins != null) {
       for (Join join : joins) {
         for (Column column : join.getUsingColumns()) {
-          joinedOnColumns.addAll(column.accept(expressionColumnResolver, select));
+          joinedOnColumns.addAll(column.accept(expressionColumnResolver, metaData));
         }
         for (Expression expression : join.getOnExpressions()) {
-          joinedOnColumns.addAll(expression.accept(expressionColumnResolver, select));
+          joinedOnColumns.addAll(expression.accept(expressionColumnResolver, metaData));
         }
       }
     }
@@ -200,6 +191,17 @@ public class JSQLResolver extends JSQLColumResolver {
       }
     }
 
+    if (select.getHaving() != null) {
+      havingColumns.addAll(select.getHaving().accept(expressionColumnResolver, metaData));
+    }
+
+    List<OrderByElement> orderByElements = select.getOrderByElements();
+    if (orderByElements != null) {
+      for (OrderByElement orderByElement : orderByElements) {
+        orderByElement.getExpression().accept(expressionColumnResolver, metaData);
+      }
+    }
+
     return resultSetMetaData;
   }
 
@@ -210,6 +212,43 @@ public class JSQLResolver extends JSQLColumResolver {
   public JSQLResolver setWhereColumns(List<JdbcColumn> whereColumns) {
     this.whereColumns = whereColumns;
     return this;
+  }
+
+  public List<JdbcColumn> getWithColumns() {
+    return withColumns;
+  }
+
+  public List<JdbcColumn> getSelectColumns() {
+    return selectColumns;
+  }
+
+  public List<JdbcColumn> getGroupByColumns() {
+    return groupByColumns;
+  }
+
+  public List<JdbcColumn> getHavingColumns() {
+    return havingColumns;
+  }
+
+  public List<JdbcColumn> getJoinedOnColumns() {
+    return joinedOnColumns;
+  }
+
+  public List<JdbcColumn> getOrderByColumns() {
+    return orderByColumns;
+  }
+
+  public Set<JdbcColumn> getAllColumns() {
+    Set<JdbcColumn> allColumns = new HashSet<>();
+    allColumns.addAll(withColumns);
+    allColumns.addAll(selectColumns);
+    allColumns.addAll(joinedOnColumns);
+    allColumns.addAll(whereColumns);
+    allColumns.addAll(groupByColumns);
+    allColumns.addAll(havingColumns);
+    allColumns.addAll(orderByColumns);
+
+    return allColumns;
   }
 
   /**

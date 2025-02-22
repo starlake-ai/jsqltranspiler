@@ -16,6 +16,9 @@
  */
 package ai.starlake.transpiler.schema;
 
+import ai.starlake.transpiler.CatalogNotFoundException;
+import ai.starlake.transpiler.SchemaNotFoundException;
+import ai.starlake.transpiler.TableNotFoundException;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 
@@ -352,30 +355,55 @@ public final class JdbcMetaData implements DatabaseMetaData {
     JdbcCatalog jdbcCatalog = catalogs
         .get(catalogName == null || catalogName.isEmpty() ? currentCatalogName : catalogName);
     if (jdbcCatalog == null) {
-      LOGGER.info(
-          "Available catalogues: " + Arrays.deepToString(catalogs.keySet().toArray(new String[0])));
-      throw new RuntimeException(
-          "Catalog " + catalogName + " does not exist in the DatabaseMetaData.");
+      switch (errorMode) {
+        case STRICT:
+          throw new CatalogNotFoundException(catalogName);
+        case LENIENT:
+          LOGGER.warning("Available catalogues: "
+              + Arrays.deepToString(catalogs.keySet().toArray(new String[0])));
+          break;
+        case IGNORE:
+          LOGGER.fine("Available catalogues: "
+              + Arrays.deepToString(catalogs.keySet().toArray(new String[0])));
+          break;
+      }
     }
 
     JdbcSchema jdbcSchema =
         jdbcCatalog.get(schemaName == null || schemaName.isEmpty() ? currentSchemaName
             : schemaName.replaceAll("^\"|\"$", ""));
     if (jdbcSchema == null) {
-      LOGGER.info("Available schema: "
-          + Arrays.deepToString(jdbcCatalog.schemas.keySet().toArray(new String[0])));
-      throw new RuntimeException(
-          "Schema " + schemaName + " does not exist in the given Catalog " + catalogName);
+      switch (errorMode) {
+        case STRICT:
+          throw new SchemaNotFoundException(schemaName);
+        case LENIENT:
+          LOGGER.warning("Available schema: "
+              + Arrays.deepToString(jdbcCatalog.schemas.keySet().toArray(new String[0])));
+          break;
+        case IGNORE:
+          LOGGER.fine("Available schema: "
+              + Arrays.deepToString(jdbcCatalog.schemas.keySet().toArray(new String[0])));
+          break;
+      }
     }
 
     if (tableName != null && !tableName.isEmpty()) {
       JdbcTable jdbcTable = jdbcSchema.get(tableName.replaceAll("^\"|\"$", ""));
 
       if (jdbcTable == null) {
-        LOGGER.info("Available tables: "
-            + Arrays.deepToString(jdbcSchema.tables.keySet().toArray(new String[0])));
-        // throw new RuntimeException(
-        // "Table " + tableName + " does not exist in the given Schema " + schemaName);
+        switch (errorMode) {
+          case STRICT:
+            throw new TableNotFoundException(tableName, jdbcSchema.tables.keySet());
+          case LENIENT:
+            LOGGER.warning("Available tables: "
+                + Arrays.deepToString(jdbcSchema.tables.keySet().toArray(new String[0])));
+            break;
+          case IGNORE:
+            LOGGER.finer("Available tables: "
+                + Arrays.deepToString(jdbcSchema.tables.keySet().toArray(new String[0])));
+            break;
+        }
+
       } else {
         jdbcColumn = jdbcTable.columns.get(columnName.replaceAll("^\"|\"$", ""));
       }
