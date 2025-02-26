@@ -6,31 +6,52 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Set;
 
 
 class JSQLResolverTest extends AbstractColumnResolverTest {
 
   @Test
-  void testSimplestSchemaProvider() throws JSQLParserException, SQLException {
+  void testSimpleSelect() throws JSQLParserException, SQLException {
     String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"}};
 
-    // allows for:
-    // JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
-
     String sqlStr = "SELECT sum(b.col1) FROM a, b where a.col2='test' group by b.col3;";
+
+    // all involved columns with tables
+    String[][] expectedColumns = {{"b", "col1"}, {"a", "col2"}, {"b", "col3"}};
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    Set<JdbcColumn> actualColumns = resolver.resolve(sqlStr);
+
+    assertThatTableAndColumnsMatch(actualColumns, expectedColumns);
+
+  }
+
+  @Test
+  void testSimpleDelete() throws JSQLParserException, SQLException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"}};
+
+    String sqlStr = "DELETE FROM a, b where a.col2='test' AND b.col3=1;";
+
+    // all involved columns with tables
+    String[][] expectedColumns = {{"a", "col2"}, {"b", "col3"}};
 
     JSQLResolver resolver = new JSQLResolver(schemaDefinition);
     resolver.resolve(sqlStr);
 
-    for (JdbcColumn column : resolver.whereColumns) {
-      System.out.println(Arrays.asList(column.getChildren().toArray()));
-    }
+    Set<JdbcColumn> actualColumns = resolver.getFlattendedWhereColumns();
 
-    for (JdbcColumn column : resolver.groupByColumns) {
-      System.out.println(Arrays.asList(column.getChildren().toArray()));
-    }
+    assertThatTableAndColumnsMatch(actualColumns, expectedColumns);
 
+  }
+
+  void assertThatTableAndColumnsMatch(Set<JdbcColumn> columns, String[][] expectedColumns) {
+    ArrayList<String[]> actual = new ArrayList<>();
+    for (JdbcColumn column : columns) {
+      actual.add(new String[] {column.tableName, column.columnName});
+    }
+    Assertions.assertThatList(actual).containsExactlyInAnyOrder(expectedColumns);
   }
 
   public void testMissingTable(String[][] schemaDefinition, String sqlStr,
@@ -68,7 +89,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
 
   @Test
-  void testIssue48() throws JSQLParserException {
+  void testUnresolvableIdentifiersIssue48() throws JSQLParserException {
 
     //@formatter:off
     String[][] schemaDefinition = {
