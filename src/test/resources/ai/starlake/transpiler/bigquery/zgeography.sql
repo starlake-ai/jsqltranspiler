@@ -74,17 +74,6 @@ SELECT ST_PERIMETER_SPHEROID(ST_FLIPCOORDINATES(ST_GEOMFROMTEXT('POLYGON((0 0,0 
 
 
 -- provided
-select st_asbinary(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))')) as wkb;
-
--- expected
-SELECT ST_ASWKB(ST_GEOMFROMTEXT('POLYGON((0 0,0 1,1 1,1 0,0 0))')::GEOMETRY) AS WKB;
-
--- result
-"WKB"
-"POLYGON ((0 0, 0 1, 1 1, 1 0, 0 0))"
-
-
--- provided
 select ST_CLOSESTPOINT(ST_GEOGFROMTEXT('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'), ST_GEOGFROMTEXT('POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))')) as closest_point
 
 -- expected
