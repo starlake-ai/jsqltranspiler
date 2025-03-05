@@ -560,9 +560,9 @@ public class JSQLResolver extends JSQLColumResolver {
       } else if (fromItem != null) {
         Alias alias = fromItem.getAlias();
         JdbcResultSetMetaData rsMetaData =
-                fromItem.accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
+            fromItem.accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
         JdbcTable t = metaData.put(rsMetaData, alias != null ? alias.getUnquotedName() : "",
-                "Error in FromItem " + fromItem);
+            "Error in FromItem " + fromItem);
         metaData.getFromTables().put(t.tableName, new Table(t.tableName));
       }
 
@@ -593,10 +593,10 @@ public class JSQLResolver extends JSQLColumResolver {
           } else {
             Alias alias = join.getFromItem().getAlias();
             JdbcResultSetMetaData rsMetaData =
-                    join.getFromItem().accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
+                join.getFromItem().accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
 
             JdbcTable t = metaData.put(rsMetaData, alias != null ? alias.getUnquotedName() : "",
-                    "Error in FromItem " + fromItem);
+                "Error in FromItem " + fromItem);
             metaData.getFromTables().put(t.tableName, new Table(t.tableName));
 
             if (join.isNatural()) {
@@ -614,7 +614,7 @@ public class JSQLResolver extends JSQLColumResolver {
         if (t.getDatabase() == null) {
           t.setDatabaseName(metaData.getCurrentCatalogName());
         } else if (t.getDatabase().getDatabaseName() == null
-                || t.getDatabase().getDatabaseName().isEmpty()) {
+            || t.getDatabase().getDatabaseName().isEmpty()) {
           t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
         }
       }
@@ -627,7 +627,7 @@ public class JSQLResolver extends JSQLColumResolver {
         if (t.getDatabase() == null) {
           t.setDatabaseName(metaData.getCurrentCatalogName());
         } else if (t.getDatabase().getDatabaseName() == null
-                || t.getDatabase().getDatabaseName().isEmpty()) {
+            || t.getDatabase().getDatabaseName().isEmpty()) {
           t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
         }
       }
@@ -640,12 +640,12 @@ public class JSQLResolver extends JSQLColumResolver {
       }
 
       // column positions in MetaData start at 1
-      for (UpdateSet updateSet: update.getUpdateSets()) {
+      for (UpdateSet updateSet : update.getUpdateSets()) {
         for (Column column : updateSet.getColumns()) {
           updateColumns.addAll(column.accept(expressionColumnResolver, metaData));
         }
-        for (Expression expression: updateSet.getValues()) {
-          selectColumns.addAll((expression.accept(expressionColumnResolver, metaData)));
+        for (Expression expression : updateSet.getValues()) {
+          selectColumns.addAll(expression.accept(expressionColumnResolver, metaData));
         }
       }
 
@@ -696,9 +696,9 @@ public class JSQLResolver extends JSQLColumResolver {
       } else if (fromItem != null) {
         Alias alias = fromItem.getAlias();
         JdbcResultSetMetaData rsMetaData =
-                fromItem.accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
+            fromItem.accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
         JdbcTable t = metaData.put(rsMetaData, alias != null ? alias.getUnquotedName() : "",
-                "Error in FromItem " + fromItem);
+            "Error in FromItem " + fromItem);
         metaData.getFromTables().put(t.tableName, new Table(t.tableName));
       }
 
@@ -710,7 +710,7 @@ public class JSQLResolver extends JSQLColumResolver {
         if (t.getDatabase() == null) {
           t.setDatabaseName(metaData.getCurrentCatalogName());
         } else if (t.getDatabase().getDatabaseName() == null
-                || t.getDatabase().getDatabaseName().isEmpty()) {
+            || t.getDatabase().getDatabaseName().isEmpty()) {
           t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
         }
       }
@@ -723,7 +723,7 @@ public class JSQLResolver extends JSQLColumResolver {
         if (t.getDatabase() == null) {
           t.setDatabaseName(metaData.getCurrentCatalogName());
         } else if (t.getDatabase().getDatabaseName() == null
-                || t.getDatabase().getDatabaseName().isEmpty()) {
+            || t.getDatabase().getDatabaseName().isEmpty()) {
           t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
         }
       }
@@ -841,7 +841,7 @@ public class JSQLResolver extends JSQLColumResolver {
     public <S> JdbcResultSetMetaData visit(Merge merge, S s) {
       JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
 
-      FromItem fromItem = merge.getFromItem();;
+      FromItem fromItem = merge.getFromItem();
 
       if (merge.getWithItemsList() != null) {
         for (WithItem<?> withItem : merge.getWithItemsList()) {
@@ -862,9 +862,9 @@ public class JSQLResolver extends JSQLColumResolver {
       } else if (fromItem != null) {
         Alias alias = fromItem.getAlias();
         JdbcResultSetMetaData rsMetaData =
-                fromItem.accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
+            fromItem.accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
         JdbcTable t = metaData.put(rsMetaData, alias != null ? alias.getUnquotedName() : "",
-                "Error in FromItem " + fromItem);
+            "Error in FromItem " + fromItem);
         metaData.getFromTables().put(t.tableName, new Table(t.tableName));
       }
 
@@ -876,7 +876,7 @@ public class JSQLResolver extends JSQLColumResolver {
         if (t.getDatabase() == null) {
           t.setDatabaseName(metaData.getCurrentCatalogName());
         } else if (t.getDatabase().getDatabaseName() == null
-                || t.getDatabase().getDatabaseName().isEmpty()) {
+            || t.getDatabase().getDatabaseName().isEmpty()) {
           t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
         }
       }
@@ -889,7 +889,7 @@ public class JSQLResolver extends JSQLColumResolver {
         if (t.getDatabase() == null) {
           t.setDatabaseName(metaData.getCurrentCatalogName());
         } else if (t.getDatabase().getDatabaseName() == null
-                || t.getDatabase().getDatabaseName().isEmpty()) {
+            || t.getDatabase().getDatabaseName().isEmpty()) {
           t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
         }
       }
@@ -926,131 +926,7 @@ public class JSQLResolver extends JSQLColumResolver {
 
     @Override
     public <S> JdbcResultSetMetaData visit(Upsert upsert, S s) {
-      JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
-
-      FromItem fromItem = delete.getTable();
-      List<Join> joins = delete.getJoins();
-
-      if (delete.getWithItemsList() != null) {
-        for (WithItem<?> withItem : delete.getWithItemsList()) {
-          Alias alias = withItem.getAlias();
-          JdbcResultSetMetaData rsMetaData = withItem.accept(JSQLResolver.this, metaData);
-          metaData.put(rsMetaData, alias.getUnquotedName(), "Error in WithItem " + withItem);
-        }
-      }
-
-      if (fromItem instanceof Table) {
-        Alias alias = fromItem.getAlias();
-        Table t = (Table) fromItem;
-        if (alias != null) {
-          metaData.getFromTables().put(alias.getName(), (Table) fromItem);
-        } else {
-          metaData.getFromTables().put(t.getName(), (Table) fromItem);
-        }
-      } else if (fromItem != null) {
-        Alias alias = fromItem.getAlias();
-        JdbcResultSetMetaData rsMetaData =
-                fromItem.accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
-        JdbcTable t = metaData.put(rsMetaData, alias != null ? alias.getUnquotedName() : "",
-                "Error in FromItem " + fromItem);
-        metaData.getFromTables().put(t.tableName, new Table(t.tableName));
-      }
-
-      if (joins != null) {
-        for (Join join : joins) {
-          if (join.isLeft() || join.isInner()) {
-            metaData.addLeftUsingJoinColumns(join.getUsingColumns());
-          } else if (join.isRight()) {
-            metaData.addRightUsingJoinColumns(join.getUsingColumns());
-          }
-
-          if (join.getFromItem() instanceof Table) {
-            Alias alias = join.getFromItem().getAlias();
-            Table t = (Table) join.getFromItem();
-
-            if (alias != null) {
-              metaData.getFromTables().put(alias.getUnquotedName(), t);
-              if (join.isNatural()) {
-                metaData.getNaturalJoinedTables().put(alias.getUnquotedName(), t);
-              }
-
-            } else {
-              metaData.getFromTables().put(t.getName(), t);
-              if (join.isNatural()) {
-                metaData.addNaturalJoinedTable(t);
-              }
-            }
-          } else {
-            Alias alias = join.getFromItem().getAlias();
-            JdbcResultSetMetaData rsMetaData =
-                    join.getFromItem().accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
-
-            JdbcTable t = metaData.put(rsMetaData, alias != null ? alias.getUnquotedName() : "",
-                    "Error in FromItem " + fromItem);
-            metaData.getFromTables().put(t.tableName, new Table(t.tableName));
-
-            if (join.isNatural()) {
-              metaData.getNaturalJoinedTables().put(t.tableName, new Table(t.tableName));
-            }
-          }
-        }
-      }
-
-      for (Table t : metaData.getFromTables().values()) {
-        if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
-          t.setSchemaName(metaData.getCurrentSchemaName());
-        }
-
-        if (t.getDatabase() == null) {
-          t.setDatabaseName(metaData.getCurrentCatalogName());
-        } else if (t.getDatabase().getDatabaseName() == null
-                || t.getDatabase().getDatabaseName().isEmpty()) {
-          t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
-        }
-      }
-
-      for (Table t : metaData.getNaturalJoinedTables().values()) {
-        if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
-          t.setSchemaName(metaData.getCurrentSchemaName());
-        }
-
-        if (t.getDatabase() == null) {
-          t.setDatabaseName(metaData.getCurrentCatalogName());
-        } else if (t.getDatabase().getDatabaseName() == null
-                || t.getDatabase().getDatabaseName().isEmpty()) {
-          t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
-        }
-      }
-
-
-      if (delete.getWithItemsList() != null) {
-        for (WithItem<?> withItem : delete.getWithItemsList()) {
-          withColumns.addAll(withItem.accept(expressionColumnResolver, delete));
-        }
-      }
-
-      // column positions in MetaData start at 1
-      deleteColumns.addAll(new AllColumns().accept(expressionColumnResolver, metaData));
-
-      // Join expressions
-      if (joins != null) {
-        for (Join join : joins) {
-          for (Column column : join.getUsingColumns()) {
-            joinedOnColumns.addAll(column.accept(expressionColumnResolver, metaData));
-          }
-          for (Expression expression : join.getOnExpressions()) {
-            joinedOnColumns.addAll(expression.accept(expressionColumnResolver, metaData));
-          }
-        }
-      }
-
-      // where expressions
-      Expression whereExpression = delete.getWhere();
-      if (whereExpression != null) {
-        whereColumns.addAll(whereExpression.accept(expressionColumnResolver, metaData));
-      }
-
-      return resultSetMetaData;
+      return null;
     }
 
 
