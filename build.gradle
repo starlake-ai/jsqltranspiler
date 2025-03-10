@@ -151,6 +151,9 @@ javadoc {
 
 tasks.register('xmldoc', Javadoc) {
     source = sourceSets.main.allJava
+    include("build/generated/javacc/net/sf/jsqlparser/parser/*.java" )
+    include("../JSQLParser/src/main/java/**/*.java")
+
     destinationDir = reporting.file("xmlDoclet")
     options.docletpath = configurations.xmlDoclet.files as List
     options.doclet = "com.manticore.tools.xmldoclet.XmlDoclet"
@@ -172,18 +175,8 @@ jar {
     manifest {
         attributes(
             "Created-By": System.properties['user.name'],
-            "Main-Class": "ai.starlake.transpiler.JSQLTranspiler"
-        )
-    }
-
-    bundle {
-        properties.empty()
-        bnd(
-            "Created-By": System.properties.get('user.name'),
             "Main-Class": "ai.starlake.transpiler.JSQLTranspiler",
-            "Bundle-SymbolicName": "ai.starlake.transpiler",
-            "Import-Package": "*",
-            "Export-Package": "ai.starlake.transpiler.*"
+            "Automatic-Module-Name": "ai.starlake.transpiler"
         )
     }
 }

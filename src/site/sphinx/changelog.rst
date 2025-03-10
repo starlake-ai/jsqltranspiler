@@ -8,6 +8,57 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **style: fix QA/CI exceptions**
+    
+    Andreas Reichel, 2025-03-05
+  * **test: disable a test failing on GH only**
+    
+    Andreas Reichel, 2025-03-05
+  * **feat: resolve all involved tables and columns**
+    
+    Andreas Reichel, 2025-02-26
+  * **test: temporarily disable tests failing on GH only**
+    
+    Andreas Reichel, 2025-02-22
+  * **chore: GH actions**
+    
+    Andreas Reichel, 2025-02-22
+  * **add comment flag (#49)**
+    
+    manticore-projects, 2025-02-22
+  * **feat: throw specific errors when Columns or Tables are not found or declared**
+    
+    Andreas Reichel, 2025-02-22
+  * **test: run tests in serial, avoid parallel execution for the moment**
+    
+    manticore-projects, 2025-02-18
+  * **style: QA/CI exceptions**
+    
+    manticore-projects, 2025-02-18
+  * **test: exclude module info from checkstyle**
+    
+    manticore-projects, 2025-02-18
+  * **chore: merge**
+    
+    manticore-projects, 2025-02-18
+  * **test: order of the tests**
+    
+    manticore-projects, 2025-02-18
+  * **feat: add another Resolver for finding all involved columns**
+    
+    Andreas Reichel, 2025-02-17
+  * **build: use JDK17**
+    
+    Andreas Reichel, 2025-02-16
+  * **build: use JDK17**
+    
+    Andreas Reichel, 2025-02-16
+  * **feat: enhance test case generation (#77)**
+    
+    manticore-projects, 2025-02-16
+  * **feat: enhance test case generation**
+    
+    tiboun, 2025-02-14
   * **feat: `FromQuery` with `Join` and `WithItem`**
     
     Andreas Reichel, 2025-02-14
@@ -113,6 +164,9 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
   * **test: additional BigQuery JSon tests**
     
     Andreas Reichel, 2024-11-25
+  * **add comment flag**
+    
+    dbulahov, 2024-11-22
   * **feat: complete DataBricks JSon support**
     
     Andreas Reichel, 2024-11-19
