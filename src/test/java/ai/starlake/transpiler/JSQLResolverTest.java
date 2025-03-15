@@ -140,4 +140,32 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     testMissingDeclaration(schemaDefinition, sqlStr, "t1miss");
 
   }
+
+  @Test
+  void testUnresolvableIdentifiersIssue82() throws JSQLParserException {
+
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    //@formatter:on
+
+    // missing table fooFact1
+    String sqlStr = "select * from foo where foo.id in (select fooFact1.id from fooFact1)";
+    testMissingTable(schemaDefinition, sqlStr, "fooFact1");
+
+    // undeclared table foo1 (undeclared has priority over missing!)
+    sqlStr = "select avg(foo1.id) from foo group by foo.name";
+    testMissingDeclaration(schemaDefinition, sqlStr, "foo1");
+
+    // undeclared table foo1 (undeclared has priority over missing!)
+    sqlStr = "select sum(foo.id) from foo group by foo.name having foo1.name = 'tets'";
+    testMissingDeclaration(schemaDefinition, sqlStr, "foo1");
+
+    // missing column foo.name1
+    sqlStr = "select sum(foo.id) from foo group by foo.name having foo.name1 = 'tets'";
+    testMissingColumn(schemaDefinition, sqlStr, "foo.name1");
+  }
+
 }
