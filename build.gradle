@@ -55,7 +55,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.11.4'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.11.4'
 
-    testImplementation 'org.duckdb:duckdb_jdbc:1.2.0'
+    testImplementation 'org.duckdb:duckdb_jdbc:1.2.1'
     testImplementation 'org.apache.commons:commons-compress:+'
     testImplementation 'com.opencsv:opencsv:+'
 
