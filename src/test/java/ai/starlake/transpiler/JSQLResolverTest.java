@@ -2,10 +2,7 @@ package ai.starlake.transpiler;
 
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
-import ai.starlake.transpiler.schema.JdbcMetaData.ErrorMode;
 import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.statement.select.PlainSelect;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -183,7 +180,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     }
 
     try {
-      final Set<JdbcColumn> resolve = resolver.resolve(sqlStr);
+      resolver.resolve(sqlStr);
 
       // select columns should not be empty
       final List<JdbcColumn> selectColumns = resolver.getSelectColumns();
@@ -198,16 +195,17 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
       }
 
       final List<JdbcColumn> updateColumns = resolver.getUpdateColumns();
-      if (!deleteColumns.isEmpty()) {
+      if (!updateColumns.isEmpty()) {
         throw new RuntimeException("UPDATE is not allowed.");
       }
 
       final List<JdbcColumn> insertColumns = resolver.getInsertColumns();
-      if (!deleteColumns.isEmpty()) {
+      if (!insertColumns.isEmpty()) {
         throw new RuntimeException("INSERT is not allowed.");
       }
 
-    } catch (CatalogNotFoundException | ColumnNotFoundException | SchemaNotFoundException | TableNotDeclaredException | TableNotFoundException ex) {
+    } catch (CatalogNotFoundException | ColumnNotFoundException | SchemaNotFoundException
+        | TableNotDeclaredException | TableNotFoundException ex) {
       throw new RuntimeException("Unresolvable Statement ", ex);
     }
 
@@ -216,7 +214,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
-  void testGuardFailingOnMissingTable() throws JSQLParserException {
+  void testGuardFailingOnMissingTable() {
     //@formatter:off
     String[][] schemaDefinition = {
             {"foo", "id", "name"},
@@ -228,10 +226,11 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     // missing table fooFact1
     String sqlStr = "select * from foo where foo.id in (select fooFact1.id from fooFact1)";
     RuntimeException exception =
-            Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
-              guard(sqlStr, jdbcMetaData);
-            }).actual();
-    Assertions.assertThat(((TableNotFoundException) exception.getCause()).tableName).isEqualTo("fooFact1");
+        Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+          guard(sqlStr, jdbcMetaData);
+        }).actual();
+    Assertions.assertThat(((TableNotFoundException) exception.getCause()).tableName)
+        .isEqualTo("fooFact1");
   }
 
   @Test
@@ -252,13 +251,9 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     JSQLResolver resolver = new JSQLResolver(jdbcMetaData);
     resolver.resolve(sqlStr);
 
-    Assertions
-            .assertThat(resolver.getSelectColumns())
-            .containsExactlyInAnyOrder(
-                    new JdbcColumn("foo", "id")
-                    , new JdbcColumn("foo", "name")
-                    , new JdbcColumn("fooFact", "id")
-            );
+    Assertions.assertThat(resolver.getSelectColumns()).containsExactlyInAnyOrder(
+        new JdbcColumn("foo", "id"), new JdbcColumn("foo", "name"),
+        new JdbcColumn("fooFact", "id"));
   }
 
   @Test
@@ -274,9 +269,9 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     // invalid query, deletes columns
     String sqlStr = "delete from foo where foo.id in (select fooFact1.id from fooFact fooFact1)";
     RuntimeException exception =
-            Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
-              guard(sqlStr, jdbcMetaData);
-            }).actual();
+        Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+          guard(sqlStr, jdbcMetaData);
+        }).actual();
     Assertions.assertThat(exception.getMessage()).isEqualTo("DELETE is not allowed.");
   }
 
@@ -299,9 +294,9 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     Assertions.assertThat(resolver.getDeleteColumns()).isNotEmpty();
 
     RuntimeException exception =
-            Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
-              guard(sqlStr, jdbcMetaData);
-            }).actual();
+        Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+          guard(sqlStr, jdbcMetaData);
+        }).actual();
     Assertions.assertThat(exception.getMessage()).isEqualTo("DELETE is not allowed.");
   }
 
