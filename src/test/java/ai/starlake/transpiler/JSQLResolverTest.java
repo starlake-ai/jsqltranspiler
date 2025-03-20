@@ -2,11 +2,14 @@ package ai.starlake.transpiler;
 
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
+import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.Select;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -15,7 +18,7 @@ import java.util.Set;
 class JSQLResolverTest extends AbstractColumnResolverTest {
 
   @Test
-  void testSimpleSelect() throws JSQLParserException, SQLException {
+  void testSimpleSelect() throws JSQLParserException {
     String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"}};
 
     String sqlStr = "SELECT sum(b.col1) FROM a, b where a.col2='test' group by b.col3;";
@@ -31,7 +34,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
-  void testSimpleDelete() throws JSQLParserException, SQLException {
+  void testSimpleDelete() throws JSQLParserException {
     String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"}};
 
     String sqlStr = "DELETE FROM a, b where a.col2='test' AND b.col3=1;";
@@ -91,7 +94,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
 
   @Test
-  void testUnresolvableIdentifiersIssue48() throws JSQLParserException {
+  void testUnresolvableIdentifiersIssue48() {
 
     //@formatter:off
     String[][] schemaDefinition = {
@@ -144,7 +147,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
-  void testUnresolvableIdentifiersIssue82() throws JSQLParserException {
+  void testUnresolvableIdentifiersIssue82() {
 
     //@formatter:off
     String[][] schemaDefinition = {
@@ -170,47 +173,62 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     testMissingColumn(schemaDefinition, sqlStr, "foo.name1");
   }
 
-  private String guard(String sqlStr, JdbcMetaData metaData) throws JSQLParserException {
+  private JdbcResultSetMetaData guard(String sqlStr, JdbcMetaData metaData)
+      throws JSQLParserException {
 
     JSQLResolver resolver = new JSQLResolver(metaData);
 
     // this does not really work, when there are comments
+    // @todo: apply a Regex for SQL Comments
     if (sqlStr == null || sqlStr.trim().isEmpty()) {
       throw new RuntimeException("Statement is empty");
     }
 
     try {
-      resolver.resolve(sqlStr);
+      Statement st = CCJSqlParserUtil.parse(sqlStr);
 
-      // select columns should not be empty
-      final List<JdbcColumn> selectColumns = resolver.getSelectColumns();
-      if (selectColumns.isEmpty()) {
-        throw new RuntimeException("Nothing was selected.");
-      }
+      // we can test for SELECT, though in practise it won't protect us from harmful statements
+      if (st instanceof Select) {
+        resolver.resolve(st);
 
-      // any update columns must be empty
-      final List<JdbcColumn> deleteColumns = resolver.getDeleteColumns();
-      if (!deleteColumns.isEmpty()) {
-        throw new RuntimeException("DELETE is not allowed.");
-      }
+        // select columns should not be empty
+        final List<JdbcColumn> selectColumns = resolver.getSelectColumns();
+        if (selectColumns.isEmpty()) {
+          throw new RuntimeException("Nothing was selected.");
+        }
 
-      final List<JdbcColumn> updateColumns = resolver.getUpdateColumns();
-      if (!updateColumns.isEmpty()) {
-        throw new RuntimeException("UPDATE is not allowed.");
-      }
+        // any delete columns must be empty
+        final List<JdbcColumn> deleteColumns = resolver.getDeleteColumns();
+        if (!deleteColumns.isEmpty()) {
+          throw new RuntimeException("DELETE is not permitted.");
+        }
 
-      final List<JdbcColumn> insertColumns = resolver.getInsertColumns();
-      if (!insertColumns.isEmpty()) {
-        throw new RuntimeException("INSERT is not allowed.");
+        // any update columns must be empty
+        final List<JdbcColumn> updateColumns = resolver.getUpdateColumns();
+        if (!updateColumns.isEmpty()) {
+          throw new RuntimeException("UPDATE is not permitted.");
+        }
+
+        // any insert columns must be empty
+        final List<JdbcColumn> insertColumns = resolver.getInsertColumns();
+        if (!insertColumns.isEmpty()) {
+          throw new RuntimeException("INSERT is not permitted.");
+        }
+
+        // we can finally resolve for the actually returned columns
+        JSQLColumResolver columResolver = new JSQLColumResolver(metaData);
+        columResolver.setErrorMode(JdbcMetaData.ErrorMode.STRICT);
+        return columResolver.getResultSetMetaData((Select) st);
+
+      } else {
+        throw new RuntimeException(
+            st.getClass().getSimpleName().toUpperCase() + " is not permitted.");
       }
 
     } catch (CatalogNotFoundException | ColumnNotFoundException | SchemaNotFoundException
         | TableNotDeclaredException | TableNotFoundException ex) {
-      throw new RuntimeException("Unresolvable Statement ", ex);
+      throw new RuntimeException("Unresolvable Statement", ex);
     }
-
-    // return statement when all checks have passed
-    return sqlStr;
   }
 
   @Test
@@ -243,17 +261,10 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
     //@formatter:on
 
-    // missing table fooFact1
+    // resolve the returned columns
     String sqlStr = "select * from foo where foo.id in (select fooFact1.id from fooFact fooFact1)";
-    Assertions.assertThat(guard(sqlStr, jdbcMetaData)).isEqualTo(sqlStr);
-
-    // get the resolved select items
-    JSQLResolver resolver = new JSQLResolver(jdbcMetaData);
-    resolver.resolve(sqlStr);
-
-    Assertions.assertThat(resolver.getSelectColumns()).containsExactlyInAnyOrder(
-        new JdbcColumn("foo", "id"), new JdbcColumn("foo", "name"),
-        new JdbcColumn("fooFact", "id"));
+    Assertions.assertThat(guard(sqlStr, jdbcMetaData).getColumns())
+        .containsExactlyInAnyOrder(new JdbcColumn("foo", "id"), new JdbcColumn("foo", "name"));
   }
 
   @Test
@@ -272,7 +283,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
         Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
           guard(sqlStr, jdbcMetaData);
         }).actual();
-    Assertions.assertThat(exception.getMessage()).isEqualTo("DELETE is not allowed.");
+    Assertions.assertThat(exception.getMessage()).isEqualTo("DELETE is not permitted.");
   }
 
   @Test
@@ -297,7 +308,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
         Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
           guard(sqlStr, jdbcMetaData);
         }).actual();
-    Assertions.assertThat(exception.getMessage()).isEqualTo("DELETE is not allowed.");
+    Assertions.assertThat(exception.getMessage()).isEqualTo("DELETE is not permitted.");
   }
 
 }

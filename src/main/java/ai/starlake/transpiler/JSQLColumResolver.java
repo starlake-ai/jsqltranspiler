@@ -110,6 +110,21 @@ public class JSQLColumResolver
    * Resolves the actual columns returned by a SELECT statement for a given CURRENT_CATALOG and
    * CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
    *
+   * @param select the (parsed) `SELECT` statement
+   * @return the ResultSetMetaData representing the actual columns returned by the `SELECT`
+   *         statement
+   */
+  @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
+  public JdbcResultSetMetaData getResultSetMetaData(Select select) {
+    return select.accept((SelectVisitor<JdbcResultSetMetaData>) this,
+        JdbcMetaData.copyOf(metaData));
+
+  }
+
+  /**
+   * Resolves the actual columns returned by a SELECT statement for a given CURRENT_CATALOG and
+   * CURRENT_SCHEMA and wraps this information into `ResultSetMetaData`.
+   *
    * @param sqlStr the `SELECT` statement text
    * @param metaData the Database Meta Data
    * @return the ResultSetMetaData representing the actual columns returned by the `SELECT`
@@ -535,20 +550,21 @@ public class JSQLColumResolver
       ParenthesedStatement st = withItem.getParenthesedStatement();
       if (st instanceof ParenthesedSelect) {
         rsMetaData =
-                withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
-        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+            withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(),
+            "Error in WITH clause " + withItem);
       } else if (st instanceof ParenthesedDelete) {
-        rsMetaData =
-                withItem.getDelete().getDelete().getTable().accept(this, metaData);
-        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+        rsMetaData = withItem.getDelete().getDelete().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(),
+            "Error in WITH clause " + withItem);
       } else if (st instanceof ParenthesedInsert) {
-        rsMetaData =
-                withItem.getInsert().getInsert().getTable().accept(this, metaData);
-        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+        rsMetaData = withItem.getInsert().getInsert().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(),
+            "Error in WITH clause " + withItem);
       } else if (st instanceof ParenthesedUpdate) {
-        rsMetaData =
-                withItem.getUpdate().getUpdate().getTable().accept(this, metaData);
-        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+        rsMetaData = withItem.getUpdate().getUpdate().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(),
+            "Error in WITH clause " + withItem);
       }
     }
     return rsMetaData;

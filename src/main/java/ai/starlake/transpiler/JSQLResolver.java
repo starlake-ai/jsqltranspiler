@@ -114,25 +114,26 @@ public class JSQLResolver extends JSQLColumResolver {
       ParenthesedStatement st = withItem.getParenthesedStatement();
       if (st instanceof ParenthesedSelect) {
         rsMetaData =
-                withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
-        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+            withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(),
+            "Error in WITH clause " + withItem);
       } else if (st instanceof ParenthesedDelete) {
-        withItem.getDelete().getDelete().accept(new Statementresolver());
+        withItem.getDelete().getDelete().accept(new StatementResolver());
 
-        rsMetaData =
-                withItem.getDelete().getDelete().getTable().accept(this, metaData);
-        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+        rsMetaData = withItem.getDelete().getDelete().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(),
+            "Error in WITH clause " + withItem);
 
       } else if (st instanceof ParenthesedInsert) {
-        withItem.getDelete().getDelete().accept(new Statementresolver());
+        withItem.getDelete().getDelete().accept(new StatementResolver());
 
-        rsMetaData =
-                withItem.getInsert().getInsert().getTable().accept(this, metaData);
-        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+        rsMetaData = withItem.getInsert().getInsert().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(),
+            "Error in WITH clause " + withItem);
       } else if (st instanceof ParenthesedUpdate) {
-        rsMetaData =
-                withItem.getUpdate().getUpdate().getTable().accept(this, metaData);
-        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+        rsMetaData = withItem.getUpdate().getUpdate().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(),
+            "Error in WITH clause " + withItem);
       }
     }
     return rsMetaData;
@@ -358,24 +359,27 @@ public class JSQLResolver extends JSQLColumResolver {
     return flattenedSet;
   }
 
+
   /**
-   * Resolves all the columns used at any clause of a SELECT statement for an empty CURRENT_CATALOG
-   * and an empty CURRENT_SCHEMA.
+   * Resolves all the columns used at any clause of a SELECT, INSERT, UPDATE or DELETE statement for
+   * an empty CURRENT_CATALOG and an empty CURRENT_SCHEMA.
    *
-   * @param sqlStr the `SELECT` statement text
-   * @throws net.sf.jsqlparser.JSQLParserException when the `SELECT` statement text can not be
-   *         parsed
+   * @param st the (parsed) `SELECT`, `INSERT`, `UPDATE` or `DELETE` statement
+   * @return the set of all affected columns (with table information)
    */
-  public Set<JdbcColumn> resolve(String sqlStr) throws JSQLParserException {
-    Statement st = CCJSqlParserUtil.parse(sqlStr);
+  public Set<JdbcColumn> resolve(Statement st) {
     if (st instanceof Select) {
       Select select = (Select) st;
       select.accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
     } else if (st instanceof Delete) {
       Delete delete = (Delete) st;
-      delete.accept(new Statementresolver(), JdbcMetaData.copyOf(metaData));
-    } else {
-      throw new RuntimeException("Unsupported Statement");
+      delete.accept(new StatementResolver(), JdbcMetaData.copyOf(metaData));
+    } else if (st instanceof Insert) {
+      Insert insert = (Insert) st;
+      insert.accept(new StatementResolver(), JdbcMetaData.copyOf(metaData));
+    } else if (st instanceof Update) {
+      Update update = (Update) st;
+      update.accept(new StatementResolver(), JdbcMetaData.copyOf(metaData));
     }
 
     Set<JdbcColumn> allColumns = new HashSet<>();
@@ -390,7 +394,21 @@ public class JSQLResolver extends JSQLColumResolver {
     return allColumns;
   }
 
-  private class Statementresolver implements StatementVisitor<JdbcResultSetMetaData> {
+  /**
+   * Resolves all the columns used at any clause of a SELECT statement for an empty CURRENT_CATALOG
+   * and an empty CURRENT_SCHEMA.
+   *
+   * @param sqlStr the `SELECT` statement text
+   * @return the set of all affected columns (with table information)
+   * @throws net.sf.jsqlparser.JSQLParserException when the `SELECT` statement text can not be
+   *         parsed
+   */
+  public Set<JdbcColumn> resolve(String sqlStr) throws JSQLParserException {
+    Statement st = CCJSqlParserUtil.parse(sqlStr);
+    return resolve(st);
+  }
+
+  private class StatementResolver implements StatementVisitor<JdbcResultSetMetaData> {
 
     @Override
     public <S> JdbcResultSetMetaData visit(Analyze analyze, S s) {
