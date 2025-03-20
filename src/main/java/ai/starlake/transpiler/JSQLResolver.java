@@ -18,6 +18,7 @@ import net.sf.jsqlparser.statement.DeclareStatement;
 import net.sf.jsqlparser.statement.DescribeStatement;
 import net.sf.jsqlparser.statement.ExplainStatement;
 import net.sf.jsqlparser.statement.IfElseStatement;
+import net.sf.jsqlparser.statement.ParenthesedStatement;
 import net.sf.jsqlparser.statement.PurgeStatement;
 import net.sf.jsqlparser.statement.ResetStatement;
 import net.sf.jsqlparser.statement.RollbackStatement;
@@ -58,6 +59,7 @@ import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.GroupByElement;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.OrderByElement;
+import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
@@ -103,6 +105,41 @@ public class JSQLResolver extends JSQLColumResolver {
     super(metaDataDefinition);
   }
 
+  @Override
+  public <S> JdbcResultSetMetaData visit(WithItem<?> withItem, S context) {
+    JdbcResultSetMetaData rsMetaData = null;
+    if (context instanceof JdbcMetaData) {
+      JdbcMetaData metaData = (JdbcMetaData) context;
+
+      ParenthesedStatement st = withItem.getParenthesedStatement();
+      if (st instanceof ParenthesedSelect) {
+        rsMetaData =
+                withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+      } else if (st instanceof ParenthesedDelete) {
+        withItem.getDelete().getDelete().accept(new Statementresolver());
+
+        rsMetaData =
+                withItem.getDelete().getDelete().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+
+      } else if (st instanceof ParenthesedInsert) {
+        withItem.getDelete().getDelete().accept(new Statementresolver());
+
+        rsMetaData =
+                withItem.getInsert().getInsert().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+      } else if (st instanceof ParenthesedUpdate) {
+        rsMetaData =
+                withItem.getUpdate().getUpdate().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+      }
+    }
+    return rsMetaData;
+  }
+
+
+  @Override
   public JdbcResultSetMetaData visit(PlainSelect select, JdbcMetaData metaData) {
     JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
 
@@ -409,7 +446,7 @@ public class JSQLResolver extends JSQLColumResolver {
     public <S> JdbcResultSetMetaData visit(Delete delete, S s) {
       JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
 
-      FromItem fromItem = delete.getTable();
+      Table fromItem = delete.getTable();
       List<Join> joins = delete.getJoins();
 
       if (delete.getWithItemsList() != null) {
@@ -420,21 +457,14 @@ public class JSQLResolver extends JSQLColumResolver {
         }
       }
 
-      if (fromItem instanceof Table) {
+      if (fromItem != null) {
         Alias alias = fromItem.getAlias();
-        Table t = (Table) fromItem;
+        Table t = fromItem;
         if (alias != null) {
-          metaData.getFromTables().put(alias.getName(), (Table) fromItem);
+          metaData.getFromTables().put(alias.getName(), fromItem);
         } else {
-          metaData.getFromTables().put(t.getName(), (Table) fromItem);
+          metaData.getFromTables().put(t.getName(), fromItem);
         }
-      } else if (fromItem != null) {
-        Alias alias = fromItem.getAlias();
-        JdbcResultSetMetaData rsMetaData =
-            fromItem.accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
-        JdbcTable t = metaData.put(rsMetaData, alias != null ? alias.getUnquotedName() : "",
-            "Error in FromItem " + fromItem);
-        metaData.getFromTables().put(t.tableName, new Table(t.tableName));
       }
 
       if (joins != null) {

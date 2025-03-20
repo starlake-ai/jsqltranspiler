@@ -26,7 +26,10 @@ import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.ParenthesedStatement;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.delete.ParenthesedDelete;
+import net.sf.jsqlparser.statement.insert.ParenthesedInsert;
 import net.sf.jsqlparser.statement.piped.FromQuery;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
@@ -45,6 +48,7 @@ import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.statement.select.TableStatement;
 import net.sf.jsqlparser.statement.select.Values;
 import net.sf.jsqlparser.statement.select.WithItem;
+import net.sf.jsqlparser.statement.update.ParenthesedUpdate;
 import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 import java.lang.reflect.InvocationTargetException;
@@ -527,10 +531,25 @@ public class JSQLColumResolver
     JdbcResultSetMetaData rsMetaData = null;
     if (context instanceof JdbcMetaData) {
       JdbcMetaData metaData = (JdbcMetaData) context;
-      rsMetaData =
-          withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
 
-      metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+      ParenthesedStatement st = withItem.getParenthesedStatement();
+      if (st instanceof ParenthesedSelect) {
+        rsMetaData =
+                withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+      } else if (st instanceof ParenthesedDelete) {
+        rsMetaData =
+                withItem.getDelete().getDelete().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+      } else if (st instanceof ParenthesedInsert) {
+        rsMetaData =
+                withItem.getInsert().getInsert().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+      } else if (st instanceof ParenthesedUpdate) {
+        rsMetaData =
+                withItem.getUpdate().getUpdate().getTable().accept(this, metaData);
+        metaData.put(rsMetaData, withItem.getUnquotedAliasName(), "Error in WITH clause " + withItem);
+      }
     }
     return rsMetaData;
   }
