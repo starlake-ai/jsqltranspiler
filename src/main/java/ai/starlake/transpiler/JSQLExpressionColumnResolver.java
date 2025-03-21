@@ -21,9 +21,14 @@ import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import net.sf.jsqlparser.expression.Alias;
+import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.JsonAggregateFunction;
+import net.sf.jsqlparser.expression.JsonFunction;
+import net.sf.jsqlparser.expression.JsonFunctionExpression;
+import net.sf.jsqlparser.expression.TranscodingFunction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
@@ -55,6 +60,7 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   public final static Logger LOGGER =
       Logger.getLogger(JSQLExpressionColumnResolver.class.getName());
   private final JSQLColumResolver columResolver;
+  private final List<Expression> functions = new ArrayList<>();
 
   public JSQLExpressionColumnResolver(JSQLColumResolver columResolver) {
     this.columResolver = columResolver;
@@ -150,6 +156,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
 
   @Override
   public <S> List<JdbcColumn> visit(Function function, S context) {
+    functions.add(function);
+
     JdbcColumn col = new JdbcColumn(function.getName(), function);
     for (Expression expression : function.getParameters()) {
       List<JdbcColumn> subColumns = expression.accept(this, context);
@@ -157,6 +165,37 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     }
     return List.of(col);
   }
+
+  @Override
+  public <S> List<JdbcColumn> visit(TranscodingFunction function, S context) {
+    functions.add(function);
+    return function.getExpression().accept(this, context);
+  }
+
+  @Override
+  public <S> List<JdbcColumn> visit(JsonAggregateFunction function, S context) {
+    functions.add(function);
+    return function.getExpression().accept(this, context);
+  }
+
+  @Override
+  public <S> List<JdbcColumn> visit(JsonFunction function, S context) {
+    functions.add(function);
+    JdbcColumn col = new JdbcColumn(function.getType().name(), function);
+
+    for (JsonFunctionExpression expression : function.getExpressions()) {
+      List<JdbcColumn> subColumns = expression.getExpression().accept(this, context);
+      col.add(subColumns);
+    }
+    return List.of(col);
+  }
+
+  @Override
+  public <S> List<JdbcColumn> visit(AnalyticExpression function, S context) {
+    functions.add(function);
+    return function.getExpression().accept(this, context);
+  }
+
 
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
   @Override
@@ -555,5 +594,13 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       columns.addAll(resultSetMetaData.getColumns());
     }
     return columns;
+  }
+
+  public void clearFunctions() {
+    functions.clear();
+  };
+
+  public List<Expression> getFunctions() {
+    return functions;
   }
 }

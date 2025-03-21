@@ -7,6 +7,9 @@ import ai.starlake.transpiler.schema.JdbcTable;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.JsonAggregateFunction;
+import net.sf.jsqlparser.expression.JsonFunction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
@@ -64,6 +67,7 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
+import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.statement.select.WithItem;
 import net.sf.jsqlparser.statement.show.ShowIndexStatement;
 import net.sf.jsqlparser.statement.show.ShowTablesStatement;
@@ -91,6 +95,7 @@ public class JSQLResolver extends JSQLColumResolver {
   List<JdbcColumn> havingColumns = new ArrayList<>();
   List<JdbcColumn> joinedOnColumns = new ArrayList<>();
   List<JdbcColumn> orderByColumns = new ArrayList<>();
+  List<Expression> functions = new ArrayList<>();
 
   public JSQLResolver(JdbcMetaData metaData) {
     super(metaData);
@@ -347,6 +352,30 @@ public class JSQLResolver extends JSQLColumResolver {
     return orderByColumns;
   }
 
+  public List<Expression> getFunctions() {
+    return functions;
+  }
+
+  public Set<String> getFlatFunctionNames() {
+    Set<String> functionNames = new LinkedHashSet<>();
+    for (Expression e : functions) {
+      if (e instanceof Function) {
+        Function function = (Function) e;
+        functionNames.add(function.getName());
+      } else if (e instanceof JsonFunction) {
+        JsonFunction function = (JsonFunction) e;
+        functionNames.add(function.getType().name());
+      } else if (e instanceof JsonAggregateFunction) {
+        JsonAggregateFunction function = (JsonAggregateFunction) e;
+        functionNames.add(function.getType().name());
+      } else if (e instanceof TableFunction) {
+        TableFunction function = (TableFunction) e;
+        functionNames.add(function.getFunction().getName());
+      }
+    }
+    return functionNames;
+  }
+
   public Set<JdbcColumn> flatten(Collection<JdbcColumn> columns) {
     LinkedHashSet<JdbcColumn> flattenedSet = new LinkedHashSet<>();
     for (JdbcColumn column : columns) {
@@ -368,6 +397,8 @@ public class JSQLResolver extends JSQLColumResolver {
    * @return the set of all affected columns (with table information)
    */
   public Set<JdbcColumn> resolve(Statement st) {
+    expressionColumnResolver.clearFunctions();
+
     if (st instanceof Select) {
       Select select = (Select) st;
       select.accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
@@ -381,6 +412,8 @@ public class JSQLResolver extends JSQLColumResolver {
       Update update = (Update) st;
       update.accept(new StatementResolver(), JdbcMetaData.copyOf(metaData));
     }
+
+    functions = expressionColumnResolver.getFunctions();
 
     Set<JdbcColumn> allColumns = new HashSet<>();
     allColumns.addAll(flatten(withColumns));

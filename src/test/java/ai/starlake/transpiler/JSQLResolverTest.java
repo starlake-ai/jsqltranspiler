@@ -220,6 +220,12 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
         columResolver.setErrorMode(JdbcMetaData.ErrorMode.STRICT);
         return columResolver.getResultSetMetaData((Select) st);
 
+        /* @todo:
+        - return all functions
+        - return rewritten/resolved statement
+        - return resolved AST
+         */
+
       } else {
         throw new RuntimeException(
             st.getClass().getSimpleName().toUpperCase() + " is not permitted.");
@@ -300,7 +306,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     // which should be blocked because its DELETING/altering data
     String sqlStr = "with t as (delete from foo returning id) select * from t";
 
-    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    JSQLResolver resolver = new JSQLResolver(jdbcMetaData);
     resolver.resolve(sqlStr);
     Assertions.assertThat(resolver.getDeleteColumns()).isNotEmpty();
 
@@ -309,6 +315,25 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
           guard(sqlStr, jdbcMetaData);
         }).actual();
     Assertions.assertThat(exception.getMessage()).isEqualTo("DELETE is not permitted.");
+  }
+
+  @Test
+  void testFunctionList() throws JSQLParserException {
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    //@formatter:on
+
+    // any SELECT with functions, analytic expressions, table functions
+    String sqlStr = "select sqrt(sum(id)) from foo group by name having count(*)>1";
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    resolver.resolve(sqlStr);
+
+    Assertions.assertThat(resolver.getFlatFunctionNames()).containsExactlyInAnyOrder("sum", "count",
+        "sqrt");
   }
 
 }
