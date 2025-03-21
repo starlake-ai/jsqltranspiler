@@ -147,6 +147,28 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
+  void testResolveColumnInnerJoin() throws JSQLParserException {
+
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    //@formatter:on
+    String sqlStr =
+        "SELECT * FROM ((SELECT * FROM foo) c inner join fooFact on c.id = fooFact.id ) d";
+
+    // all involved columns with tables
+    String[][] expectedColumns =
+        {{"foo", "id"}, {"foo", "name"}, {"fooFact", "id"}, {"fooFact", "value"}};
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    Set<JdbcColumn> actualColumns = resolver.resolve(sqlStr);
+
+    assertThatTableAndColumnsMatch(actualColumns, expectedColumns);
+  }
+
+  @Test
   void testUnresolvableIdentifiersIssue82() {
 
     //@formatter:off
