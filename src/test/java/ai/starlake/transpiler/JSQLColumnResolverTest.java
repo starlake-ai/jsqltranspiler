@@ -24,7 +24,6 @@ import ai.starlake.transpiler.schema.JdbcSchema;
 import ai.starlake.transpiler.schema.JdbcTable;
 import ai.starlake.transpiler.schema.treebuilder.JsonTreeBuilder;
 import ai.starlake.transpiler.schema.treebuilder.XmlTreeBuilder;
-import ai.starlake.transpiler.snowflake.AsciiTreeBuilder;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;

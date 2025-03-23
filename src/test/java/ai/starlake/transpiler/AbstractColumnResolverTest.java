@@ -18,7 +18,6 @@ package ai.starlake.transpiler;
 
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
-import ai.starlake.transpiler.snowflake.AsciiTreeBuilder;
 import com.opencsv.CSVWriter;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;

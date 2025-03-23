@@ -14,9 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package ai.starlake.transpiler.snowflake;
+package ai.starlake.transpiler;
 
-import ai.starlake.transpiler.JSQLColumResolver;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import ai.starlake.transpiler.schema.treebuilder.TreeBuilder;

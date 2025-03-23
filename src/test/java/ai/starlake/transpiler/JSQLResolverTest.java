@@ -2,20 +2,25 @@ package ai.starlake.transpiler;
 
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
-import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 
 class JSQLResolverTest extends AbstractColumnResolverTest {
+  public final static Pattern COMMENT_PATTERN =
+      Pattern.compile("(?s)/\\*.*?\\*/|--.*?$", Pattern.MULTILINE);
 
   @Test
   void testSimpleSelect() throws JSQLParserException {
@@ -155,13 +160,8 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
             {"fooFact", "id", "value"}
     };
     //@formatter:on
-    String sqlStr =
-        "SELECT *\n" +
-        "FROM (  (   SELECT *\n" +
-        "            FROM foo ) c\n" +
-        "            INNER JOIN foofact\n" +
-        "                ON c.id = foofact.id ) d\n" +
-        ";";
+    String sqlStr = "SELECT *\n" + "FROM (  (   SELECT *\n" + "            FROM foo ) c\n"
+        + "            INNER JOIN foofact\n" + "                ON c.id = foofact.id ) d\n" + ";";
 
     // all involved columns with tables
     //@formatter:off
@@ -180,12 +180,8 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     assertThatTableAndColumnsMatch(actualColumns, expectedColumns);
 
     // additional test for the join conditions
-    Assertions
-            .assertThat(resolver.getFlattenedJoinedOnColumns())
-            .containsExactlyInAnyOrder(
-              new JdbcColumn("foo", "id")
-              , new JdbcColumn("fooFact", "id")
-            );
+    Assertions.assertThat(resolver.getFlattenedJoinedOnColumns())
+        .containsExactlyInAnyOrder(new JdbcColumn("foo", "id"), new JdbcColumn("fooFact", "id"));
   }
 
   @Test
@@ -215,14 +211,23 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     testMissingColumn(schemaDefinition, sqlStr, "foo.name1");
   }
 
-  private JdbcResultSetMetaData guard(String sqlStr, JdbcMetaData metaData)
-      throws JSQLParserException {
+  public static String removeComments(String sql) {
+    if (sql == null || sql.trim().isEmpty()) {
+      return "";
+    }
+    return COMMENT_PATTERN.matcher(sql).replaceAll("").trim();
+  }
+
+  public static boolean isOnlyComments(String sql) {
+    return removeComments(sql).isEmpty();
+  }
+
+  private Statement guard(String sqlStr, JdbcMetaData metaData, Set<JdbcColumn> flatColumnSet,
+      Set<JdbcColumn> returnedColumns, Set<String> flatFunctionNames) throws JSQLParserException {
 
     JSQLResolver resolver = new JSQLResolver(metaData);
 
-    // this does not really work, when there are comments
-    // @todo: apply a Regex for SQL Comments
-    if (sqlStr == null || sqlStr.trim().isEmpty()) {
+    if (isOnlyComments(sqlStr)) {
       throw new RuntimeException("Statement is empty");
     }
 
@@ -231,7 +236,10 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
       // we can test for SELECT, though in practise it won't protect us from harmful statements
       if (st instanceof Select) {
-        resolver.resolve(st);
+        // resolve and transform the statement and rewrite the `AllColumn` and `AllTableColumn`
+        // expressions
+        // with the actual tables and columns
+        flatColumnSet.addAll(resolver.resolve(st));
 
         // select columns should not be empty
         final List<JdbcColumn> selectColumns = resolver.getSelectColumns();
@@ -257,16 +265,16 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
           throw new RuntimeException("INSERT is not permitted.");
         }
 
+        // return all involved Function Names
+        flatFunctionNames.addAll(resolver.getFlatFunctionNames());
+
         // we can finally resolve for the actually returned columns
         JSQLColumResolver columResolver = new JSQLColumResolver(metaData);
         columResolver.setErrorMode(JdbcMetaData.ErrorMode.STRICT);
-        return columResolver.getResultSetMetaData((Select) st);
+        returnedColumns.addAll(columResolver.getResultSetMetaData((Select) st).getColumns());
 
-        /* @todo:
-        - return all functions
-        - return rewritten/resolved statement
-        - return resolved AST
-         */
+        // return the resolved statement
+        return st;
 
       } else {
         throw new RuntimeException(
@@ -293,7 +301,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     String sqlStr = "select * from foo where foo.id in (select fooFact1.id from fooFact1)";
     RuntimeException exception =
         Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
-          guard(sqlStr, jdbcMetaData);
+          guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
         }).actual();
     Assertions.assertThat(((TableNotFoundException) exception.getCause()).tableName)
         .isEqualTo("fooFact1");
@@ -310,9 +318,30 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     //@formatter:on
 
     // resolve the returned columns
-    String sqlStr = "select * from foo where foo.id in (select fooFact1.id from fooFact fooFact1)";
-    Assertions.assertThat(guard(sqlStr, jdbcMetaData).getColumns())
-        .containsExactlyInAnyOrder(new JdbcColumn("foo", "id"), new JdbcColumn("foo", "name"));
+    String sqlStr =
+        "select * from foo where foo.id in (select sqrt(fooFact1.id) from fooFact fooFact1)";
+
+    HashSet<JdbcColumn> allColumns = new HashSet<>();
+    HashSet<JdbcColumn> actualColumns = new HashSet<>();
+    HashSet<String> functionNames = new HashSet<>();
+
+    PlainSelect st =
+        (PlainSelect) guard(sqlStr, jdbcMetaData, allColumns, actualColumns, functionNames);
+
+    // assert Statement has been resolved and there is no `AllColumns` Expression
+    Assertions.assertThat(st.getSelectItems().size()).isEqualTo(2);
+    Assertions.assertThat(st.getSelectItems().get(0)).isNotInstanceOf(AllColumns.class);
+
+    // assert all involved columns
+    Assertions.assertThat(allColumns).containsExactlyInAnyOrder(new JdbcColumn("foo", "id"),
+        new JdbcColumn("foo", "name"), new JdbcColumn("fooFact", "id"));
+
+    // assert actually returned columns
+    Assertions.assertThat(actualColumns).containsExactlyInAnyOrder(new JdbcColumn("foo", "id"),
+        new JdbcColumn("foo", "name"));
+
+    // assert involved functions
+    Assertions.assertThat(functionNames).containsExactlyInAnyOrder("sqrt");
   }
 
   @Test
@@ -329,7 +358,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     String sqlStr = "delete from foo where foo.id in (select fooFact1.id from fooFact fooFact1)";
     RuntimeException exception =
         Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
-          guard(sqlStr, jdbcMetaData);
+          guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
         }).actual();
     Assertions.assertThat(exception.getMessage()).isEqualTo("DELETE is not permitted.");
   }
@@ -354,7 +383,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
     RuntimeException exception =
         Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
-          guard(sqlStr, jdbcMetaData);
+          guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
         }).actual();
     Assertions.assertThat(exception.getMessage()).isEqualTo("DELETE is not permitted.");
   }
