@@ -156,16 +156,36 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     };
     //@formatter:on
     String sqlStr =
-        "SELECT * FROM ((SELECT * FROM foo) c inner join fooFact on c.id = fooFact.id) d";
+        "SELECT *\n" +
+        "FROM (  (   SELECT *\n" +
+        "            FROM foo ) c\n" +
+        "            INNER JOIN foofact\n" +
+        "                ON c.id = foofact.id ) d\n" +
+        ";";
 
     // all involved columns with tables
+    //@formatter:off
     String[][] expectedColumns =
-        {{"foo", "id"}, {"foo", "name"}, {"fooFact", "id"}, {"fooFact", "value"}};
+        {
+            {"foo", "id"}
+            , {"foo", "name"}
+            , {"fooFact", "id"}
+            , {"fooFact", "value"}
+        };
+    //@formatter:on
 
     JSQLResolver resolver = new JSQLResolver(schemaDefinition);
     Set<JdbcColumn> actualColumns = resolver.resolve(sqlStr);
 
     assertThatTableAndColumnsMatch(actualColumns, expectedColumns);
+
+    // additional test for the join conditions
+    Assertions
+            .assertThat(resolver.getFlattenedJoinedOnColumns())
+            .containsExactlyInAnyOrder(
+              new JdbcColumn("foo", "id")
+              , new JdbcColumn("fooFact", "id")
+            );
   }
 
   @Test

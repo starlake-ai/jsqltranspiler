@@ -389,6 +389,10 @@ public class JSQLResolver extends JSQLColumResolver {
     return joinedOnColumns;
   }
 
+  public Set<JdbcColumn> getFlattenedJoinedOnColumns(){
+    return flatten(joinedOnColumns);
+  }
+
   public List<JdbcColumn> getOrderByColumns() {
     return orderByColumns;
   }
