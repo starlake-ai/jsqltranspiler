@@ -58,6 +58,7 @@ import net.sf.jsqlparser.statement.insert.ParenthesedInsert;
 import net.sf.jsqlparser.statement.merge.Merge;
 import net.sf.jsqlparser.statement.refresh.RefreshMaterializedViewStatement;
 import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.GroupByElement;
 import net.sf.jsqlparser.statement.select.Join;
@@ -77,7 +78,9 @@ import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.update.UpdateSet;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
+import javax.xml.catalog.Catalog;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -254,6 +257,35 @@ public class JSQLResolver extends JSQLColumResolver {
       selectColumns.addAll(selectItem.getExpression().accept(expressionColumnResolver, metaData));
     }
 
+    // column positions in MetaData start at 1
+    ArrayList<SelectItem<?>> newSelectItems = new ArrayList<>();
+    for (SelectItem<?> selectItem : select.getSelectItems()) {
+      Alias alias = selectItem.getAlias();
+      List<JdbcColumn> jdbcColumns =
+          selectItem.getExpression().accept(expressionColumnResolver, metaData);
+
+      for (JdbcColumn col : jdbcColumns) {
+        resultSetMetaData.add(col, alias != null ? alias.getUnquotedName() : null);
+        Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
+        if (selectItem.getExpression() instanceof AllColumns
+            || selectItem.getExpression() instanceof AllTableColumns) {
+          Column column = new Column(t, col.columnName);
+          if (isCommentFlag()) {
+            column.setCommentText("Resolved Column");
+          }
+          newSelectItems.add(new SelectItem<>(column, alias));
+
+          selectColumns.add(new JdbcColumn(t.getUnquotedName(), col.columnName));
+        } else {
+          newSelectItems.add(selectItem);
+
+          selectColumns.add(col);
+        }
+      }
+
+    }
+    select.setSelectItems(newSelectItems);
+
     // Join expressions
     if (joins != null) {
       for (Join join : joins) {
@@ -380,7 +412,20 @@ public class JSQLResolver extends JSQLColumResolver {
     LinkedHashSet<JdbcColumn> flattenedSet = new LinkedHashSet<>();
     for (JdbcColumn column : columns) {
       if (column.getExpression() instanceof Column) {
-        flattenedSet.add(column);
+        String catalogName =
+            column.scopeCatalog != null && !column.scopeCatalog.isEmpty() ? column.scopeCatalog
+                : column.tableCatalog;
+        String schemaName =
+            column.scopeSchema != null && !column.scopeSchema.isEmpty() ? column.scopeSchema
+                : column.tableSchema;
+        String tableName =
+            column.scopeTable != null && !column.scopeTable.isEmpty() ? column.scopeTable
+                : column.tableName;
+        String columnName =
+            column.scopeColumn != null && !column.scopeColumn.isEmpty() ? column.scopeColumn
+                : column.columnName;
+        flattenedSet.add(
+            new JdbcColumn(catalogName, schemaName, tableName, columnName, column.getExpression()));
       } else {
         flattenedSet.addAll(flatten(column.getChildren()));
       }

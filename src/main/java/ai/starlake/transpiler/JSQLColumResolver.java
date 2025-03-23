@@ -318,7 +318,7 @@ public class JSQLColumResolver
   @Override
   public <S> JdbcResultSetMetaData visit(Table table, S context) {
     JdbcResultSetMetaData rsMetaData = new JdbcResultSetMetaData();
-
+    JdbcMetaData metaData = (JdbcMetaData) context;
     if (table.getSchemaName() == null || table.getSchemaName().isEmpty()) {
       table.setSchemaName(metaData.getCurrentSchemaName());
     }
@@ -607,26 +607,13 @@ public class JSQLColumResolver
 
   @Override
   public <S> JdbcResultSetMetaData visit(ParenthesedFromItem parenthesedFromItem, S context) {
-    JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
+    JdbcResultSetMetaData resultSetMetaData;
+    JdbcMetaData metaData = (JdbcMetaData) context;
 
-    FromItem fromItem = parenthesedFromItem.getFromItem();
-    try {
-      resultSetMetaData.add(fromItem.accept(this, context));
-    } catch (SQLException ex) {
-      throw new RuntimeException("Failed on ParenthesedFromItem " + fromItem.toString(), ex);
-    }
-
-    List<Join> joins = parenthesedFromItem.getJoins();
-    if (joins != null && !joins.isEmpty()) {
-      for (Join join : joins) {
-        try {
-          resultSetMetaData.add(join.getFromItem().accept(this, context));
-        } catch (SQLException ex) {
-          throw new RuntimeException("Failed on Join " + join.getFromItem().toString(), ex);
-        }
-      }
-    }
-    return resultSetMetaData;
+    PlainSelect select = new PlainSelect(parenthesedFromItem.getFromItem())
+        .withJoins(parenthesedFromItem.getJoins());
+    return select.accept((SelectVisitor<JdbcResultSetMetaData>) JSQLColumResolver.this,
+        JdbcMetaData.copyOf(metaData));
   }
 
   @Override

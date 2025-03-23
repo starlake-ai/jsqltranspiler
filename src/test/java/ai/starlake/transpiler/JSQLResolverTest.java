@@ -156,7 +156,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     };
     //@formatter:on
     String sqlStr =
-        "SELECT * FROM ((SELECT * FROM foo) c inner join fooFact on c.id = fooFact.id ) d";
+        "SELECT * FROM ((SELECT * FROM foo) c inner join fooFact on c.id = fooFact.id) d";
 
     // all involved columns with tables
     String[][] expectedColumns =
