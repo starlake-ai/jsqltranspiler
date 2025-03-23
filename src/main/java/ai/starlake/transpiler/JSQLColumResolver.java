@@ -607,12 +607,11 @@ public class JSQLColumResolver
 
   @Override
   public <S> JdbcResultSetMetaData visit(ParenthesedFromItem parenthesedFromItem, S context) {
-    JdbcResultSetMetaData resultSetMetaData;
     JdbcMetaData metaData = (JdbcMetaData) context;
 
     PlainSelect select = new PlainSelect(parenthesedFromItem.getFromItem())
         .withJoins(parenthesedFromItem.getJoins());
-    return select.accept((SelectVisitor<JdbcResultSetMetaData>) JSQLColumResolver.this,
+    return select.accept((SelectVisitor<JdbcResultSetMetaData>) this,
         JdbcMetaData.copyOf(metaData));
   }
 

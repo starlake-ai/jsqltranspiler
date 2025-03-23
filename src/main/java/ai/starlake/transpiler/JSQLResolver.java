@@ -78,9 +78,7 @@ import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.update.UpdateSet;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
-import javax.xml.catalog.Catalog;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -266,16 +264,27 @@ public class JSQLResolver extends JSQLColumResolver {
 
       for (JdbcColumn col : jdbcColumns) {
         resultSetMetaData.add(col, alias != null ? alias.getUnquotedName() : null);
-        Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
+
+        String catalogName =
+            col.scopeCatalog != null && !col.scopeCatalog.isEmpty() ? col.scopeCatalog
+                : col.tableCatalog;
+        String schemaName = col.scopeSchema != null && !col.scopeSchema.isEmpty() ? col.scopeSchema
+            : col.tableSchema;
+        String tableName =
+            col.scopeTable != null && !col.scopeTable.isEmpty() ? col.scopeTable : col.tableName;
+        String columnName = col.scopeColumn != null && !col.scopeColumn.isEmpty() ? col.scopeColumn
+            : col.columnName;
+        Table t = new Table(catalogName, schemaName, tableName);
+
         if (selectItem.getExpression() instanceof AllColumns
             || selectItem.getExpression() instanceof AllTableColumns) {
-          Column column = new Column(t, col.columnName);
+          Column column = new Column(t, columnName);
           if (isCommentFlag()) {
             column.setCommentText("Resolved Column");
           }
           newSelectItems.add(new SelectItem<>(column, alias));
 
-          selectColumns.add(new JdbcColumn(t.getUnquotedName(), col.columnName));
+          selectColumns.add(new JdbcColumn(t.getUnquotedName(), columnName));
         } else {
           newSelectItems.add(selectItem);
 
