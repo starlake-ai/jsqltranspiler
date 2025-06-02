@@ -17,7 +17,7 @@
 package ai.starlake.transpiler;
 
 import net.sf.jsqlparser.expression.Alias;
-import net.sf.jsqlparser.parser.SimpleNode;
+import net.sf.jsqlparser.parser.Node;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.piped.FromQuery;
 import net.sf.jsqlparser.statement.piped.SelectPipeOperator;
@@ -79,9 +79,9 @@ public class JSQLSelectTranspiler extends SelectDeParser {
   @Override
   public void visit(Top top) {
     // get the parent SELECT
-    SimpleNode node = (SimpleNode) top.getASTNode().jjtGetParent();
+    Node node = (Node) top.getASTNode().jjtGetParent();
     while (node.jjtGetValue() == null) {
-      node = (SimpleNode) node.jjtGetParent();
+      node = (Node) node.jjtGetParent();
     }
     PlainSelect select = (PlainSelect) node.jjtGetValue();
 

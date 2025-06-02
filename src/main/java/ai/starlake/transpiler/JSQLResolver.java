@@ -26,6 +26,7 @@ import net.sf.jsqlparser.statement.PurgeStatement;
 import net.sf.jsqlparser.statement.ResetStatement;
 import net.sf.jsqlparser.statement.RollbackStatement;
 import net.sf.jsqlparser.statement.SavepointStatement;
+import net.sf.jsqlparser.statement.SessionStatement;
 import net.sf.jsqlparser.statement.SetStatement;
 import net.sf.jsqlparser.statement.ShowColumnsStatement;
 import net.sf.jsqlparser.statement.ShowStatement;
@@ -389,7 +390,7 @@ public class JSQLResolver extends JSQLColumResolver {
     return joinedOnColumns;
   }
 
-  public Set<JdbcColumn> getFlattenedJoinedOnColumns(){
+  public Set<JdbcColumn> getFlattenedJoinedOnColumns() {
     return flatten(joinedOnColumns);
   }
 
@@ -1183,6 +1184,11 @@ public class JSQLResolver extends JSQLColumResolver {
     @Override
     public <S> JdbcResultSetMetaData visit(ParenthesedDelete parenthesedDelete, S s) {
       return parenthesedDelete.getDelete().accept(this, s);
+    }
+
+    @Override
+    public <S> JdbcResultSetMetaData visit(SessionStatement sessionStatement, S s) {
+      return null;
     }
 
   }

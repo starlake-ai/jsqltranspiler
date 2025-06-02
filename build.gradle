@@ -46,7 +46,7 @@ configurations {
 }
 
 dependencies {
-    implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
+    implementation('com.github.jsqlparser:jsqlparser:5.4-SNAPSHOT'){ changing = true }
 
     //for JSON (de)serialization
     implementation 'org.json:json:+'
@@ -72,7 +72,7 @@ dependencies {
     testImplementation 'com.google.cloud:google-cloud-bigquery:+'
 
     // Java Doc in XML Format
-    xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
+    xmlDoclet 'com.manticore-projects.tools:xml-doclet:2.+'
 }
 
 configurations.configureEach {
@@ -151,8 +151,7 @@ javadoc {
 
 tasks.register('xmldoc', Javadoc) {
     source = sourceSets.main.allJava
-    include("build/generated/javacc/net/sf/jsqlparser/parser/*.java" )
-    include("../JSQLParser/src/main/java/**/*.java")
+    classpath = sourceSets.main.runtimeClasspath
 
     destinationDir = reporting.file("xmlDoclet")
     options.docletpath = configurations.xmlDoclet.files as List

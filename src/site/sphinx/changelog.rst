@@ -4,10 +4,49 @@ Changelog
 ************************
 
 
-Latest Changes since |JSQLTRANSPILER_VERSION|
+Version 1.0
 =============================================================
 
 
+  * **doc: rework the `guard` function**
+    
+    Andreas Reichel, 2025-03-23
+  * **test: add test for `ParenthesedFromItem` joined on columns**
+    
+    Andreas Reichel, 2025-03-23
+  * **fix: improve resolving `ParenthesedFromItem`**
+    
+    Andreas Reichel, 2025-03-23
+  * **fix: improve resolving `ParenthesedFromItem`**
+    
+    Andreas Reichel, 2025-03-23
+  * **JSQLResolverTest - add inner join test (#87)**
+    
+    manticore-projects, 2025-03-21
+  * **JSQLResolverTest - add inner join test**
+    
+    Stefan Bischof, 2025-03-21
+  * **feat: return the list of used `Function` (and similar Expressions)**
+    
+    Andreas Reichel, 2025-03-21
+  * **test: illustrate the `Guard` methods**
+    
+    Andreas Reichel, 2025-03-20
+  * **test: illustrate the `Guard` methods**
+    
+    Andreas Reichel, 2025-03-20
+  * **feat: `WithItem` must accept statements too for supporting `Delete`, `Insert`, `Update` with `Returning`**
+    
+    manticore-projects, 2025-03-20
+  * **test: incorporate more test cases**
+    
+    Andreas Reichel, 2025-03-15
+  * **build: bring back OSGi for Snapshots with Gradle**
+    
+    Andreas Reichel, 2025-03-10
+  * **build: bring back OSGi for Snapshots with Gradle**
+    
+    Andreas Reichel, 2025-03-10
   * **style: fix QA/CI exceptions**
     
     Andreas Reichel, 2025-03-05
