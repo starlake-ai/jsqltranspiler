@@ -4,6 +4,14 @@ Changelog
 ************************
 
 
+Latest Changes since |JSQLTRANSPILER_VERSION|
+=============================================================
+
+
+  * **feat: adopt JSQLParser 5.4 based on JavaCC 8**
+    
+    manticore-projects, 2025-06-02
+
 Version 1.0
 =============================================================
 

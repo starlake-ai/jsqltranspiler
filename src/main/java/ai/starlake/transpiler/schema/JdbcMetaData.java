@@ -1679,4 +1679,87 @@ public final class JdbcMetaData implements DatabaseMetaData {
     this.currentSchemaName = currentSchemaName;
   }
 
+  public boolean hasTable(String catalogName, String schemaName, String tableName) {
+    final JdbcCatalog jdbcCatalog = catalogs.get(catalogName);
+    if (jdbcCatalog != null) {
+      final JdbcSchema jdbcSchema = jdbcCatalog.get(schemaName);
+      if (jdbcSchema != null) {
+        return jdbcSchema.containsKey(tableName);
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  public boolean hasTable(Table t) {
+    final JdbcCatalog jdbcCatalog =
+        catalogs.getOrDefault(t.getUnquotedCatalogName(), catalogs.get(currentCatalogName));
+    if (jdbcCatalog != null) {
+      final JdbcSchema jdbcSchema =
+          jdbcCatalog.getOrDefault(t.getUnquotedSchemaName(), jdbcCatalog.get(currentSchemaName));
+      if (jdbcSchema != null) {
+        return jdbcSchema.containsKey(t.getUnquotedName());
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  public JdbcTable getTable(String catalogName, String schemaName, String tableName) {
+    final JdbcCatalog jdbcCatalog =
+        catalogs.getOrDefault(catalogName, catalogs.get(currentCatalogName));
+    if (jdbcCatalog != null) {
+      final JdbcSchema jdbcSchema =
+          jdbcCatalog.getOrDefault(schemaName, jdbcCatalog.get(currentSchemaName));
+      if (jdbcSchema != null) {
+        return jdbcSchema.get(tableName);
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }
+
+  public JdbcTable getTable(Table t) {
+    final JdbcCatalog jdbcCatalog =
+        catalogs.getOrDefault(t.getUnquotedCatalogName(), catalogs.get(currentCatalogName));
+    if (jdbcCatalog != null) {
+      final JdbcSchema jdbcSchema =
+          jdbcCatalog.getOrDefault(t.getUnquotedSchemaName(), jdbcCatalog.get(currentSchemaName));
+      if (jdbcSchema != null) {
+        return jdbcSchema.get(t.getUnquotedName());
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }
+
+  public boolean hasTableColumn(String catalogName, String schemaName, String tableName,
+      String columnName) {
+    final JdbcCatalog jdbcCatalog =
+        catalogs.getOrDefault(catalogName, catalogs.get(currentCatalogName));
+    if (jdbcCatalog != null) {
+      final JdbcSchema jdbcSchema =
+          jdbcCatalog.getOrDefault(schemaName, jdbcCatalog.get(currentSchemaName));
+      if (jdbcSchema != null) {
+        JdbcTable jdbcTable = jdbcSchema.get(tableName);
+        if (jdbcTable != null) {
+          return jdbcTable.columns.containsKey(columnName);
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
 }

@@ -29,6 +29,7 @@ import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.ParenthesedStatement;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.delete.ParenthesedDelete;
+import net.sf.jsqlparser.statement.imprt.Import;
 import net.sf.jsqlparser.statement.insert.ParenthesedInsert;
 import net.sf.jsqlparser.statement.piped.FromQuery;
 import net.sf.jsqlparser.statement.select.AllColumns;
@@ -630,6 +631,16 @@ public class JSQLColumResolver
     SelectVisitor.super.visit(tableStatement);
   }
 
+  @Override
+  public <S> JdbcResultSetMetaData visit(Import imprt, S context) {
+    return null;
+  }
+
+  @Override
+  public void visit(Import imprt) {
+    FromItemVisitor.super.visit(imprt);
+  }
+
   /**
    * Gets the error mode.
    *
@@ -682,5 +693,4 @@ public class JSQLColumResolver
   public void setCommentFlag(boolean commentFlag) {
     this.commentFlag = commentFlag;
   }
-
 }

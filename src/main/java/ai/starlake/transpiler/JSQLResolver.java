@@ -53,7 +53,9 @@ import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.delete.ParenthesedDelete;
 import net.sf.jsqlparser.statement.drop.Drop;
 import net.sf.jsqlparser.statement.execute.Execute;
+import net.sf.jsqlparser.statement.export.Export;
 import net.sf.jsqlparser.statement.grant.Grant;
+import net.sf.jsqlparser.statement.imprt.Import;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.insert.ParenthesedInsert;
 import net.sf.jsqlparser.statement.merge.Merge;
@@ -154,22 +156,47 @@ public class JSQLResolver extends JSQLColumResolver {
     FromItem fromItem = select.getFromItem();
     List<Join> joins = select.getJoins();
 
+    // `WITH` shadows base tables
     if (select.getWithItemsList() != null) {
       for (WithItem<?> withItem : select.getWithItemsList()) {
         Alias alias = withItem.getAlias();
         JdbcResultSetMetaData rsMetaData = withItem.accept(this, metaData);
-        metaData.put(rsMetaData, alias.getUnquotedName(), "Error in WithItem " + withItem);
+        final JdbcTable t =
+            metaData.put(rsMetaData, alias.getUnquotedName(), "Error in WithItem " + withItem);
+        t.setTableType("VIRTUAL TABLE");
       }
     }
 
+    // `WITH` shadows base tables so base tables need to get resolved first
     if (fromItem instanceof Table) {
       Alias alias = fromItem.getAlias();
       Table t = (Table) fromItem;
+      if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
+        t.setSchemaName(metaData.getCurrentSchemaName());
+      }
+
+      if (t.getDatabase() == null) {
+        t.setDatabaseName(metaData.getCurrentCatalogName());
+      } else if (t.getDatabase().getDatabaseName() == null
+          || t.getDatabase().getDatabaseName().isEmpty()) {
+        t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
+      }
+
+      JdbcTable jdbcTable = metaData.getTable(t);
+      if (jdbcTable != null) {
+        if (!jdbcTable.tableType.equals("VIRTUAL TABLE")) {
+          t.setResolvedTable(t);
+        }
+      } else {
+        throw new TableNotFoundException(t.getFullyQualifiedName(), List.of());
+      }
+
       if (alias != null) {
         metaData.getFromTables().put(alias.getName(), (Table) fromItem);
       } else {
         metaData.getFromTables().put(t.getName(), (Table) fromItem);
       }
+
     } else if (fromItem != null) {
       Alias alias = fromItem.getAlias();
       JdbcResultSetMetaData rsMetaData = fromItem.accept(this, JdbcMetaData.copyOf(metaData));
@@ -189,6 +216,26 @@ public class JSQLResolver extends JSQLColumResolver {
         if (join.getFromItem() instanceof Table) {
           Alias alias = join.getFromItem().getAlias();
           Table t = (Table) join.getFromItem();
+
+          if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
+            t.setSchemaName(metaData.getCurrentSchemaName());
+          }
+
+          if (t.getDatabase() == null) {
+            t.setDatabaseName(metaData.getCurrentCatalogName());
+          } else if (t.getDatabase().getDatabaseName() == null
+              || t.getDatabase().getDatabaseName().isEmpty()) {
+            t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
+          }
+
+          JdbcTable jdbcTable = metaData.getTable(t);
+          if (jdbcTable != null) {
+            if (!jdbcTable.tableType.equals("VIRTUAL TABLE")) {
+              t.setResolvedTable(t);
+            }
+          } else {
+            throw new TableNotFoundException(t.getFullyQualifiedName(), List.of());
+          }
 
           if (alias != null) {
             metaData.getFromTables().put(alias.getUnquotedName(), t);
@@ -217,33 +264,6 @@ public class JSQLResolver extends JSQLColumResolver {
         }
       }
     }
-
-    for (Table t : metaData.getFromTables().values()) {
-      if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
-        t.setSchemaName(metaData.getCurrentSchemaName());
-      }
-
-      if (t.getDatabase() == null) {
-        t.setDatabaseName(metaData.getCurrentCatalogName());
-      } else if (t.getDatabase().getDatabaseName() == null
-          || t.getDatabase().getDatabaseName().isEmpty()) {
-        t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
-      }
-    }
-
-    for (Table t : metaData.getNaturalJoinedTables().values()) {
-      if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
-        t.setSchemaName(metaData.getCurrentSchemaName());
-      }
-
-      if (t.getDatabase() == null) {
-        t.setDatabaseName(metaData.getCurrentCatalogName());
-      } else if (t.getDatabase().getDatabaseName() == null
-          || t.getDatabase().getDatabaseName().isEmpty()) {
-        t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
-      }
-    }
-
 
     if (select.getWithItemsList() != null) {
       for (WithItem<?> withItem : select.getWithItemsList()) {
@@ -500,7 +520,7 @@ public class JSQLResolver extends JSQLColumResolver {
     return resolve(st);
   }
 
-  private class StatementResolver implements StatementVisitor<JdbcResultSetMetaData> {
+  class StatementResolver implements StatementVisitor<JdbcResultSetMetaData> {
 
     @Override
     public <S> JdbcResultSetMetaData visit(Analyze analyze, S s) {
@@ -815,7 +835,7 @@ public class JSQLResolver extends JSQLColumResolver {
     public <S> JdbcResultSetMetaData visit(Insert insert, S s) {
       JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
 
-      FromItem fromItem = insert.getTable();
+      Table table = insert.getTable();
 
       if (insert.getWithItemsList() != null) {
         for (WithItem<?> withItem : insert.getWithItemsList()) {
@@ -825,21 +845,13 @@ public class JSQLResolver extends JSQLColumResolver {
         }
       }
 
-      if (fromItem instanceof Table) {
-        Alias alias = fromItem.getAlias();
-        Table t = (Table) fromItem;
+      if (table != null) {
+        Alias alias = table.getAlias();
         if (alias != null) {
-          metaData.getFromTables().put(alias.getName(), (Table) fromItem);
+          metaData.getFromTables().put(alias.getName(), table);
         } else {
-          metaData.getFromTables().put(t.getName(), (Table) fromItem);
+          metaData.getFromTables().put(table.getName(), table);
         }
-      } else if (fromItem != null) {
-        Alias alias = fromItem.getAlias();
-        JdbcResultSetMetaData rsMetaData =
-            fromItem.accept(JSQLResolver.this, JdbcMetaData.copyOf(metaData));
-        JdbcTable t = metaData.put(rsMetaData, alias != null ? alias.getUnquotedName() : "",
-            "Error in FromItem " + fromItem);
-        metaData.getFromTables().put(t.tableName, new Table(t.tableName));
       }
 
       for (Table t : metaData.getFromTables().values()) {
@@ -1188,6 +1200,16 @@ public class JSQLResolver extends JSQLColumResolver {
 
     @Override
     public <S> JdbcResultSetMetaData visit(SessionStatement sessionStatement, S s) {
+      return null;
+    }
+
+    @Override
+    public <S> JdbcResultSetMetaData visit(Import imprt, S context) {
+      return null;
+    }
+
+    @Override
+    public <S> JdbcResultSetMetaData visit(Export export, S context) {
       return null;
     }
 

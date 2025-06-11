@@ -20,6 +20,7 @@ import ai.starlake.transpiler.schema.CaseInsensitiveLinkedHashMap;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
+import ai.starlake.transpiler.schema.JdbcTable;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.Expression;
@@ -66,7 +67,7 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     this.columResolver = columResolver;
   }
 
-  private static JdbcColumn getJdbcColumn(JdbcMetaData metaData, Column column) {
+  private JdbcColumn getJdbcColumn(JdbcMetaData metaData, Column column) {
     JdbcColumn jdbcColumn = null;
     String columnTableName = null;
     String columnSchemaName = null;
@@ -108,7 +109,6 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
         actualColumnTableName = fromTables.get(columnTableName).getUnquotedName();
       }
 
-
       String actualColumnSchemaName = fromTables.containsKey(columnTableName)
           ? fromTables.get(columnTableName).getUnquotedSchemaName()
           : columnSchemaName;
@@ -117,11 +117,19 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
           ? fromTables.get(columnTableName).getUnquotedDatabaseName()
           : columnCatalogName;
 
+      if (columnTableName.equalsIgnoreCase(fromTables.get(columnTableName).getUnquotedName())) {
+        JdbcTable jdbcTable = metaData.getTable(actualColumnCatalogName, actualColumnSchemaName,
+            actualColumnTableName);
+        if (jdbcTable != null && !jdbcTable.tableType.equals("VIRTUAL TABLE")) {
+          table.setResolvedTable(fromTables.get(columnTableName));
+        }
+      }
+
       jdbcColumn = metaData.getColumn(actualColumnCatalogName, actualColumnSchemaName,
           actualColumnTableName, column.getUnquotedColumnName());
 
     } else {
-      // column has no table name prefix and we have to lookup in all tables of the scope
+      // column has no table name prefix, and we have to lookup in all tables of the scope
       for (Table t : fromTables.values()) {
         String columnName = column.getUnquotedColumnName();
         String tableName = t.getUnquotedName();

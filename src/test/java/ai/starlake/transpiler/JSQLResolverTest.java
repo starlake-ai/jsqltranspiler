@@ -4,6 +4,8 @@ import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.PlainSelect;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -36,6 +39,99 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
     assertThatTableAndColumnsMatch(actualColumns, expectedColumns);
 
+  }
+
+  @Test
+  void testWithShadowing() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}};
+
+    // WITH item `a` shadows the base table and does not contain a column `col1`
+    String sqlStr = "with a as (select 1 from a) SELECT a.col1 from a;";
+    JSQLTableReplacer replacer = new JSQLTableReplacer(schemaDefinition);
+
+    // So we expect a Column Not Found exception
+    Assertions.assertThatExceptionOfType(ColumnNotFoundException.class).isThrownBy(() -> {
+      PlainSelect st = (PlainSelect) replacer.replace(sqlStr, Map.of("a", "test"));
+
+      // only physical BASE TABLE would get replaced
+      Assertions.assertThat(st.toString())
+          .isEqualToIgnoringCase("with a as (select 1 from test) SELECT a.col1 from a;");
+    });
+
+    // only physical BASE TABLE would get replaced
+    String sqlStr2 = "with a as (select a.col2 AS col1 from a) SELECT a.col1 from a;";
+    PlainSelect st = (PlainSelect) replacer.replace(sqlStr2, Map.of("a", "test"));
+    Assertions.assertThat(st.toString()).isEqualToIgnoringCase(
+        "with a as (select test.col2 AS col1 from test) SELECT a.col1 from a");
+  }
+
+  @Test
+  void testBaseTableResolution() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}};
+
+    // base table contains a column `col1`
+    String sqlStr = "SELECT a.col1 from a;";
+    JSQLTableReplacer replacer = new JSQLTableReplacer(schemaDefinition);
+
+    // So we expect no exception
+    Assertions.assertThatNoException().isThrownBy(() -> {
+      PlainSelect st = (PlainSelect) replacer.replace(sqlStr, Map.of("a", "test"));
+
+      // only physical BASE TABLE would get replaced
+      Assertions.assertThat(st.toString()).isEqualToIgnoringCase("SELECT test.col1 from test");
+    });
+  }
+
+  @Test
+  void testAliasShadowing() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "cola", "colb", "colc"}};
+
+    // base table contains a column `col1`
+    String sqlStr = "SELECT b.col1 from a AS b;";
+    JSQLTableReplacer resolver = new JSQLTableReplacer(schemaDefinition);
+
+    // So we expect no exception
+    Assertions.assertThatNoException().isThrownBy(() -> {
+      PlainSelect select = (PlainSelect) resolver.replace(sqlStr, Map.of("b", "test"));
+
+      // table column is shadowed by alias, so table must not get resolved
+      Column c = select.getSelectItem(0).getExpression(Column.class);
+      Assertions.assertThat(c.getResolvedTable()).isNull();
+    });
+  }
+
+  @Test
+  void testSimpleSelectReplace() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"},
+        {"test", "col1", "col2", "col3"}};
+
+    String sqlStr = "with a as (select 1 col1 from a) SELECT a.col1 from a;";
+    JSQLTableReplacer resolver = new JSQLTableReplacer(schemaDefinition);
+    PlainSelect select = (PlainSelect) resolver.replace(sqlStr, Map.of("b", "test"));
+
+    // Virtual table, should not point to a resolved base table
+    Table t = select.getFromItem(Table.class);
+    Assertions.assertThat(t.getResolvedTable()).isNull();
+
+    // Column belongs to a virtual table, should not point to a resolved base table
+    Column c = select.getSelectItem(0).getExpression(Column.class);
+    Assertions.assertThat(c.getResolvedTable()).isNull();
+
+    sqlStr = "SELECT * from a;";
+    select = (PlainSelect) resolver.replace(sqlStr, Map.of("b", "test"));
+    t = select.getFromItem(Table.class);
+    Assertions.assertThat(t.getResolvedTable().getFullyQualifiedName()).isEqualToIgnoringCase("a");
+
+
+    // sqlStr = "SELECT sum(b.col1) FROM a, b where a.col2='test' group by b.col3;";
+    // String expected = "SELECT sum(test.col1) FROM a, test where a.col2='test' group by
+    // test.col3;";
+    // select = (PlainSelect) resolver.replace(sqlStr, Map.of("b", "test"));
+    // t = select.getFromItem(Table.class);
+    //
+    // Assertions.assertThat(t.getResolvedTable().getFullyQualifiedName()).isEqualToIgnoringCase("a");
+    //
+    // //Assertions.assertThat(actual).isEqualToIgnoringCase(expected);
   }
 
   @Test
