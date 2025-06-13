@@ -690,7 +690,8 @@ public class JSQLColumResolver
   /**
    * @param commentFlag the comment columns flag
    */
-  public void setCommentFlag(boolean commentFlag) {
+  public JSQLColumResolver setCommentFlag(boolean commentFlag) {
     this.commentFlag = commentFlag;
+    return this;
   }
 }

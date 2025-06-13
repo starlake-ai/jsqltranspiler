@@ -114,6 +114,14 @@ public class JSQLResolver extends JSQLColumResolver {
     super(metaDataDefinition);
   }
 
+  /**
+   * @param commentFlag the comment columns flag
+   */
+  public JSQLResolver setCommentFlag(boolean commentFlag) {
+    super.setCommentFlag(commentFlag);
+    return this;
+  }
+
   @Override
   public <S> JdbcResultSetMetaData visit(WithItem<?> withItem, S context) {
     JdbcResultSetMetaData rsMetaData = null;
@@ -518,6 +526,36 @@ public class JSQLResolver extends JSQLColumResolver {
   public Set<JdbcColumn> resolve(String sqlStr) throws JSQLParserException {
     Statement st = CCJSqlParserUtil.parse(sqlStr);
     return resolve(st);
+  }
+
+  /**
+   * Resolves all the actual physical tables used at any clause of a statement for an empty CURRENT_CATALOG
+   * and an empty CURRENT_SCHEMA.
+   *
+   * @param sqlStr the statement text
+   * @return the statement with `resolvedTable` filled for all (physical) tables and columns referencing physical tables
+   * @throws net.sf.jsqlparser.JSQLParserException when the `SELECT` statement text can not be
+   *         parsed
+   */
+  public Statement resolveTables(String sqlStr) throws JSQLParserException {
+    Statement st = CCJSqlParserUtil.parse(sqlStr);
+    expressionColumnResolver.clearFunctions();
+
+    if (st instanceof Select) {
+      Select select = (Select) st;
+      select.accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
+    } else if (st instanceof Delete) {
+      Delete delete = (Delete) st;
+      delete.accept(new StatementResolver(), JdbcMetaData.copyOf(metaData));
+    } else if (st instanceof Insert) {
+      Insert insert = (Insert) st;
+      insert.accept(new StatementResolver(), JdbcMetaData.copyOf(metaData));
+    } else if (st instanceof Update) {
+      Update update = (Update) st;
+      update.accept(new StatementResolver(), JdbcMetaData.copyOf(metaData));
+    }
+
+    return st;
   }
 
   class StatementResolver implements StatementVisitor<JdbcResultSetMetaData> {
@@ -1212,6 +1250,5 @@ public class JSQLResolver extends JSQLColumResolver {
     public <S> JdbcResultSetMetaData visit(Export export, S context) {
       return null;
     }
-
   }
 }
