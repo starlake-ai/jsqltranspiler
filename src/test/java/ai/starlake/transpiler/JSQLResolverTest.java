@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -47,22 +46,12 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
     // WITH item `a` shadows the base table and does not contain a column `col1`
     String sqlStr = "with a as (select 1 from a) SELECT a.col1 from a;";
-    JSQLTableReplacer replacer = new JSQLTableReplacer(schemaDefinition);
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
 
     // So we expect a Column Not Found exception
     Assertions.assertThatExceptionOfType(ColumnNotFoundException.class).isThrownBy(() -> {
-      PlainSelect st = (PlainSelect) replacer.replace(sqlStr, Map.of("a", "test"));
-
-      // only physical BASE TABLE would get replaced
-      Assertions.assertThat(st.toString())
-          .isEqualToIgnoringCase("with a as (select 1 from test) SELECT a.col1 from a;");
+      resolver.resolve(sqlStr);
     });
-
-    // only physical BASE TABLE would get replaced
-    String sqlStr2 = "with a as (select a.col2 AS col1 from a) SELECT a.col1 from a;";
-    PlainSelect st = (PlainSelect) replacer.replace(sqlStr2, Map.of("a", "test"));
-    Assertions.assertThat(st.toString()).isEqualToIgnoringCase(
-        "with a as (select test.col2 AS col1 from test) SELECT a.col1 from a");
   }
 
   @Test
@@ -71,14 +60,11 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
     // base table contains a column `col1`
     String sqlStr = "SELECT a.col1 from a;";
-    JSQLTableReplacer replacer = new JSQLTableReplacer(schemaDefinition);
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
 
     // So we expect no exception
     Assertions.assertThatNoException().isThrownBy(() -> {
-      PlainSelect st = (PlainSelect) replacer.replace(sqlStr, Map.of("a", "test"));
-
-      // only physical BASE TABLE would get replaced
-      Assertions.assertThat(st.toString()).isEqualToIgnoringCase("SELECT test.col1 from test");
+      resolver.resolve(sqlStr);
     });
   }
 
@@ -88,11 +74,11 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
     // base table contains a column `col1`
     String sqlStr = "SELECT b.col1 from a AS b;";
-    JSQLTableReplacer resolver = new JSQLTableReplacer(schemaDefinition);
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
 
     // So we expect no exception
     Assertions.assertThatNoException().isThrownBy(() -> {
-      PlainSelect select = (PlainSelect) resolver.replace(sqlStr, Map.of("b", "test"));
+      PlainSelect select = (PlainSelect) resolver.resolveTables(sqlStr);
 
       // table column is shadowed by alias, so table must not get resolved
       Column c = select.getSelectItem(0).getExpression(Column.class);
@@ -106,8 +92,8 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
         {"test", "col1", "col2", "col3"}};
 
     String sqlStr = "with a as (select 1 col1 from a) SELECT a.col1 from a;";
-    JSQLTableReplacer resolver = new JSQLTableReplacer(schemaDefinition);
-    PlainSelect select = (PlainSelect) resolver.replace(sqlStr, Map.of("b", "test"));
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    PlainSelect select = (PlainSelect) resolver.resolveTables(sqlStr);
 
     // Virtual table, should not point to a resolved base table
     Table t = select.getFromItem(Table.class);
@@ -118,20 +104,9 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     Assertions.assertThat(c.getResolvedTable()).isNull();
 
     sqlStr = "SELECT * from a;";
-    select = (PlainSelect) resolver.replace(sqlStr, Map.of("b", "test"));
+    select = (PlainSelect) resolver.resolveTables(sqlStr);
     t = select.getFromItem(Table.class);
     Assertions.assertThat(t.getResolvedTable().getFullyQualifiedName()).isEqualToIgnoringCase("a");
-
-
-    // sqlStr = "SELECT sum(b.col1) FROM a, b where a.col2='test' group by b.col3;";
-    // String expected = "SELECT sum(test.col1) FROM a, test where a.col2='test' group by
-    // test.col3;";
-    // select = (PlainSelect) resolver.replace(sqlStr, Map.of("b", "test"));
-    // t = select.getFromItem(Table.class);
-    //
-    // Assertions.assertThat(t.getResolvedTable().getFullyQualifiedName()).isEqualToIgnoringCase("a");
-    //
-    // //Assertions.assertThat(actual).isEqualToIgnoringCase(expected);
   }
 
   @Test
