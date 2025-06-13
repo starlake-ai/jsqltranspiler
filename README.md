@@ -1,4 +1,4 @@
-# [JSQLTranspiler](https://starlake.ai/starlake/index.html#sql-transpiler) - Transpile Dialect, Resolve Columns, Show Lineage
+# [JSQLTranspiler](https://starlake.ai/starlake/index.html#sql-transpiler) - Transpile Dialect, Resolve Columns, Show Lineage, Refactor Queries
 
 [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/ai.starlake.jsqltranspiler/jsqltranspiler?server=https%3A%2F%2Fs01.oss.sonatype.org)](https://s01.oss.sonatype.org/#nexus-search;quick~ai.starlake.jsqltranspiler/jsqltranspiler)
 [![JavaDoc](https://javadoc.io/badge2/ai.starlake.jsqltranspiler/jsqltranspiler/javadoc.svg)](https://javadoc.io/doc/ai.starlake.jsqltranspiler/jsqltranspiler)
@@ -194,6 +194,43 @@ String sql =
       Assertions.assertEquals("yellow", rs.getString(3) );
     }
 ```
+
+## SQL Refactoring example
+
+`JSQLTranspiler` can refactor statements by replacing table names. The following example swaps the tablenames `a` and `b` in a query based on the physical tables of the given metadata:
+
+```sql
+-- Input:
+SELECT a.*
+FROM (  SELECT  a.col3
+                , Sum( a.col2 )
+        FROM a inner join b on a.col1=b.col1
+        WHERE a.col1 = b.col1
+        GROUP BY a.col3
+        HAVING Sum( a.col2 ) > 0 ) AS a
+;
+```
+
+```java
+JSQLReplacer replacer = new JSQLReplacer({{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"}});
+replacer.replace(sqlStr, Map.of("a", "b", "b", "a"));
+```    
+
+```sql
+-- Output:
+SELECT  a.col3
+        , a.sum
+FROM (  SELECT  b.col3
+                , Sum( b.col2 )
+        FROM b
+            INNER JOIN a
+                ON b.col1 = a.col1
+        WHERE b.col1 = a.col1
+        GROUP BY b.col3
+        HAVING Sum( b.col2 ) > 0 ) AS a;
+;
+```
+
 
 ## How to use
 
