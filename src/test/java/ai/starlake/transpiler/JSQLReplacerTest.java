@@ -2,10 +2,12 @@ package ai.starlake.transpiler;
 
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.sql.SQLException;
 import java.util.Map;
 
 class JSQLReplacerTest {
@@ -71,9 +73,6 @@ class JSQLReplacerTest {
 
     @Test
     void testSwapTablenames() throws JSQLParserException {
-        String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"},
-                {"test", "col1", "col2", "col3"}};
-
         String sqlStr = "SELECT a.*\n"
                         + "FROM (  SELECT  a.col3\n"
                         + "                , Sum( a.col2 )\n"
@@ -81,22 +80,34 @@ class JSQLReplacerTest {
                         + "        WHERE a.col1 = b.col1\n"
                         + "        GROUP BY a.col3\n"
                         + "        HAVING Sum( a.col2 ) > 0 ) AS a";
+
+        Map<String, String> replacements =  Map.of("a", "b", "b", "a");
+
+        String expected = "SELECT a.col3, a.sum \n"
+                          + "FROM (  SELECT  b.col3\n"
+                          + "                , Sum( b.col2 )\n"
+                          + "        FROM b inner join a on b.col1=a.col1\n"
+                          + "        WHERE b.col1 = a.col1\n"
+                          + "        GROUP BY b.col3\n"
+                          + "        HAVING Sum( b.col2 ) > 0 ) AS a";
+
+        assertThatRewritesInto(sqlStr, replacements, expected);
+    }
+
+    Statement assertThatRewritesInto(String sqlStr, Map<String, String> replacements, String expected)
+            throws JSQLParserException {
+        String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"},
+                {"test", "col1", "col2", "col3"}};
+        return assertThatRewritesInto(schemaDefinition, sqlStr, replacements, expected);
+    }
+
+    Statement assertThatRewritesInto(String[][] schemaDefinition, String sqlStr, Map<String, String> replacements, String expected)
+            throws JSQLParserException {
         JSQLReplacer replacer = new JSQLReplacer(schemaDefinition);
-        PlainSelect select = (PlainSelect) replacer.replace(sqlStr, Map.of("a", "b", "b", "a"));
-
-        // only physical BASE TABLE would get replaced
+        Statement st = replacer.replace(sqlStr, replacements);
         Assertions
-                .assertThat(select.toString())
-                .isEqualToIgnoringCase(
-                        "SELECT a.*\n"
-                        + "FROM (  SELECT  b.col3\n"
-                        + "                , Sum( b.col2 )\n"
-                        + "        FROM b inner join a on b.col1=a.col1\n"
-                        + "        WHERE b.col1 = a.col1\n"
-                        + "        GROUP BY b.col3\n"
-                        + "        HAVING Sum( b.col2 ) > 0 ) AS a");
-
-
-
+                .assertThat(JSQLColumnResolverTest.sanitize(st.toString()))
+                .isEqualToIgnoringCase(JSQLColumnResolverTest.sanitize(expected));
+        return st;
     }
 }
