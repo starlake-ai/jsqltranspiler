@@ -147,7 +147,7 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   }
 
   @Override
-  protected <S> List<JdbcColumn> visitExpression(Expression expression, S context) {
+  protected <S> List<JdbcColumn> applyExpression(Expression expression, S context) {
     JdbcColumn col = new JdbcColumn(expression.toString().replaceAll("[()]", ""), expression);
     return List.of(col);
   }

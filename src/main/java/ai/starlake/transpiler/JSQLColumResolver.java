@@ -73,12 +73,24 @@ public class JSQLColumResolver
   final JSQLExpressionColumnResolver expressionColumnResolver;
 
   /**
-   * Instantiates a new JSQLColumnResolver for the provided Database Metadata
+   * Instantiates a new JSQLColumnResolver for the provided Database Metadata.
    *
    * @param metaData the meta data
    */
   public JSQLColumResolver(JdbcMetaData metaData) {
     this.metaData = metaData;
+    this.expressionColumnResolver = new JSQLExpressionColumnResolver(this);
+  }
+
+
+  /**
+   * Instantiates a new JSQLColumnResolver for the provided Database Connection.
+   *
+   * @param conn the open database connection
+   * @throws SQLException when the Database MetaData can't be queried
+   */
+  public JSQLColumResolver(Connection conn) throws SQLException {
+    this.metaData = new JdbcMetaData(conn);
     this.expressionColumnResolver = new JSQLExpressionColumnResolver(this);
   }
 

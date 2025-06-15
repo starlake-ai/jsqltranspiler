@@ -81,6 +81,8 @@ import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.update.UpdateSet;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -103,6 +105,10 @@ public class JSQLResolver extends JSQLColumResolver {
 
   public JSQLResolver(JdbcMetaData metaData) {
     super(metaData);
+  }
+
+  public JSQLResolver(Connection connection) throws SQLException {
+    super(connection);
   }
 
   public JSQLResolver(String currentCatalogName, String currentSchemaName,
