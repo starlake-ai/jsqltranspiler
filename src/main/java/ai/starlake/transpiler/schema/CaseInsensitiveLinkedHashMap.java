@@ -20,6 +20,7 @@ import java.util.AbstractMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -49,6 +50,13 @@ public class CaseInsensitiveLinkedHashMap<V> extends LinkedHashMap<String, V> {
     String lowerCaseKey = unquote(key.toLowerCase());
     originalKeys.put(lowerCaseKey, unquote(key));
     return super.put(lowerCaseKey, value);
+  }
+
+  @Override
+  public void putAll(Map<? extends String, ? extends V> m) {
+    for (Entry<? extends String, ? extends V> e : m.entrySet()) {
+      put(e.getKey(), e.getValue());
+    }
   }
 
   @Override

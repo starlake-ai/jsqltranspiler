@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -240,10 +241,12 @@ public final class JdbcMetaData implements DatabaseMetaData {
       JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName, name);
       int columnCount = rsMetaData.getColumnCount();
       for (int i = 1; i <= columnCount; i++) {
+        String finalColumnName = rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
+                                 ? rsMetaData.getColumnLabel(i)
+                                 : rsMetaData.getColumnName(i);
+
         JdbcColumn col = t.add(t.tableCatalog, t.tableSchema, t.tableName,
-            rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
-                ? rsMetaData.getColumnLabel(i)
-                : rsMetaData.getColumnName(i),
+            finalColumnName,
             rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
             rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
             "", rsMetaData.getColumnDisplaySize(i), i, "",
@@ -308,8 +311,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
       } else {
         // @todo: implement a GLOB based column name filter
         for (JdbcColumn column : jdbcTable.columns.values()) {
-          column.tableCatalog = jdbcCatalog.tableCatalog;
-          column.tableSchema = jdbcSchema.tableSchema;
+//          column.tableCatalog = jdbcCatalog.tableCatalog;
+//          column.tableSchema = jdbcSchema.tableSchema;
           column.tableName = jdbcTable.tableName;
 
           if (column.scopeCatalog == null || column.scopeCatalog.isEmpty()) {
@@ -1571,6 +1574,9 @@ public final class JdbcMetaData implements DatabaseMetaData {
           // @todo: add indices and reference
           schema1.put(table1);
         }
+        schema1.synonyms.putAll(schema.synonyms);
+        schema1.droppedTables.putAll(schema.droppedTables);
+
         catalog1.put(schema1);
       }
       metaData1.put(catalog1);
@@ -1583,6 +1589,10 @@ public final class JdbcMetaData implements DatabaseMetaData {
 
   public static JdbcMetaData copyOf(JdbcMetaData metaData) {
     return copyOf(metaData, new CaseInsensitiveLinkedHashMap<Table>());
+  }
+
+  public JdbcMetaData copyOf() {
+    return copyOf(this);
   }
 
   private static JdbcTable getJdbcTable(JdbcTable table) {
@@ -1726,13 +1736,17 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   public JdbcTable getTable(Table t) {
+    Table fullyQualifiedTable
+            = new Table(t.getFullyQualifiedName())
+                  .setUnsetCatalogAndSchema(currentCatalogName, currentSchemaName);
+
     final JdbcCatalog jdbcCatalog =
-        catalogs.getOrDefault(t.getUnquotedCatalogName(), catalogs.get(currentCatalogName));
+        catalogs.get(fullyQualifiedTable.getUnquotedCatalogName());
     if (jdbcCatalog != null) {
       final JdbcSchema jdbcSchema =
-          jdbcCatalog.getOrDefault(t.getUnquotedSchemaName(), jdbcCatalog.get(currentSchemaName));
+          jdbcCatalog.get(fullyQualifiedTable.getUnquotedSchemaName());
       if (jdbcSchema != null) {
-        return jdbcSchema.get(t.getUnquotedName());
+        return jdbcSchema.get(fullyQualifiedTable.getUnquotedName());
       } else {
         return null;
       }
@@ -1760,6 +1774,35 @@ public final class JdbcMetaData implements DatabaseMetaData {
       }
     } else {
       return false;
+    }
+  }
+
+  public void addSynonym(String fromTableName, String toTableName) {
+    if (fromTableName == null || fromTableName.isEmpty()) {
+      throw new RuntimeException("Table name must not be empty!");
+    } else if (toTableName == null || toTableName.isEmpty()) {
+      throw new RuntimeException("Table name must not be empty!");
+    }
+
+    Table fromTable =
+        new Table(fromTableName).setUnsetCatalogAndSchema(currentCatalogName, currentSchemaName);
+    Table toTable =
+        new Table(toTableName).setUnsetCatalogAndSchema(currentCatalogName, currentSchemaName);
+    JdbcTable jdbcTable = getTable(toTable);
+    if (jdbcTable == null) {
+      throw new TableNotFoundException(toTable.getFullyQualifiedName(), List.of());
+    }
+
+    JdbcCatalog fromCatalog = catalogs.get(fromTable.getUnquotedCatalogName());
+    if (fromCatalog != null) {
+      JdbcSchema fromSchema = fromCatalog.get(fromTable.getUnquotedSchemaName());
+      if (fromSchema != null) {
+        fromSchema.synonyms.put(fromTable.getUnquotedName(), jdbcTable);
+      } else {
+        throw new SchemaNotFoundException(fromTable.getUnquotedSchemaName());
+      }
+    } else {
+      throw new CatalogNotFoundException(fromTable.getUnquotedCatalogName());
     }
   }
 }

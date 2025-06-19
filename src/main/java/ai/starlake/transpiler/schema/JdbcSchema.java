@@ -16,6 +16,8 @@
  */
 package ai.starlake.transpiler.schema;
 
+import net.sf.jsqlparser.schema.Table;
+
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -38,6 +40,9 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
   public String tableCatalog;
 
   public CaseInsensitiveLinkedHashMap<JdbcTable> tables = new CaseInsensitiveLinkedHashMap<>();
+  public CaseInsensitiveLinkedHashMap<JdbcTable> synonyms = new CaseInsensitiveLinkedHashMap<>();
+  public CaseInsensitiveLinkedHashMap<JdbcTable> droppedTables =
+      new CaseInsensitiveLinkedHashMap<>();
 
   public JdbcSchema(String tableSchema, String tableCatalog) {
     this.tableSchema = tableSchema != null ? tableSchema : "";
@@ -54,7 +59,7 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
       while (rs.next()) {
         // TABLE_SCHEM String => schema name
         String tableSchema = JdbcUtils.getStringSafe(rs, "TABLE_SCHEM");
-        // TABLE_CATALOG String => catalog name (may be null)
+        // TABLE_CATALOG String => catalog name (maybe null)
         String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CATALOG", "");
         if (tableSchema != null && !tableSchema.isBlank()) {
           JdbcSchema jdbcSchema = new JdbcSchema(tableSchema, tableCatalog);
@@ -69,11 +74,31 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
   }
 
   public JdbcTable put(JdbcTable jdbcTable) {
-    return tables.put(jdbcTable.tableName.toUpperCase(), jdbcTable);
+    return tables.put(jdbcTable.tableName, jdbcTable);
+  }
+
+  public JdbcTable get(Table table) {
+    return get(table.getUnquotedName());
   }
 
   public JdbcTable get(String tableName) {
-    return tables.get(tableName.replaceAll("^\"|\"$", "").toUpperCase());
+    // @todo: check if this unquoting is still necessary
+    String unquotedTableName = tableName.replaceAll("^\"|\"$", "");
+
+    JdbcTable jdbcTable = tables.get(unquotedTableName);
+
+    // Virtual tables from WITH items shadow physical tables and synonyms
+    if (jdbcTable!=null && jdbcTable.tableType.equalsIgnoreCase("VIRTUAL TABLE")) {
+      return jdbcTable;
+    } else if ( droppedTables.containsKey(unquotedTableName) ) {
+      return null;
+    } else if (synonyms.containsKey(unquotedTableName)) {
+      final JdbcTable synonym = synonyms.get(unquotedTableName);
+      synonym.tableName=unquotedTableName;
+      return synonym;
+    } else {
+      return jdbcTable;
+    }
   }
 
   @Override
@@ -189,7 +214,7 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
   }
 
   public boolean containsKey(String key) {
-    return tables.containsKey(key);
+    return synonyms.containsKey(key) || tables.containsKey(key);
   }
 
   public JdbcTable remove(String key) {

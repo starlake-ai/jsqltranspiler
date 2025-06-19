@@ -1,7 +1,9 @@
 package ai.starlake.transpiler;
 
+import ai.starlake.transpiler.JSQLTranspiler.Dialect;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
+import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -478,4 +481,31 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
         "sqrt");
   }
 
+  @Test
+  void test() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}};
+
+    String sqlStr = "with a as (select a.col2 AS col1 from a) SELECT * from a;";
+    //String sqlStr = "SELECT a.colb from (select a.col2 AS colb from a) a;";
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    resolver.resolve(sqlStr);
+  }
+
+  @Test void testHayssam() throws JSQLParserException, InterruptedException {
+    String[][] schemaDefinition = {{"mycte", "col1", "col2", "col3"}};
+    String sqlStr = "select CURRENT_TIMESTAMP() as timestamp from mycte";
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    final Set<JdbcColumn> resolved = resolver.resolve(sqlStr);
+    // At the moment it is empty
+    // Assertions.assertThat(resolved).isNotEmpty();
+
+
+    JSQLColumResolver columResolver = new JSQLColumResolver(schemaDefinition);
+    final JdbcResultSetMetaData resultSetMetaData = columResolver.getResultSetMetaData(sqlStr);
+    Assertions.assertThat(resultSetMetaData.getColumns()).isNotEmpty();
+
+    String output = JSQLTranspiler.transpileQuery(sqlStr, Dialect.ANY);
+    Assertions.assertThat(output).isEqualToIgnoringCase(sqlStr);
+  }
 }

@@ -54,6 +54,7 @@ import net.sf.jsqlparser.util.deparser.StatementDeParser;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +68,7 @@ import java.util.logging.Logger;
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class JSQLColumResolver
     implements SelectVisitor<JdbcResultSetMetaData>, FromItemVisitor<JdbcResultSetMetaData> {
+
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
   private boolean commentFlag = true;
   final JdbcMetaData metaData;
@@ -517,7 +519,7 @@ public class JSQLColumResolver
   @Override
   public <S> JdbcResultSetMetaData visit(PlainSelect select, S context) {
     if (context instanceof JdbcMetaData) {
-      return visit(select, (JdbcMetaData) context);
+      return visit(select, ((JdbcMetaData) context).copyOf());
     } else {
       return null;
     }

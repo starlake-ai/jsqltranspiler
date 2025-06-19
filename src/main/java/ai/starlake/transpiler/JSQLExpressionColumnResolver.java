@@ -67,7 +67,7 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     this.columResolver = columResolver;
   }
 
-  private JdbcColumn getJdbcColumn(JdbcMetaData metaData, Column column) {
+  public static JdbcColumn getJdbcColumn(JdbcMetaData metaData, Column column) {
     JdbcColumn jdbcColumn = null;
     String columnTableName = null;
     String columnSchemaName = null;
@@ -382,6 +382,10 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
         for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
             t.getName(), null)) {
           boolean inserted = false;
+          jdbcColumn.tableSchema = null;
+          jdbcColumn.tableCatalog = null;
+          jdbcColumn.tableName = t.getName();
+
           if (!excepts.contains(jdbcColumn)) {
 
             if (metaData.getNaturalJoinedTables().containsValue(t)) {
@@ -563,6 +567,9 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     if (context instanceof JdbcMetaData) {
       JdbcResultSetMetaData resultSetMetaData =
           withItem.accept(columResolver, JdbcMetaData.copyOf((JdbcMetaData) context));
+      for (JdbcColumn c: resultSetMetaData.getColumns()) {
+        c.tableName = withItem.getAliasName();
+      }
       columns.addAll(resultSetMetaData.getColumns());
     }
     return columns;

@@ -45,6 +45,8 @@ public class JdbcUtils {
     // --
     DUCKCB("DUCK", null, null, "SELECT current_catalog(), current_schema()"),
     // --
+    H2("H2", null, null, "SELECT current_catalog(), current_schema()"),
+    // --
     OTHER("OTHER", null, null, "SELECT current_database(), current_schema()");
 
     String identString;

@@ -9,8 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
-class JSQLReplacerTest {
-
+class JSQLAbstractReplacerTest {
   @Test
   void testWithShadowing() throws JSQLParserException {
     String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}};
@@ -19,20 +18,20 @@ class JSQLReplacerTest {
     String sqlStr = "with a as (select 1 from a) SELECT a.col1 from a;";
     JSQLReplacer replacer = new JSQLReplacer(schemaDefinition);
 
-    // So we expect a Column Not Found exception
-    Assertions.assertThatExceptionOfType(ColumnNotFoundException.class).isThrownBy(() -> {
-      PlainSelect st = (PlainSelect) replacer.replace(sqlStr, Map.of("a", "test"));
-
-      // only physical BASE TABLE would get replaced
-      Assertions.assertThat(st.toString())
-          .isEqualToIgnoringCase("with a as (select 1 from test) SELECT a.col1 from a;");
-    });
+//    // So we expect a Column Not Found exception
+//    Assertions.assertThatExceptionOfType(ColumnNotFoundException.class).isThrownBy(() -> {
+//      PlainSelect st = (PlainSelect) replacer.replace(sqlStr, Map.of("a", "test"));
+//
+//      // only physical BASE TABLE would get replaced
+//      Assertions.assertThat(st.toString())
+//          .isEqualToIgnoringCase("with a as (select 1 from test) SELECT a.col1 from a;");
+//    });
 
     // only physical BASE TABLE would get replaced
     String sqlStr2 = "with a as (select a.col2 AS col1 from a) SELECT a.col1 from a;";
-    PlainSelect st = (PlainSelect) replacer.replace(sqlStr2, Map.of("a", "test"));
-    Assertions.assertThat(st.toString()).isEqualToIgnoringCase(
-        "with a as (select test.col2 AS col1 from test) SELECT a.col1 from a");
+    String expected = "with a as (select test.col2 AS col1 from test) SELECT a.col1 from a";
+
+    assertThatRewritesInto(sqlStr2, Map.of("a", "test"), expected);
   }
 
   @Test

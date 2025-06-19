@@ -8,9 +8,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.StatementVisitor;
 import net.sf.jsqlparser.statement.StatementVisitorAdapter;
-import net.sf.jsqlparser.statement.merge.MergeOperationVisitor;
 import net.sf.jsqlparser.statement.merge.MergeOperationVisitorAdapter;
 import net.sf.jsqlparser.statement.select.FromItemVisitorAdapter;
 import net.sf.jsqlparser.statement.select.PivotVisitorAdapter;
@@ -48,7 +46,7 @@ public class JSQLReplacer {
    * @throws SQLException when the Database MetaData can't be queried
    */
   public JSQLReplacer(Connection connection) throws SQLException {
-    resolver = new JSQLResolver(connection);
+    resolver = new JSQLResolver(connection).setCommentFlag(false);
   }
 
   /**
@@ -60,7 +58,8 @@ public class JSQLReplacer {
    */
   public JSQLReplacer(String currentCatalogName, String currentSchemaName,
       String[][] metaDataDefinition) {
-    resolver = new JSQLResolver(currentCatalogName, currentSchemaName, metaDataDefinition);
+    resolver = new JSQLResolver(currentCatalogName, currentSchemaName, metaDataDefinition)
+        .setCommentFlag(false);
   }
 
   /**
@@ -115,12 +114,27 @@ public class JSQLReplacer {
       new ExpressionVisitorAdapter<>() {
         @Override
         public <S> Void visit(Column column, S context) {
-          Table table = column.getTable();
-          if (table.getResolvedTable() != null
-              && replaceTables.containsKey(table.getResolvedTable().getFullyQualifiedName())) {
-            String replacementName =
-                replaceTables.get(table.getResolvedTable().getFullyQualifiedName());
-            table.setName(replacementName);
+          if (column.getTable()!=null) {
+            Table table = new Table(column.getTable().getFullyQualifiedName());
+
+            if (table.getResolvedTable() != null && replaceTables.containsKey(table.getResolvedTable()
+                                                                                   .getFullyQualifiedName())) {
+
+              String replacementName =
+                      replaceTables.get(table.getResolvedTable().getFullyQualifiedName());
+
+              if (table.getDatabaseName() != null) {
+                table.setName(replacementName);
+              }
+              else {
+                Table replacementTable = new Table(replacementName);
+
+                if (table.getSchemaName() != null) {
+                  table.setSchemaName(replacementTable.getSchemaName());
+                }
+                table.setName(replacementTable.getName());
+              }
+            }
           }
           return null;
         }
@@ -129,9 +143,14 @@ public class JSQLReplacer {
   private final FromItemVisitorAdapter<Void> fromItemVisitor = new FromItemVisitorAdapter<>() {
     @Override
     public <S> Void visit(Table table, S context) {
-      if (table.getResolvedTable() != null
-          && replaceTables.containsKey(table.getResolvedTable().getFullyQualifiedName())) {
-        table.setName(replaceTables.get(table.getResolvedTable().getFullyQualifiedName()));
+      if (table.getResolvedTable() != null && replaceTables.containsKey(table.getResolvedTable()
+          .setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+              resolver.metaData.getCurrentSchemaName())
+          .getFullyQualifiedName())) {
+
+        String replacementName =
+            replaceTables.get(table.getResolvedTable().getFullyQualifiedName());
+        table.setName(replacementName);
       }
       return null;
     }
@@ -150,10 +169,10 @@ public class JSQLReplacer {
     fromItemVisitor.setSelectVisitor(selectVisitor);
   }
 
-  private final MergeOperationVisitor<Void> mergeOperationVisitor =
+  private final MergeOperationVisitorAdapter<Void> mergeOperationVisitor =
       new MergeOperationVisitorAdapter<>(selectVisitor);
 
-  private final StatementVisitor<Void> statementVisitor =
+  private final StatementVisitorAdapter<Void> statementVisitor =
       new StatementVisitorAdapter<>(expressionVisitor, pivotVisitorAdapter, selectItemVisitor,
           fromItemVisitor, selectVisitor, mergeOperationVisitor);
 
@@ -167,11 +186,13 @@ public class JSQLReplacer {
   public Statement replace(Statement st, Map<String, String> replacementTables) {
     this.replaceTables.clear();
     for (Entry<String, String> entry : replacementTables.entrySet()) {
-      this.replaceTables.put(entry.getKey(), entry.getValue());
+      Table t = new Table(entry.getKey()).setUnsetCatalogAndSchema(
+          resolver.metaData.getCurrentCatalogName(), resolver.metaData.getCurrentSchemaName());
+      this.replaceTables.put(t.getFullyQualifiedName(), entry.getValue());
     }
 
     resolver.resolve(st);
-    st.accept(statementVisitor);
+    st.accept(statementVisitor, null);
 
     return st;
   }
@@ -184,7 +205,8 @@ public class JSQLReplacer {
    * @return the modified statement with the replaced table names
    */
   public Statement replace(Statement st, CaseInsensitiveLinkedHashMap<Table> replacementTables) {
-    CaseInsensitiveLinkedHashMap<String> replacementTableNames = new CaseInsensitiveLinkedHashMap<>();
+    CaseInsensitiveLinkedHashMap<String> replacementTableNames =
+        new CaseInsensitiveLinkedHashMap<>();
     for (Entry<String, Table> entry : replacementTables.entrySet()) {
       replacementTableNames.put(entry.getKey(), entry.getValue().getFullyQualifiedName());
     }
