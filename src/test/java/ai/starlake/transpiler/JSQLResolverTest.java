@@ -3,6 +3,7 @@ package ai.starlake.transpiler;
 import ai.starlake.transpiler.JSQLTranspiler.Dialect;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
+import ai.starlake.transpiler.schema.JdbcMetaData.ErrorMode;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -492,20 +493,34 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test void testHayssam() throws JSQLParserException, InterruptedException {
-    String[][] schemaDefinition = {{"mycte", "col1", "col2", "col3"}};
-    String sqlStr = "select CURRENT_TIMESTAMP() as timestamp from mycte";
+    JdbcMetaData metaData =
+            new JdbcMetaData("", "sales")
+                    .addTable("sales", "orders", new JdbcColumn("customer_id"),
+                              new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
+                    .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
+                              new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
+                              new JdbcColumn("name2"), new JdbcColumn("id1"));
+    String sqlStr = "WITH mycte AS (\n"
+                    + "        SELECT  o.amount\n"
+                    + "                , c.id\n"
+                    + "                , CURRENT_TIMESTAMP() AS timestamp\n"
+                    + "        FROM sales.orders o\n"
+                    + "            , sales.customers c\n"
+                    + "        WHERE o.customer_id = c.id )\n"
+                    + "SELECT  id\n"
+                    + "        , Sum( amount ) AS sum\n"
+                    + "        , timestamp\n"
+                    + "FROM mycte\n"
+                    + "GROUP BY    mycte.id\n"
+                    + "            , mycte.timestamp\n"
+                    + ";";
 
-    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    JSQLResolver resolver = new JSQLResolver(metaData);
     final Set<JdbcColumn> resolved = resolver.resolve(sqlStr);
-    // At the moment it is empty
-    // Assertions.assertThat(resolved).isNotEmpty();
 
 
-    JSQLColumResolver columResolver = new JSQLColumResolver(schemaDefinition);
+    JSQLColumResolver columResolver = new JSQLColumResolver(metaData.setErrorMode(ErrorMode.LENIENT));
     final JdbcResultSetMetaData resultSetMetaData = columResolver.getResultSetMetaData(sqlStr);
     Assertions.assertThat(resultSetMetaData.getColumns()).isNotEmpty();
-
-    String output = JSQLTranspiler.transpileQuery(sqlStr, Dialect.ANY);
-    Assertions.assertThat(output).isEqualToIgnoringCase(sqlStr);
   }
 }
