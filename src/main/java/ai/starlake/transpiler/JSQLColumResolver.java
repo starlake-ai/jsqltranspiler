@@ -494,12 +494,11 @@ public class JSQLColumResolver
       Alias alias = selectItem.getAlias();
       List<JdbcColumn> jdbcColumns =
           selectItem.getExpression().accept(expressionColumnResolver, metaData);
-
       for (JdbcColumn col : jdbcColumns) {
         resultSetMetaData.add(col, alias != null ? alias.getUnquotedName() : null);
-        Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
         if (selectItem.getExpression() instanceof AllColumns
             || selectItem.getExpression() instanceof AllTableColumns) {
+          Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
           Column column = new Column(t, col.columnName);
           if (isCommentFlag()) {
             column.setCommentText("Resolved Column");
