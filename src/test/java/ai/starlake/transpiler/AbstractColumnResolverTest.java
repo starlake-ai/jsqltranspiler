@@ -69,7 +69,7 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
       }
     }
 
-    ResultSetMetaData resultSetMetaData =
+    JdbcResultSetMetaData resultSetMetaData =
         JSQLColumResolver.getResultSetMetaData(t.providedSqlStr, metaData);
 
     StringWriter stringWriter = new StringWriter();
@@ -94,7 +94,10 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
     for (int i = 1; i <= maxI; i++) {
       csvWriter.writeNext(new String[] {String.valueOf(i), resultSetMetaData.getColumnLabel(i),
           resultSetMetaData.getColumnName(i), resultSetMetaData.getTableName(i),
-          resultSetMetaData.getSchemaName(i), resultSetMetaData.getCatalogName(i),
+          resultSetMetaData.getSchemaName(i) == null ? resultSetMetaData.getScopeSchema(i)
+              : resultSetMetaData.getSchemaName(i),
+          resultSetMetaData.getCatalogName(i) == null ? resultSetMetaData.getScopeCatalog(i)
+              : resultSetMetaData.getCatalogName(i),
           JdbcMetaData.getTypeName(resultSetMetaData.getColumnType(i)),
           resultSetMetaData.getColumnTypeName(i), String.valueOf(resultSetMetaData.getPrecision(i)),
           String.valueOf(resultSetMetaData.getScale(i)),
@@ -204,7 +207,7 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
     return res;
   }
 
-  void assertThatResolvesInto(ResultSetMetaData res, String[][] expectedColumns)
+  void assertThatResolvesInto(JdbcResultSetMetaData res, String[][] expectedColumns)
       throws SQLException {
     Assertions.assertThat(res.getColumnCount()).isEqualTo(expectedColumns.length);
     for (int i = 0; i < res.getColumnCount(); i++) {
@@ -215,9 +218,11 @@ public class AbstractColumnResolverTest extends JSQLTranspilerTest {
 
         // catalog, schema, table, column, label
       } else if (expectedColumns[i].length == 5) {
-        Assertions
-            .assertThat(new String[] {res.getCatalogName(i + 1), res.getSchemaName(i + 1),
-                res.getTableName(i + 1), res.getColumnName(i + 1), res.getColumnLabel(i + 1)})
+        Assertions.assertThat(new String[] {
+            res.getCatalogName(i + 1) == null ? res.getScopeCatalog(i + 1)
+                : res.getCatalogName(i + 1),
+            res.getSchemaName(i + 1) == null ? res.getScopeSchema(i + 1) : res.getSchemaName(i + 1),
+            res.getTableName(i + 1), res.getColumnName(i + 1), res.getColumnLabel(i + 1)})
             .isEqualTo(expectedColumns[i]);
 
         // Label is explicitly expected

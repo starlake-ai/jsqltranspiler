@@ -467,7 +467,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     metaData.addTable("b", new JdbcColumn("col1"), new JdbcColumn("col2"), new JdbcColumn("col3"));
 
 
-    ResultSetMetaData res =
+    JdbcResultSetMetaData res =
         JSQLColumResolver.getResultSetMetaData("SELECT * FROM d.a, b", metaData);
     Assertions.assertThat(6).isEqualTo(res.getColumnCount());
 
@@ -492,7 +492,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     table.add(new JdbcColumn("b"));
     schema.put(table);
 
-    ResultSetMetaData res =
+    JdbcResultSetMetaData res =
         JSQLColumResolver.getResultSetMetaData("SELECT * from `c.s.t`", metaData);
 
     String[][] expected = new String[][] {{"c", "s", "t", "a", "a"}, {"c", "s", "t", "b", "b"}};
@@ -518,7 +518,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + "group by mycte.id, mycte.timestamp1";
 
 
-    ResultSetMetaData res =
+    JdbcResultSetMetaData res =
         JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
 
     String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp1"}};
@@ -556,7 +556,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + "group by \"mycte\".\"id\", \"mycte\".\"timestamp\"";
     //@formatter:on
 
-    ResultSetMetaData res =
+    JdbcResultSetMetaData res =
         JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
 
     String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
@@ -598,7 +598,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     Assertions.assertThatException().isThrownBy(new ThrowableAssert.ThrowingCallable() {
       @Override
       public void call() throws Throwable {
-        ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
+        JdbcResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
             JdbcMetaData.copyOf(metaData.setErrorMode(JdbcMetaData.ErrorMode.STRICT)));
 
         String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
@@ -607,7 +607,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     });
 
     // LENIENT MODE
-    ResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
+    JdbcResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
         JdbcMetaData.copyOf(metaData.setErrorMode(JdbcMetaData.ErrorMode.LENIENT)));
 
     String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
@@ -664,7 +664,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + "group by `mycte`.`id`, `mycte`.`timestamp`";
     //@formatter:on
 
-    ResultSetMetaData res =
+    JdbcResultSetMetaData res =
         JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
 
     String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
@@ -703,7 +703,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + "group by `mycte`.`id`, `mycte`.`timestamp`";
     //@formatter:on
 
-    ResultSetMetaData res =
+    JdbcResultSetMetaData res =
         JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
 
     String[][] expected = new String[][] {{"mycte", "id"}, {"", "sum"}, {"mycte", "timestamp"}};
@@ -752,7 +752,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + ";";
     //@formatter:on
 
-    ResultSetMetaData res =
+    JdbcResultSetMetaData res =
         JSQLColumResolver.getResultSetMetaData(sqlStr, JdbcMetaData.copyOf(metaData));
 
     //@formatter:off
@@ -840,11 +840,19 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
         + "FROM employees AS e";
 
     // The expected output in ASCII (alternatively JSON and XML is available)
-    String expected = "SELECT\n" + " ├─employees.name : Other\n" + " ├─project_count AS SELECT\n"
-        + " │  └─Function COUNT\n" + " │     └─projects.employee_id : Other\n"
-        + " │  └─projects.employee_id : Other\n" + " └─task_count AS SELECT\n"
-        + "    └─Function COUNT\n" + "       └─tasks.employee_id : Other\n"
-        + "    └─tasks.employee_id : Other\n";
+    // @formatter:off
+    String expected =
+            "SELECT\n" +
+            " ├─employees.name : Other\n" +
+            " ├─project_count AS SELECT\n" +
+            " │  └─Function COUNT\n" +
+            " │     └─projects.employee_id : Other\n" +
+            " │  └─projects.employee_id : Other\n" +
+            " └─task_count AS SELECT\n" +
+            "    └─Function COUNT\n" +
+            "       └─tasks.employee_id : Other\n" +
+            "    └─tasks.employee_id : Other\n";
+    // @formatter:on
     assertLineage(schemaDefinition, sqlStr, expected);
   }
 

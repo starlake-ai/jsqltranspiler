@@ -28,6 +28,8 @@ public class JSQLReplacer {
       new CaseInsensitiveLinkedHashMap<>();
   private final JSQLResolver resolver;
 
+  private Statement st;
+
   /**
    * Instantiates a new JSQLReplacer for a given Database MetaData for an empty default Catalog and
    * Schema.
@@ -114,19 +116,22 @@ public class JSQLReplacer {
       new ExpressionVisitorAdapter<>() {
         @Override
         public <S> Void visit(Column column, S context) {
-          if (column.getTable()!=null) {
-            Table table = new Table(column.getTable().getFullyQualifiedName());
-
-            if (table.getResolvedTable() != null && replaceTables.containsKey(table.getResolvedTable()
-                                                                                   .getFullyQualifiedName())) {
+          if (column.getTable() != null) {
+            Table table = column.getTable();
+            if (table.getResolvedTable() != null
+                && replaceTables
+                    .containsKey(
+                        table.getResolvedTable()
+                            .setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                                resolver.metaData.getCurrentSchemaName())
+                            .getFullyQualifiedName())) {
 
               String replacementName =
-                      replaceTables.get(table.getResolvedTable().getFullyQualifiedName());
+                  replaceTables.get(table.getResolvedTable().getFullyQualifiedName());
 
               if (table.getDatabaseName() != null) {
                 table.setName(replacementName);
-              }
-              else {
+              } else {
                 Table replacementTable = new Table(replacementName);
 
                 if (table.getSchemaName() != null) {
@@ -192,6 +197,7 @@ public class JSQLReplacer {
     }
 
     resolver.resolve(st);
+    this.st = st;
     st.accept(statementVisitor, null);
 
     return st;

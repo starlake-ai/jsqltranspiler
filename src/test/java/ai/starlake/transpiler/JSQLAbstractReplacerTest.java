@@ -18,14 +18,14 @@ class JSQLAbstractReplacerTest {
     String sqlStr = "with a as (select 1 from a) SELECT a.col1 from a;";
     JSQLReplacer replacer = new JSQLReplacer(schemaDefinition);
 
-//    // So we expect a Column Not Found exception
-//    Assertions.assertThatExceptionOfType(ColumnNotFoundException.class).isThrownBy(() -> {
-//      PlainSelect st = (PlainSelect) replacer.replace(sqlStr, Map.of("a", "test"));
-//
-//      // only physical BASE TABLE would get replaced
-//      Assertions.assertThat(st.toString())
-//          .isEqualToIgnoringCase("with a as (select 1 from test) SELECT a.col1 from a;");
-//    });
+    // So we expect a Column Not Found exception
+    Assertions.assertThatExceptionOfType(ColumnNotFoundException.class).isThrownBy(() -> {
+      PlainSelect st = (PlainSelect) replacer.replace(sqlStr, Map.of("a", "test"));
+
+      // only physical BASE TABLE would get replaced
+      Assertions.assertThat(st.toString())
+          .isEqualToIgnoringCase("with a as (select 1 from test) SELECT a.col1 from a;");
+    });
 
     // only physical BASE TABLE would get replaced
     String sqlStr2 = "with a as (select a.col2 AS col1 from a) SELECT a.col1 from a;";

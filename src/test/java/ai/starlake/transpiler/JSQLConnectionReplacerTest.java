@@ -30,8 +30,7 @@ class JSQLConnectionReplacerTest {
     info.put("password", "");
 
     conn = driver.connect("jdbc:h2:mem:", info);
-    try (
-            java.sql.Statement st = conn.createStatement()) {
+    try (java.sql.Statement st = conn.createStatement()) {
       st.executeUpdate("CREATE SCHEMA IF NOT EXISTS test;");
       st.executeUpdate("CREATE TABLE test.c(b VARCHAR(1));");
 
@@ -79,7 +78,7 @@ class JSQLConnectionReplacerTest {
   @Test
   void testSimpleWithAllColumns() throws SQLException, JSQLParserException {
     String sqlStr = "with a as (select * from a) SELECT * from a";
-    String expected = "with a as (select * from test.c) SELECT * from a";
+    String expected = "with a as (select c.b from test.c) SELECT a.b from a";
     assertThatRewritesInto(sqlStr, expected);
   }
 
@@ -93,16 +92,19 @@ class JSQLConnectionReplacerTest {
 
   @Test
   void testWithAndSubSelectJoin() throws SQLException, JSQLParserException {
-    String sqlStr = "with a as (SELECT a.b from (select * from a) a) SELECT * from a inner join a using(b)";
-    String expected = "with a as (SELECT a.b from (select c.b from test.c) a) SELECT a.b from a inner join a using(b)";
+    String sqlStr =
+        "with a as (SELECT a.b from (select * from a) a) SELECT * from a inner join a using(b)";
+    String expected =
+        "with a as (SELECT a.b from (select c.b from test.c) a) SELECT a.b from a inner join a using(b)";
     assertThatRewritesInto(sqlStr, expected);
   }
 
-  Statement assertThatRewritesInto(String sqlStr,String expected) throws JSQLParserException, SQLException {
+  Statement assertThatRewritesInto(String sqlStr, String expected)
+      throws JSQLParserException, SQLException {
     JSQLReplacer replacer = new JSQLReplacer(metaData);
     Statement st = replacer.replace(sqlStr, replacements);
     Assertions.assertThat(JSQLColumnResolverTest.sanitize(st.toString()))
-              .isEqualToIgnoringCase(JSQLColumnResolverTest.sanitize(expected));
+        .isEqualToIgnoringCase(JSQLColumnResolverTest.sanitize(expected));
     return st;
   }
 }

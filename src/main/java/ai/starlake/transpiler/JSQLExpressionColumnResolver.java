@@ -386,6 +386,12 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
           jdbcColumn.tableCatalog = null;
           jdbcColumn.tableName = t.getUnquotedName();
 
+          // @todo: this is the right thing but seems to be the wrong location
+          // please refactor this
+          if (jdbcColumn.getExpression() instanceof Column && t.getResolvedTable() != null) {
+            ((Column) jdbcColumn.getExpression()).setResolvedTable(t);
+          }
+
           if (!excepts.contains(jdbcColumn)) {
 
             if (metaData.getNaturalJoinedTables().containsValue(t)) {
@@ -567,7 +573,7 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     if (context instanceof JdbcMetaData) {
       JdbcResultSetMetaData resultSetMetaData =
           withItem.accept(columResolver, JdbcMetaData.copyOf((JdbcMetaData) context));
-      for (JdbcColumn c: resultSetMetaData.getColumns()) {
+      for (JdbcColumn c : resultSetMetaData.getColumns()) {
         c.tableName = withItem.getAliasName();
       }
       columns.addAll(resultSetMetaData.getColumns());

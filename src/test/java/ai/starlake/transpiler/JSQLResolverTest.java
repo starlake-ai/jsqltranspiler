@@ -234,9 +234,14 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
             {"foo", "id", "name"},
             {"fooFact", "id", "value"}
     };
+
+    String sqlStr =
+            "SELECT *\n"
+            + "FROM (  (   SELECT *\n"
+            + "            FROM foo ) c\n"
+            + "            INNER JOIN foofact\n"
+            + "                ON c.id = foofact.id ) d\n" + ";";
     //@formatter:on
-    String sqlStr = "SELECT *\n" + "FROM (  (   SELECT *\n" + "            FROM foo ) c\n"
-        + "            INNER JOIN foofact\n" + "                ON c.id = foofact.id ) d\n" + ";";
 
     // all involved columns with tables
     //@formatter:off
@@ -487,39 +492,31 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}};
 
     String sqlStr = "with a as (select a.col2 AS col1 from a) SELECT * from a;";
-    //String sqlStr = "SELECT a.colb from (select a.col2 AS colb from a) a;";
+    // String sqlStr = "SELECT a.colb from (select a.col2 AS colb from a) a;";
     JSQLResolver resolver = new JSQLResolver(schemaDefinition);
     resolver.resolve(sqlStr);
   }
 
-  @Test void testHayssam() throws JSQLParserException, InterruptedException {
+  @Test
+  void testHayssam() throws JSQLParserException, InterruptedException {
     JdbcMetaData metaData =
-            new JdbcMetaData("", "sales")
-                    .addTable("sales", "orders", new JdbcColumn("customer_id"),
-                              new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
-                    .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
-                              new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
-                              new JdbcColumn("name2"), new JdbcColumn("id1"));
-    String sqlStr = "WITH mycte AS (\n"
-                    + "        SELECT  o.amount\n"
-                    + "                , c.id\n"
-                    + "                , CURRENT_TIMESTAMP() AS timestamp\n"
-                    + "        FROM sales.orders o\n"
-                    + "            , sales.customers c\n"
-                    + "        WHERE o.customer_id = c.id )\n"
-                    + "SELECT  id\n"
-                    + "        , Sum( amount ) AS sum\n"
-                    + "        , timestamp\n"
-                    + "FROM mycte\n"
-                    + "GROUP BY    mycte.id\n"
-                    + "            , mycte.timestamp\n"
-                    + ";";
+        new JdbcMetaData("", "sales").addTable("sales", "orders", new JdbcColumn("customer_id"),
+            new JdbcColumn("order_id"), new JdbcColumn("amount"), new JdbcColumn("seller_id"))
+            .addTable("sales", "customers", new JdbcColumn("id"), new JdbcColumn("signup"),
+                new JdbcColumn("contact"), new JdbcColumn("birthdate"), new JdbcColumn("name1"),
+                new JdbcColumn("name2"), new JdbcColumn("id1"));
+    String sqlStr = "WITH mycte AS (\n" + "        SELECT  o.amount\n" + "                , c.id\n"
+        + "                , CURRENT_TIMESTAMP() AS timestamp\n" + "        FROM sales.orders o\n"
+        + "            , sales.customers c\n" + "        WHERE o.customer_id = c.id )\n"
+        + "SELECT  id\n" + "        , Sum( amount ) AS sum\n" + "        , timestamp\n"
+        + "FROM mycte\n" + "GROUP BY    mycte.id\n" + "            , mycte.timestamp\n" + ";";
 
     JSQLResolver resolver = new JSQLResolver(metaData);
     final Set<JdbcColumn> resolved = resolver.resolve(sqlStr);
 
 
-    JSQLColumResolver columResolver = new JSQLColumResolver(metaData.setErrorMode(ErrorMode.LENIENT));
+    JSQLColumResolver columResolver =
+        new JSQLColumResolver(metaData.setErrorMode(ErrorMode.LENIENT));
     final JdbcResultSetMetaData resultSetMetaData = columResolver.getResultSetMetaData(sqlStr);
     Assertions.assertThat(resultSetMetaData.getColumns()).isNotEmpty();
   }

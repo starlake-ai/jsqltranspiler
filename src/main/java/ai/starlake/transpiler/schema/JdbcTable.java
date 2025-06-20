@@ -17,6 +17,7 @@
 package ai.starlake.transpiler.schema;
 
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
 
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -226,7 +227,6 @@ public class JdbcTable implements Comparable<JdbcTable> {
 
         // IS_GENERATEDCOLUMN String => Indicates whether this is a generated column
         String isGeneratedColumn = JdbcUtils.getStringSafe(rs, "IS_GENERATEDCOLUMN");
-
         JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
             dataType, typeName, columnSize, decimalDigits, numericPrecicionRadix, nullable, remarks,
             columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
