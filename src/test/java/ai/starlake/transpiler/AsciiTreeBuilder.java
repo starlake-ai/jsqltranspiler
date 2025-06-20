@@ -79,8 +79,9 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
       }
       b.append(column.tableName).append(".").append(column.columnName);
 
-      if (!StringUtils.equals(column.tableCatalog, column.scopeCatalog)
-          || !StringUtils.equals(column.tableSchema, column.scopeSchema)
+
+      if (!StringUtils.equals( StringUtils.defaultIfEmpty(column.tableCatalog, column.scopeCatalog) , column.scopeCatalog)
+          || !StringUtils.equals( StringUtils.defaultIfEmpty(column.tableSchema, column.scopeSchema), column.scopeSchema)
           || !StringUtils.equals(column.tableName, column.scopeTable)) {
         b.append(" → ");
         if (column.scopeCatalog != null && !column.scopeCatalog.isEmpty()) {
