@@ -380,11 +380,11 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
         String tableCatalogName = t.getUnquotedDatabaseName();
 
         for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
-            t.getName(), null)) {
+            t.getUnquotedName(), null)) {
           boolean inserted = false;
           jdbcColumn.tableSchema = null;
           jdbcColumn.tableCatalog = null;
-          jdbcColumn.tableName = t.getName();
+          jdbcColumn.tableName = t.getUnquotedName();
 
           if (!excepts.contains(jdbcColumn)) {
 
