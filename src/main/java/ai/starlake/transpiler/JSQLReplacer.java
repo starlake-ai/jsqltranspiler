@@ -28,7 +28,6 @@ public class JSQLReplacer {
       new CaseInsensitiveLinkedHashMap<>();
   private final JSQLResolver resolver;
 
-  private Statement st;
 
   /**
    * Instantiates a new JSQLReplacer for a given Database MetaData for an empty default Catalog and
@@ -197,7 +196,6 @@ public class JSQLReplacer {
     }
 
     resolver.resolve(st);
-    this.st = st;
     st.accept(statementVisitor, null);
 
     return st;

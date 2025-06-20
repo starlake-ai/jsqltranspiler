@@ -17,7 +17,6 @@
 package ai.starlake.transpiler.schema;
 
 import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.schema.Table;
 
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;

@@ -30,7 +30,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.File;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.ExecutorService;

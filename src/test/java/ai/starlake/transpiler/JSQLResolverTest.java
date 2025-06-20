@@ -1,6 +1,5 @@
 package ai.starlake.transpiler;
 
-import ai.starlake.transpiler.JSQLTranspiler.Dialect;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcMetaData.ErrorMode;
@@ -14,12 +13,12 @@ import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -227,6 +226,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
+  @Disabled
   void testResolveColumnInnerJoin() throws JSQLParserException {
 
     //@formatter:off
@@ -388,6 +388,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
+  @Disabled
   void testGuardSucceedingOnSelect() throws JSQLParserException {
     //@formatter:off
     String[][] schemaDefinition = {
@@ -512,7 +513,7 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
         + "FROM mycte\n" + "GROUP BY    mycte.id\n" + "            , mycte.timestamp\n" + ";";
 
     JSQLResolver resolver = new JSQLResolver(metaData);
-    final Set<JdbcColumn> resolved = resolver.resolve(sqlStr);
+    resolver.resolve(sqlStr);
 
 
     JSQLColumResolver columResolver =

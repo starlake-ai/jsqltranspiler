@@ -180,7 +180,7 @@ public class JSQLResolver extends JSQLColumResolver {
           c.tableSchema = metaData.getCurrentSchemaName();
           c.tableCatalog = metaData.getCurrentCatalogName();
           if (c.getExpression() instanceof Column) {
-            Column column = ((Column) c.getExpression());
+            Column column = (Column) c.getExpression();
             if (column.getTable() != null) {
               column.getTable().setResolvedTable(null);
             }
@@ -235,7 +235,7 @@ public class JSQLResolver extends JSQLColumResolver {
         c.tableSchema = metaData.getCurrentSchemaName();
         c.tableCatalog = metaData.getCurrentCatalogName();
         if (c.getExpression() instanceof Column) {
-          Column column = ((Column) c.getExpression());
+          Column column = (Column) c.getExpression();
           if (column.getTable() != null) {
             column.getTable().setResolvedTable(null);
           }
@@ -293,7 +293,7 @@ public class JSQLResolver extends JSQLColumResolver {
             c.tableSchema = metaData.getCurrentSchemaName();
             c.tableCatalog = metaData.getCurrentCatalogName();
             if (c.getExpression() instanceof Column) {
-              Column column = ((Column) c.getExpression());
+              Column column = (Column) c.getExpression();
               if (column.getTable() != null) {
                 column.getTable().setResolvedTable(null);
               }
