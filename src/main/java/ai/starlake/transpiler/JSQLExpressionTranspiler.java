@@ -1560,7 +1560,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (windowDefinition != null && function.getType() == AnalyticType.WITHIN_GROUP
         && windowDefinition.getWindowName() == null && windowDefinition.getWindowElement() == null
         && (windowDefinition.getPartitionBy() == null
-            || windowDefinition.getPartitionBy().getPartitionExpressionList() == null)) {
+            || windowDefinition.getPartitionBy().isEmpty())) {
       function.setFuncOrderBy(windowDefinition.getOrderByElements());
       function.setWindowDefinition(new WindowDefinition());
       function.setType(AnalyticType.FILTER_ONLY);
