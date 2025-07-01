@@ -27,13 +27,9 @@ repositories {
     mavenLocal()
     mavenCentral()
 
-    //Sonatype OSSRH
+    //Sonatype
     maven {
-        url = uri('https://s01.oss.sonatype.org/content/repositories/snapshots/')
-    }
-
-    maven {
-        url = uri('https://oss.sonatype.org/content/repositories/snapshots/')
+        url = uri('https://central.sonatype.com/repository/maven-snapshots/')
     }
 
     maven {
@@ -46,7 +42,7 @@ configurations {
 }
 
 dependencies {
-    implementation('com.github.jsqlparser:jsqlparser:5.4-SNAPSHOT'){ changing = true }
+    implementation('com.github.jsqlparser:jsqlparser:+'){ changing = true }
 
     //for JSON (de)serialization
     implementation 'org.json:json:+'
@@ -73,7 +69,7 @@ dependencies {
     testImplementation 'com.google.cloud:google-cloud-bigquery:+'
 
     // Java Doc in XML Format
-    xmlDoclet 'com.manticore-projects.tools:xml-doclet:2.+'
+    xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
 }
 
 configurations.configureEach {
@@ -152,7 +148,8 @@ javadoc {
 
 tasks.register('xmldoc', Javadoc) {
     source = sourceSets.main.allJava
-    classpath = sourceSets.main.runtimeClasspath
+    include("build/generated/javacc/net/sf/jsqlparser/parser/*.java" )
+    include("../JSQLParser/src/main/java/**/*.java")
 
     destinationDir = reporting.file("xmlDoclet")
     options.docletpath = configurations.xmlDoclet.files as List
@@ -386,7 +383,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             artifactId 'jsqltranspiler'
-            from(components.java)
+            from components.java
             versionMapping {
                 usage('java-api') {
                     fromResolutionOf('runtimeClasspath')
@@ -400,6 +397,9 @@ publishing {
                 name = 'JSQLTranspiler library'
                 description = 'Rewrite Big RDBMS queries into DuckDB compatible queries'
                 url = 'https://github.com/starlake-ai/jsqltranspiler'
+                scm {
+                    url = 'https://github.com/starlake-ai/jsqltranspiler'
+                }
                 licenses {
                     license {
                         name = 'Apache License'
@@ -421,8 +421,8 @@ publishing {
             // Username and Password are defined in ~/.gradle/gradle.properties
             name "ossrh"
             url version.toString().endsWith('-SNAPSHOT')
-                    ? "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-                    : "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+                    ? "https://central.sonatype.com/repository/maven-snapshots/"
+                    : "https://central.sonatype.com/repository/maven-releases"
             credentials(PasswordCredentials)
         }
     }
