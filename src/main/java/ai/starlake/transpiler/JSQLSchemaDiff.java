@@ -13,7 +13,7 @@ public class JSQLSchemaDiff {
     this.schema = schema;
   }
 
-  public List<Attribute> getDiff(String sqlStr) {
+  public List<Attribute> getDiff(String sqlStr, String qualifiedTargetTableName) {
     ArrayList<Attribute> attributes = new ArrayList<>();
 
     return attributes;

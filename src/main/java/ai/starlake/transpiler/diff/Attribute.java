@@ -34,7 +34,7 @@ public class Attribute {
     this.type = type;
     this.isArray = false;
     this.attributes = null;
-    this.status = null;
+    this.status = AttributeStatus.UNCHANGED;
   }
 
   public Attribute(String name, Class<?> type) {
@@ -42,6 +42,20 @@ public class Attribute {
     this.type = type.getSimpleName();
     this.isArray = false;
     this.attributes = null;
-    this.status = null;
+    this.status = AttributeStatus.UNCHANGED;
+  }
+
+  public Attribute(String name, Class<?> type, AttributeStatus status) {
+    this.name = name;
+    this.type = type.getSimpleName();
+    this.isArray = false;
+    this.attributes = null;
+    this.status = status;
+  }
+
+  @Override
+  public String toString() {
+    return "Attribute{" + "name='" + name + '\'' + ", type='" + type + '\'' + ", isArray=" + isArray
+        + ", status=" + status + ", attributes=" + attributes + '}';
   }
 }
