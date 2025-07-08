@@ -45,12 +45,65 @@ public class Attribute {
     this.status = AttributeStatus.UNCHANGED;
   }
 
+  public Attribute(String name, String type, AttributeStatus status) {
+    this.name = name;
+    this.type = type;
+    this.isArray = false;
+    this.attributes = null;
+    this.status = status;
+  }
+
   public Attribute(String name, Class<?> type, AttributeStatus status) {
     this.name = name;
     this.type = type.getSimpleName();
     this.isArray = false;
     this.attributes = null;
     this.status = status;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public AttributeStatus getStatus() {
+    return status;
+  }
+
+  public Attribute setStatus(AttributeStatus status) {
+    this.status = status;
+    return this;
+  }
+
+  public ArrayList<Attribute> getAttributes() {
+    return attributes;
+  }
+
+  public Attribute setAttributes(ArrayList<Attribute> attributes) {
+    this.attributes = attributes;
+    return this;
+  }
+
+  @Override
+  public final boolean equals(Object o) {
+    if (!(o instanceof Attribute)) {
+      return false;
+    }
+
+    Attribute attribute = (Attribute) o;
+    return isArray == attribute.isArray && name.equals(attribute.name)
+        && type.equals(attribute.type);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = name.hashCode();
+    result = 31 * result + type.hashCode();
+    result = 31 * result + Boolean.hashCode(isArray);
+    return result;
   }
 
   @Override

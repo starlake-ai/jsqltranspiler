@@ -111,5 +111,20 @@ public class CaseInsensitiveLinkedHashMap<V> extends LinkedHashMap<String, V> {
     }
     return originalKeySet;
   }
+
+  @Override
+  public V putIfAbsent(String key, V value) {
+    if (!containsKey(key)) {
+      return put(key, value);
+    } else {
+      return value;
+    }
+  }
+
+  @Override
+  public V getOrDefault(Object key, V defaultValue) {
+    V value = get(key);
+    return value != null ? value : defaultValue;
+  }
 }
 
