@@ -22,17 +22,11 @@ plugins {
 }
 
 repositories {
-    mavenLocal()
-    mavenCentral()
-
     //Sonatype
     maven {
         url = uri('https://central.sonatype.com/repository/maven-snapshots/')
     }
-
-    maven {
-        url = uri('https://oss.sonatype.org/content/groups/public/')
-    }
+    mavenCentral()
 }
 
 configurations {
@@ -71,7 +65,7 @@ dependencies {
     testImplementation 'com.google.cloud:google-cloud-bigquery:+'
 
     // Java Doc in XML Format
-    xmlDoclet 'com.manticore-projects.tools:xml-doclet:+'
+    xmlDoclet ('com.manticore-projects.tools:xml-doclet:+'){ changing = true }
 }
 
 configurations.configureEach {
@@ -149,6 +143,8 @@ javadoc {
 }
 
 tasks.register('xmldoc', Javadoc) {
+    dependsOn(compileJava)
+
     source = sourceSets.main.allJava
     classpath = sourceSets.main.runtimeClasspath
 
@@ -160,12 +156,9 @@ tasks.register('xmldoc', Javadoc) {
     options.addBooleanOption("withFloatingToc", true)
     options.addStringOption("basePackage", "ai.starlake.jsqltranspiler")
 
-    dependsOn(compileJava)
-    doLast {
-        copy {
-            from reporting.file("xmlDoclet/javadoc.rst")
-            into "${projectDir}/src/site/sphinx/"
-        }
+    copy {
+        from reporting.file("xmlDoclet/javadoc.rst")
+        into "${projectDir}/src/site/sphinx/"
     }
 }
 

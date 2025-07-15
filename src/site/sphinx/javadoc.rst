@@ -1,4 +1,16 @@
 
+.. raw:: html
+
+    <div id="floating-toc">
+        <div class="search-container">
+            <input type="button" id="toc-hide-show-btn"></input>
+            <input type="text" id="toc-search" placeholder="Search" />
+        </div>
+        <ul id="toc-list"></ul>
+    </div>
+
+
+
 #######################################################################
 API 1.1-SNAPSHOT
 #######################################################################
@@ -2200,6 +2212,19 @@ Attribute
 
 
 | *@Override*
+| **equals** (o) → boolean
+|          :ref:`Object<java.lang.Object>` o
+|          returns boolean
+
+
+
+| *@Override*
+| **hashCode** () → int
+|          returns int
+
+
+
+| *@Override*
 | **toString** () → :ref:`String<java.lang.String>`
 |          returns :ref:`String<java.lang.String>`
 
@@ -2512,6 +2537,22 @@ CaseInsensitiveLinkedHashMap
 | *@Override*
 | **keySet** () → :ref:`String><java.util.Set<java.lang.String>>`
 |          returns :ref:`String><java.util.Set<java.lang.String>>`
+
+
+
+| *@Override*
+| **putIfAbsent** (key, value) → V
+|          :ref:`String<java.lang.String>` key
+|          V value
+|          returns V
+
+
+
+| *@Override*
+| **getOrDefault** (key, defaultValue) → V
+|          :ref:`Object<java.lang.Object>` key
+|          V defaultValue
+|          returns V
 
 
 

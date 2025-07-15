@@ -198,19 +198,8 @@ public class JSQLResolver extends JSQLColumResolver {
       Alias alias = fromItem.getAlias();
       Table t = (Table) fromItem;
 
-      Table fullyQualifiedTable = new Table(t.getName()).setUnsetCatalogAndSchema(
+      Table fullyQualifiedTable = new Table(t.getFullyQualifiedName()).setUnsetCatalogAndSchema(
           metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName());
-
-      // if (t.getSchemaName() == null || t.getSchemaName().isEmpty()) {
-      // t.setSchemaName(metaData.getCurrentSchemaName());
-      // }
-      //
-      // if (t.getDatabase() == null) {
-      // t.setDatabaseName(metaData.getCurrentCatalogName());
-      // } else if (t.getDatabase().getDatabaseName() == null
-      // || t.getDatabase().getDatabaseName().isEmpty()) {
-      // t.getDatabase().setDatabaseName(metaData.getCurrentCatalogName());
-      // }
 
       JdbcTable jdbcTable = metaData.getTable(fullyQualifiedTable);
       if (jdbcTable != null) {
@@ -260,7 +249,7 @@ public class JSQLResolver extends JSQLColumResolver {
           Alias alias = join.getFromItem().getAlias();
           Table t = (Table) join.getFromItem();
 
-          Table fullyQualifiedTable = new Table(t.getName()).setUnsetCatalogAndSchema(
+          Table fullyQualifiedTable = new Table(t.getFullyQualifiedName()).setUnsetCatalogAndSchema(
               metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName());
 
           JdbcTable jdbcTable = metaData.getTable(fullyQualifiedTable);

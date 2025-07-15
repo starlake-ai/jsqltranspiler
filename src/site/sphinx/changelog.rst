@@ -8,6 +8,99 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **this file list the accepted type names for attributes and their mapping to database types (#109)**
+    
+    manticore-projects, 2025-07-08
+  * **feat: working schema diff w/ example**
+    
+    manticore-projects, 2025-07-08
+  * **this file list the accepted type names for attributes and their mapping to database types**
+    
+    Hayssam Saleh, 2025-07-08
+  * **feat: reference example for the schema diff**
+    
+    manticore-projects, 2025-07-07
+  * **feat: better DIFF API with samples**
+    
+    manticore-projects, 2025-07-07
+  * **chore: stick with DuckDB 1.2.1 for the moment**
+    
+    manticore-projects, 2025-07-07
+  * **style: format the DIFF API**
+    
+    manticore-projects, 2025-07-07
+  * **feat: Add DuckDB GEOMETRY Deserializer and tests needed for 1.2.2+**
+    
+    manticore-projects, 2025-07-07
+  * **style: allow empty catch blocks when commented or ignored**
+    
+    manticore-projects, 2025-07-07
+  * **feat: Geoemtry deserializer**
+    
+    manticore-projects, 2025-07-06
+  * **feat: Geoemtry deserializer**
+    
+    manticore-projects, 2025-07-06
+  * **chore: update dependencies**
+    
+    manticore-projects, 2025-07-06
+  * **publish to sonatype central repo (#105)**
+    
+    manticore-projects, 2025-07-06
+  * **DBDiff Specification (#104)**
+    
+    manticore-projects, 2025-07-06
+  * **DBDiff Specification**
+    
+    Hayssam Saleh, 2025-07-03
+  * **publish to sonatype central repo**
+    
+    Hayssam Saleh, 2025-07-01
+  * **style: fix Q/A exceptions**
+    
+    manticore-projects, 2025-06-20
+  * **fix: all the Replacement Tests work**
+    
+    manticore-projects, 2025-06-20
+  * **fix: NULL vs. EMPTY**
+    
+    manticore-projects, 2025-06-20
+  * **fix: identify `FROM` table only for `AllColumns` or `AllTableColumns`**
+    
+    manticore-projects, 2025-06-20
+  * **fix: use Unquoted Table name**
+    
+    manticore-projects, 2025-06-20
+  * **fix: adopt JSQLParser 5.4 `PartitionBy` expression list**
+    
+    manticore-projects, 2025-06-20
+  * **test: add a specific test**
+    
+    manticore-projects, 2025-06-19
+  * **feat: table/column resolution and replacement (wip)**
+    
+    manticore-projects, 2025-06-19
+  * **feat: syntax sugar**
+    
+    manticore-projects, 2025-06-15
+  * **style: fix Q/A**
+    
+    manticore-projects, 2025-06-14
+  * **test: improve the assertion for equal SQLs**
+    
+    manticore-projects, 2025-06-14
+  * **doc: explain `JSQLReplacer`**
+    
+    manticore-projects, 2025-06-13
+  * **test: split the tests of Resolver and Replacer**
+    
+    manticore-projects, 2025-06-13
+  * **style: clean-up the API**
+    
+    manticore-projects, 2025-06-13
+  * **feat: Query refactoring via `JSQLTableReplacer`**
+    
+    manticore-projects, 2025-06-11
   * **feat: adopt JSQLParser 5.4 based on JavaCC 8**
     
     manticore-projects, 2025-06-02
