@@ -99,4 +99,55 @@ class JSQLSchemaDiffTest {
 
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
   }
+
+  @Test
+  void getDiffMultiSchema2() throws JSQLParserException, SQLException {
+    //@formatter:off
+    DBSchema schema1 = new DBSchema(
+            ""
+            , "starbake"
+            , "orders"
+            , new Attribute("order_id", Long.class)
+            , new Attribute("timestamp", Timestamp.class)
+    );
+    DBSchema schema2 = new DBSchema(
+            ""
+            , "starbake"
+            , "order_lines"
+            , new Attribute("order_id", Long.class)
+            , new Attribute("quantity", Long.class)
+            , new Attribute("sale_price", Float.class)
+    );
+    DBSchema schema3 = new DBSchema(
+            ""
+            , "kpi"
+            , "revenue_summary"
+            , new Attribute("order_id", Long.class)
+            , new Attribute("order_date", Timestamp.class)
+            , new Attribute("total_revenue", Double.class)
+    );
+
+    String sqlStr =
+            "SELECT  o.order_id\n"
+            + "        , o.timestamp AS order_date\n"
+            + "        , Sum( ol.quantity * ol.sale_price ) AS total_revenue\n"
+            + "FROM starbake.orders o\n"
+            + "    JOIN starbake.order_lines ol\n"
+            + "        ON o.order_id = ol.order_id\n"
+            + "GROUP BY    o.order_id\n"
+            + "            , o.timestamp\n"
+            + ";";
+
+    List<Attribute> expected = List.of(
+            new Attribute("order_id", Long.class)
+            , new Attribute("order_date", Timestamp.class)
+            , new Attribute("total_revenue", "Other", AttributeStatus.ADDED)
+    );
+    //@formatter:on
+
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(schema1, schema2, schema3);
+    List<Attribute> actual = diff.getDiff(sqlStr, "kpi.revenue_summary");
+
+    Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+  }
 }

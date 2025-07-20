@@ -250,8 +250,10 @@ public class JdbcColumn implements Comparable<JdbcColumn> {
       }
 
       return b.toString();
-    } else {
+    } else if (expression!=null) {
       return expression.getClass().getSimpleName() + ": " + expression;
+    } else {
+      return tableName + "." + columnName;
     }
   }
 

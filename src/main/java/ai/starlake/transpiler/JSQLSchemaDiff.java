@@ -67,20 +67,24 @@ public class JSQLSchemaDiff {
     final JdbcTable table = meta.getTable(new Table(qualifiedTargetTableName));
     int c = 1;
     for (JdbcColumn column : resultSetMetaData.getColumns()) {
+      String columnName = resultSetMetaData.getColumnLabel(c++);
       AttributeStatus status = AttributeStatus.UNCHANGED;
-      if (table == null || !table.columns.containsKey(column.columnName)) {
+      if (table == null || !table.columns.containsKey(columnName)) {
         status = AttributeStatus.ADDED;
       }
       Attribute attribute =
-          new Attribute(resultSetMetaData.getColumnLabel(c++), column.typeName, status);
+          new Attribute(columnName, column.typeName, status);
       attributes.add(attribute);
     }
 
+    // Any remove columns
     if (table != null) {
       for (JdbcColumn column : table.getColumns()) {
         boolean found = false;
+        c=1;
         for (JdbcColumn column1 : resultSetMetaData.getColumns()) {
-          if (column.columnName.equalsIgnoreCase(column1.columnName)) {
+          String columnName = resultSetMetaData.getColumnLabel(c++);
+          if (column.columnName.equalsIgnoreCase(columnName) ) {
             found = true;
             break;
           }
