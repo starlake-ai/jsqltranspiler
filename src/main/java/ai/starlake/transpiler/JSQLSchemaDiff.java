@@ -72,8 +72,7 @@ public class JSQLSchemaDiff {
       if (table == null || !table.columns.containsKey(columnName)) {
         status = AttributeStatus.ADDED;
       }
-      Attribute attribute =
-          new Attribute(columnName, column.typeName, status);
+      Attribute attribute = new Attribute(columnName, column.typeName, status);
       attributes.add(attribute);
     }
 
@@ -81,10 +80,10 @@ public class JSQLSchemaDiff {
     if (table != null) {
       for (JdbcColumn column : table.getColumns()) {
         boolean found = false;
-        c=1;
-        for (JdbcColumn column1 : resultSetMetaData.getColumns()) {
-          String columnName = resultSetMetaData.getColumnLabel(c++);
-          if (column.columnName.equalsIgnoreCase(columnName) ) {
+        ArrayList<JdbcColumn> columns = resultSetMetaData.getColumns();
+        for (int i = 0; i < columns.size(); i++) {
+          String columnName = resultSetMetaData.getColumnLabel(i + 1);
+          if (column.columnName.equalsIgnoreCase(columnName)) {
             found = true;
             break;
           }
