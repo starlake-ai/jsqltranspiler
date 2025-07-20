@@ -38,8 +38,8 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -71,6 +71,183 @@ public final class JdbcMetaData implements DatabaseMetaData {
       new CaseInsensitiveLinkedHashMap<>();
 
   private DatabaseSpecific databaseType = DatabaseSpecific.OTHER;
+
+  public String getDDLStr(String catalogName) {
+    StringBuilder builder = new StringBuilder();
+
+    JdbcCatalog catalog = catalogs.get(catalogName);
+    if (catalog != null) {
+      for (JdbcSchema schema : catalog.schemas.values()) {
+        if (!schema.tableSchema.isEmpty()) {
+          builder.append("DROP SCHEMA IF EXISTS ").append(schema.tableSchema).append(" CASCADE;\n");
+          builder.append("CREATE SCHEMA ").append(schema.tableSchema).append(";\n");
+        }
+
+        for (JdbcTable table : schema.tables.values()) {
+          builder.append(
+              TypeMappingSystem.generateCreateTableDDL(table, "h2", !schema.tableSchema.isEmpty()));
+        }
+
+      }
+    }
+
+    return builder.toString();
+  }
+
+  /**
+   * Generates a CREATE TABLE DDL statement for this JdbcTable
+   * 
+   * @param includeSchema whether to include schema in table name
+   * @return DDL CREATE TABLE statement
+   */
+  public static String generateCreateTableDDL(JdbcTable table, boolean includeSchema) {
+    StringBuilder ddl = new StringBuilder();
+
+    // Table name with optional schema
+    String fullTableName =
+        includeSchema && table.tableSchema != null && !table.tableSchema.isEmpty()
+            ? table.tableSchema + "." + table.tableName
+            : table.tableName;
+
+    ddl.append("DROP TABLE IF EXISTS ").append(fullTableName).append(";\n");
+    ddl.append("CREATE TABLE ").append(fullTableName).append(" (\n");
+
+    // Column definitions
+    StringJoiner columnJoiner = new StringJoiner(",\n  ", "  ", "");
+
+    for (JdbcColumn column : table.getColumns()) {
+      String columnDef = generateColumnDefinition(column);
+      columnJoiner.add(columnDef);
+    }
+
+    ddl.append(columnJoiner.toString());
+
+    // Primary key constraint
+    if (table.primaryKey != null && !table.primaryKey.columnNames.isEmpty()) {
+      ddl.append(",\n  ");
+      ddl.append("CONSTRAINT ")
+          .append(table.primaryKey.primaryKeyName != null ? table.primaryKey.primaryKeyName
+              : "pk_" + table.tableName);
+      ddl.append(" PRIMARY KEY (");
+      ddl.append(String.join(", ", table.primaryKey.columnNames));
+      ddl.append(")");
+    }
+
+    ddl.append("\n);\n");
+
+    return ddl.toString();
+  }
+
+  /**
+   * Generates column definition string for a JdbcColumn
+   */
+  private static String generateColumnDefinition(JdbcColumn column) {
+    StringBuilder colDef = new StringBuilder();
+
+    colDef.append(column.columnName).append(" ");
+    colDef.append(
+        mapTypeToH2(column.dataType, column.typeName, column.columnSize, column.decimalDigits));
+
+
+    // Nullable constraint
+    if (column.nullable != null && column.nullable == 0) {
+      colDef.append(" NOT NULL");
+    }
+
+    // Default value
+    if (column.columnDefinition != null && !column.columnDefinition.trim().isEmpty()) {
+      colDef.append(" DEFAULT ").append(column.columnDefinition);
+    }
+
+
+    return colDef.toString();
+  }
+
+  /**
+   * Maps both Java class types and JDBC types to H2 column types
+   */
+  private static String mapTypeToH2(Integer jdbcType, String typeName, Integer columnSize,
+      Integer decimalDigits) {
+    // First try Java class type mapping
+    if (typeName != null) {
+      String upperType = typeName.toUpperCase();
+      switch (upperType) {
+        case "LONG":
+        case "JAVA.LANG.LONG":
+          return "BIGINT";
+        case "STRING":
+        case "JAVA.LANG.STRING":
+          return columnSize != null && columnSize > 0 ? "VARCHAR(" + columnSize + ")"
+              : "VARCHAR(255)";
+        case "OBJECT":
+        case "JAVA.LANG.OBJECT":
+          return "JSON";
+        case "INTEGER":
+        case "INT":
+        case "JAVA.LANG.INTEGER":
+          return "INTEGER";
+        case "DOUBLE":
+        case "JAVA.LANG.DOUBLE":
+          return "DOUBLE";
+        case "BOOLEAN":
+        case "JAVA.LANG.BOOLEAN":
+          return "BOOLEAN";
+        case "BYTE[]":
+        case "BYTES":
+          return columnSize != null && columnSize > 0 ? "VARBINARY(" + columnSize + ")" : "BLOB";
+        case "DATE":
+        case "JAVA.SQL.DATE":
+          return "DATE";
+        case "TIMESTAMP":
+        case "JAVA.SQL.TIMESTAMP":
+          return "TIMESTAMP";
+      }
+    }
+
+    // Fall back to JDBC type mapping
+    if (jdbcType != null) {
+      switch (jdbcType) {
+        case Types.BIGINT:
+          return "BIGINT";
+        case Types.INTEGER:
+          return "INTEGER";
+        case Types.SMALLINT:
+          return "SMALLINT";
+        case Types.TINYINT:
+          return "TINYINT";
+        case Types.DOUBLE:
+          return "DOUBLE";
+        case Types.REAL:
+          return "REAL";
+        case Types.DECIMAL:
+        case Types.NUMERIC:
+          if (columnSize != null && decimalDigits != null && decimalDigits > 0) {
+            return "DECIMAL(" + columnSize + "," + decimalDigits + ")";
+          }
+          return "DECIMAL";
+        case Types.VARCHAR:
+          return columnSize != null && columnSize > 0 ? "VARCHAR(" + columnSize + ")"
+              : "VARCHAR(255)";
+        case Types.CHAR:
+          return columnSize != null && columnSize > 0 ? "CHAR(" + columnSize + ")" : "CHAR(1)";
+        case Types.CLOB:
+          return "CLOB";
+        case Types.BLOB:
+          return "BLOB";
+        case Types.BOOLEAN:
+          return "BOOLEAN";
+        case Types.DATE:
+          return "DATE";
+        case Types.TIME:
+          return "TIME";
+        case Types.TIMESTAMP:
+          return "TIMESTAMP";
+      }
+    }
+
+    return "VARCHAR(255)"; // Default fallback
+  }
+
 
   public enum ErrorMode {
     /**
@@ -241,12 +418,12 @@ public final class JdbcMetaData implements DatabaseMetaData {
       JdbcTable t = new JdbcTable(currentCatalogName, currentSchemaName, name);
       int columnCount = rsMetaData.getColumnCount();
       for (int i = 1; i <= columnCount; i++) {
-        String finalColumnName = rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
-                                 ? rsMetaData.getColumnLabel(i)
-                                 : rsMetaData.getColumnName(i);
+        String finalColumnName =
+            rsMetaData.getColumnLabel(i) != null && !rsMetaData.getColumnLabel(i).isEmpty()
+                ? rsMetaData.getColumnLabel(i)
+                : rsMetaData.getColumnName(i);
 
-        JdbcColumn col = t.add(t.tableCatalog, t.tableSchema, t.tableName,
-            finalColumnName,
+        JdbcColumn col = t.add(t.tableCatalog, t.tableSchema, t.tableName, finalColumnName,
             rsMetaData.getColumnType(i), rsMetaData.getColumnClassName(i),
             rsMetaData.getPrecision(i), rsMetaData.getScale(i), 10, rsMetaData.isNullable(i), "",
             "", rsMetaData.getColumnDisplaySize(i), i, "",
@@ -311,8 +488,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
       } else {
         // @todo: implement a GLOB based column name filter
         for (JdbcColumn column : jdbcTable.columns.values()) {
-//          column.tableCatalog = jdbcCatalog.tableCatalog;
-//          column.tableSchema = jdbcSchema.tableSchema;
+          // column.tableCatalog = jdbcCatalog.tableCatalog;
+          // column.tableSchema = jdbcSchema.tableSchema;
           column.tableName = jdbcTable.tableName;
 
           if (column.scopeCatalog == null || column.scopeCatalog.isEmpty()) {
@@ -1736,15 +1913,12 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   public JdbcTable getTable(Table t) {
-    Table fullyQualifiedTable
-            = new Table(t.getFullyQualifiedName())
-                  .setUnsetCatalogAndSchema(currentCatalogName, currentSchemaName);
+    Table fullyQualifiedTable = new Table(t.getFullyQualifiedName())
+        .setUnsetCatalogAndSchema(currentCatalogName, currentSchemaName);
 
-    final JdbcCatalog jdbcCatalog =
-        catalogs.get(fullyQualifiedTable.getUnquotedCatalogName());
+    final JdbcCatalog jdbcCatalog = catalogs.get(fullyQualifiedTable.getUnquotedCatalogName());
     if (jdbcCatalog != null) {
-      final JdbcSchema jdbcSchema =
-          jdbcCatalog.get(fullyQualifiedTable.getUnquotedSchemaName());
+      final JdbcSchema jdbcSchema = jdbcCatalog.get(fullyQualifiedTable.getUnquotedSchemaName());
       if (jdbcSchema != null) {
         return jdbcSchema.get(fullyQualifiedTable.getUnquotedName());
       } else {

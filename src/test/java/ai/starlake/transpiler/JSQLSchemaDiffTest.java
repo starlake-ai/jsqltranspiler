@@ -44,13 +44,56 @@ class JSQLSchemaDiffTest {
     List<Attribute> expected = List.of(
             new Attribute("order_id", String.class)
             , new Attribute("order_date", Timestamp.class)
-            , new Attribute("total_revenue", "Other", AttributeStatus.ADDED)
+            , new Attribute("total_revenue", "Decimal", AttributeStatus.ADDED)
             , new Attribute("id", Long.class, AttributeStatus.REMOVED)
     );
     //@formatter:on
 
     JSQLSchemaDiff diff = new JSQLSchemaDiff(schema);
     List<Attribute> actual = diff.getDiff(sqlStr, "starbake.orders");
+
+    Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+  }
+
+  @Test
+  void getDiffSingleSchemaH2() throws JSQLParserException, SQLException, ClassNotFoundException {
+    //@formatter:off
+    DBSchema schema = new DBSchema(
+            ""
+            , "starbake"
+            , "orders"
+            , new Attribute("id", Long.class)
+            , new Attribute("order_id", String.class)
+            , new Attribute("order_date", Timestamp.class)
+    );
+    schema.put(
+            "order_lines"
+            , new Attribute("id", Long.class)
+            , new Attribute("quantity", Long.class)
+            , new Attribute("sale_price", "Decimal(23,2)")
+    );
+
+    String sqlStr =
+            "SELECT  o.order_id\n"
+            + "        , o.order_date\n"
+            + "        , Sum( ol.quantity * ol.sale_price ) AS total_revenue\n"
+            + "FROM starbake.orders o\n"
+            + "    INNER JOIN starbake.order_lines ol\n"
+            + "            USING ( id )\n"
+            + "GROUP BY    o.order_id\n"
+            + "            , o.order_date\n"
+            + ";";
+
+    List<Attribute> expected = List.of(
+            new Attribute("order_id", String.class)
+            , new Attribute("order_date", Timestamp.class)
+            , new Attribute("total_revenue", "Decimal", AttributeStatus.ADDED)
+            , new Attribute("id", Long.class, AttributeStatus.REMOVED)
+    );
+    //@formatter:on
+
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(schema);
+    List<Attribute> actual = diff.getDiffH2(sqlStr, "starbake.orders");
 
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
   }
@@ -89,7 +132,7 @@ class JSQLSchemaDiffTest {
     List<Attribute> expected = List.of(
             new Attribute("order_id", String.class)
             , new Attribute("order_date", Timestamp.class)
-            , new Attribute("total_revenue", "Other", AttributeStatus.ADDED)
+            , new Attribute("total_revenue", "Decimal", AttributeStatus.ADDED)
             , new Attribute("id", Long.class, AttributeStatus.REMOVED)
     );
     //@formatter:on
@@ -141,7 +184,7 @@ class JSQLSchemaDiffTest {
     List<Attribute> expected = List.of(
             new Attribute("order_id", Long.class)
             , new Attribute("order_date", Timestamp.class)
-            , new Attribute("total_revenue", "Other", AttributeStatus.ADDED)
+            , new Attribute("total_revenue", "Decimal", AttributeStatus.ADDED)
     );
     //@formatter:on
 
