@@ -1571,8 +1571,12 @@ JSQLSchemaDiff
 
 *extends:* :ref:`Object<java.lang.Object>` 
 
-| **JSQLSchemaDiff** (schema)
-|          :ref:`DBSchema<ai.starlake.transpiler.diff.DBSchema>` schema
+| **JSQLSchemaDiff** (schemas)
+|          :ref:`DBSchema><java.util.Collection<ai.starlake.transpiler.diff.DBSchema>>` schemas
+
+
+| **JSQLSchemaDiff** (schemas)
+|          :ref:`DBSchema[]<ai.starlake.transpiler.diff.DBSchema[]>` schemas
 
 
 | **getDiff** (sqlStr, qualifiedTargetTableName) → :ref:`Attribute><java.util.List<ai.starlake.transpiler.diff.Attribute>>`
