@@ -37,6 +37,7 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.stream.Stream;
 
 public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
@@ -991,10 +992,16 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
             + ";";
     //@formatter:on
 
+    // schema with 2 tables, but w/o any columns
     JdbcMetaData jdbcMetadata = new JdbcMetaData("", "starbake_analytics");
-    JdbcResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
-                                                                       jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.LENIENT));
+    jdbcMetadata.addTable("starbake_analytics", "customer_purchase_history", List.of());
+    jdbcMetadata.addTable("starbake_analytics", "order_items_analysis", List.of());
 
+    JdbcResultSetMetaData res = JSQLColumResolver
+                                        .getResultSetMetaData(
+                                                sqlStr
+                                                , jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.LENIENT)
+                                        );
 
     Assertions.assertThat(res.getColumns()).hasSize(13);
   }
