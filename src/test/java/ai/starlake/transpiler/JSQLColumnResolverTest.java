@@ -949,4 +949,54 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     Assertions.assertThat(res.getColumns()).hasSize(4);
   }
 
+  @Test
+  void testIssue115() throws JSQLParserException, SQLException {
+    //@formatter:off
+    String sqlStr =
+            "WITH customer_metrics AS (\n"
+            + "        SELECT  Count( DISTINCT customer_id ) AS total_customers\n"
+            + "                , Avg( total_orders ) AS avg_orders_per_customer\n"
+            + "                , Avg( total_spent ) AS avg_spent_per_customer\n"
+            + "                , Min( first_order_date ) AS earliest_order_date\n"
+            + "                , Max( last_order_date ) AS latest_order_date\n"
+            + "                , Avg( days_since_first_order ) AS avg_customer_lifetime_days\n"
+            + "                , Avg( Array_Length( purchased_categories, 1 ) ) AS avg_categories_per_customer\n"
+            + "        FROM starbake_analytics.customer_purchase_history )\n"
+            + "    , order_metrics AS (\n"
+            + "        SELECT  Count( DISTINCT order_id ) AS total_orders\n"
+            + "                , Sum( total_order_value ) AS total_revenue\n"
+            + "                , Avg( total_order_value ) AS avg_order_value\n"
+            + "                , Count( DISTINCT customer_id ) AS customers_with_orders\n"
+            + "        FROM starbake_analytics.order_items_analysis )\n"
+            + "SELECT  cm.total_customers\n"
+            + "        , om.total_orders\n"
+            + "        , om.total_revenue\n"
+            + "        , om.avg_order_value\n"
+            + "        , cm.avg_orders_per_customer\n"
+            + "        , cm.avg_spent_per_customer\n"
+            + "        , cm.earliest_order_date\n"
+            + "        , cm.latest_order_date\n"
+            + "        , cm.avg_customer_lifetime_days\n"
+            + "        , cm.avg_categories_per_customer\n"
+            + "        , om.customers_with_orders::FLOAT\n"
+            + "             / cm.total_customers AS customer_order_rate\n"
+            + "        , om.total_revenue\n"
+            + "             / Nullif(  Cast( cm.latest_order_date AS DATE ) -  Cast( cm.earliest_order_date AS DATE ), 0 ) AS daily_revenue\n"
+            + "        , om.total_orders::FLOAT\n"
+            + "             / Nullif(  Cast( cm.latest_order_date AS DATE ) -  Cast( cm.earliest_order_date AS DATE ), 0 ) AS daily_order_rate\n"
+            + "-- om.total_revenue / NULLIF(DATEDIFF('day', cm.earliest_order_date, cm.latest_order_date), 0) AS daily_revenue,\n"
+            + " -- om.total_orders::FLOAT / NULLIF(DATEDIFF('day', cm.earliest_order_date, cm.latest_order_date), 0) AS daily_order_rate\n"
+            + "FROM customer_metrics cm\n"
+            + "    CROSS JOIN order_metrics om\n"
+            + ";";
+    //@formatter:on
+
+    JdbcMetaData jdbcMetadata = new JdbcMetaData("", "starbake_analytics");
+    JdbcResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(sqlStr,
+                                                                       jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.LENIENT));
+
+
+    Assertions.assertThat(res.getColumns()).hasSize(13);
+  }
+
 }
