@@ -117,7 +117,7 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
           ? fromTables.get(columnTableName).getUnquotedDatabaseName()
           : columnCatalogName;
 
-      if (columnTableName.equalsIgnoreCase(fromTables.get(columnTableName).getUnquotedName())) {
+      if (columnTableName.equalsIgnoreCase(actualColumnTableName)) {
         JdbcTable jdbcTable = metaData.getTable(actualColumnCatalogName, actualColumnSchemaName,
             actualColumnTableName);
         if (jdbcTable != null && !jdbcTable.tableType.equals("VIRTUAL TABLE")) {
