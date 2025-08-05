@@ -951,7 +951,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
-  void testIssue115() throws JSQLParserException, SQLException {
+  void testIssue115() throws JSQLParserException, SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
     //@formatter:off
     String sqlStr =
             "WITH customer_metrics AS (\n"
@@ -1004,6 +1004,61 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
                                         );
 
     Assertions.assertThat(res.getColumns()).hasSize(13);
+
+    // The expected output in ASCII (alternatively JSON and XML is available)
+    // @formatter:off
+    String expected =
+            "SELECT\n"
+            + " ├─Function Count\n"
+            + " │  └─unresolvable\n"
+            + " ├─Function Count\n"
+            + " │  └─unresolvable\n"
+            + " ├─Function Sum\n"
+            + " │  └─unresolvable\n"
+            + " ├─Function Avg\n"
+            + " │  └─unresolvable\n"
+            + " ├─Function Avg\n"
+            + " │  └─unresolvable\n"
+            + " ├─Function Avg\n"
+            + " │  └─unresolvable\n"
+            + " ├─Function Min\n"
+            + " │  └─unresolvable\n"
+            + " ├─Function Max\n"
+            + " │  └─unresolvable\n"
+            + " ├─Function Avg\n"
+            + " │  └─unresolvable\n"
+            + " ├─Function Avg\n"
+            + " │  └─.Array_Length AS Function Array_Length\n"
+            + " │     ├─unresolvable\n"
+            + " │     └─LongValue: 1\n"
+            + " ├─customer_order_rate AS Division: om.customers_with_orders::FLOAT / cm.total_customers\n"
+            + " │  ├─Function Count\n"
+            + " │  │  └─unresolvable\n"
+            + " │  └─Function Count\n"
+            + " │     └─unresolvable\n"
+            + " ├─daily_revenue AS Division: om.total_revenue / Nullif(Cast(cm.latest_order_date AS DATE) - Cast(cm.earliest_order_date AS DATE), 0)\n"
+            + " │  ├─Function Sum\n"
+            + " │  │  └─unresolvable\n"
+            + " │  └─.Nullif AS Function Nullif\n"
+            + " │     ├─Subtraction: Cast(cm.latest_order_date AS DATE) - Cast(cm.earliest_order_date AS DATE)\n"
+            + " │     │  ├─Function Max\n"
+            + " │     │  │  └─unresolvable\n"
+            + " │     │  └─Function Min\n"
+            + " │     │     └─unresolvable\n"
+            + " │     └─LongValue: 0\n"
+            + " └─daily_order_rate AS Division: om.total_orders::FLOAT / Nullif(Cast(cm.latest_order_date AS DATE) - Cast(cm.earliest_order_date AS DATE), 0)\n"
+            + "    ├─Function Count\n"
+            + "    │  └─unresolvable\n"
+            + "    └─.Nullif AS Function Nullif\n"
+            + "       ├─Subtraction: Cast(cm.latest_order_date AS DATE) - Cast(cm.earliest_order_date AS DATE)\n"
+            + "       │  ├─Function Max\n"
+            + "       │  │  └─unresolvable\n"
+            + "       │  └─Function Min\n"
+            + "       │     └─unresolvable\n"
+            + "       └─LongValue: 0\n";
+    // @formatter:on
+    assertLineage(jdbcMetadata, sqlStr, expected);
+
   }
 
 }
