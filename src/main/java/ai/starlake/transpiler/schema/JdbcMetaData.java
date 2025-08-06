@@ -19,6 +19,8 @@ package ai.starlake.transpiler.schema;
 import ai.starlake.transpiler.CatalogNotFoundException;
 import ai.starlake.transpiler.SchemaNotFoundException;
 import ai.starlake.transpiler.TableNotFoundException;
+import ai.starlake.transpiler.diff.Attribute;
+import ai.starlake.transpiler.diff.DBSchema;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 
@@ -291,6 +293,42 @@ public final class JdbcMetaData implements DatabaseMetaData {
     this("", "");
     for (String[] tableDefinition : schemaDefinition) {
       addTable(tableDefinition[0], Arrays.copyOfRange(tableDefinition, 1, tableDefinition.length));
+    }
+  }
+
+
+  /**
+   * Instantiates a new JDBC MetaData object from the starlake schema api. Empty CURRENT_CATALOG and
+   * empty CURRENT_SCHEMA.
+   *
+   * @param schemas the schemas
+   */
+  public JdbcMetaData(Collection<DBSchema> schemas) {
+    this("", "");
+    for (DBSchema schema : schemas) {
+      JdbcCatalog jdbcCatalog = get(schema.getCatalogName());
+      if (jdbcCatalog == null) {
+        jdbcCatalog = new JdbcCatalog(schema.getCatalogName(), ".");
+        put(jdbcCatalog);
+      }
+
+      JdbcSchema jdbcSchema = jdbcCatalog.get(schema.getSchemaName());
+      if (jdbcSchema == null) {
+        jdbcSchema = new JdbcSchema(schema.getSchemaName(), schema.getCatalogName());
+        jdbcCatalog.put(jdbcSchema);
+      }
+
+      for (Map.Entry<String, Collection<Attribute>> entry : schema.getTables().entrySet()) {
+        JdbcTable jdbcTable = new JdbcTable(jdbcCatalog, jdbcSchema, entry.getKey());
+        jdbcSchema.put(jdbcTable);
+
+        for (Attribute attribute : entry.getValue()) {
+          JdbcColumn jdbcColumn =
+              new JdbcColumn(schema.getCatalogName(), schema.getSchemaName(), entry.getKey(),
+                  attribute.getName(), Types.OTHER, attribute.getType(), 0, 0, 0, "", null);
+          jdbcTable.put(jdbcColumn.columnName, jdbcColumn);
+        }
+      }
     }
   }
 
