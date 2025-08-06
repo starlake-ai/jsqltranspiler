@@ -249,10 +249,11 @@ public class TypeMappingSystem {
       case "DECIMAL":
         if (columnSize != null && decimalDigits != null && decimalDigits > 0) {
           return "DECIMAL(" + columnSize + "," + decimalDigits + ")";
-        } else if (columnSize != null) {
+        } else if (columnSize != null && columnSize > 0) {
           return "DECIMAL(" + columnSize + ")";
+        } else {
+          return "DECIMAL(64)";
         }
-        return "DECIMAL";
       case "FLOAT":
         if (columnSize != null && columnSize > 0) {
           return "FLOAT(" + columnSize + ")";
