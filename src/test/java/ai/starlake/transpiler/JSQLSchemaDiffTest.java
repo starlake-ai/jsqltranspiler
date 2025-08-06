@@ -198,6 +198,35 @@ class JSQLSchemaDiffTest {
       type: "double"
     - name: "product_id"
       type: "int"
+  - schemaName: "auditing"
+  tables:
+  audit_kpi:
+    name: "order_id"
+    type: "long"
+    status: "UNCHANGED"
+    array: false
+    nestedField: false
+    name: "order_date"
+    type: "date"
+    status: "UNCHANGED"
+    array: false
+    nestedField: false
+    name: "customer_id"
+    type: "long"
+    status: "UNCHANGED"
+    array: false
+    nestedField: false
+    name: "purchased_items"
+    type: "string"
+    status: "UNCHANGED"
+    array: false
+    nestedField: false
+    name: "total_order_value"
+    type: "decimal"
+    status: "UNCHANGED"
+    array: false
+    nestedField: false
+  
    */
 
   public static Collection<DBSchema> getStarlakeSchemas() {
@@ -241,9 +270,20 @@ class JSQLSchemaDiffTest {
             , new Attribute("customer_id", "long")
             , new Attribute("purchase_date", "date")
     );
+
+    DBSchema schema5 = new DBSchema(
+            ""
+            , "auditing"
+            , "audit_kpi"
+            , new Attribute("order_id1", "long")
+            , new Attribute("order_date1", "date")
+            , new Attribute("customer_id1", "long")
+            , new Attribute("purchased_items1", "string")
+            , new Attribute("total_order_value1", "decimal")
+    );
     //@formatter:off
 
-    return List.of(schema1, schema2, schema3, schema4);
+    return List.of(schema1, schema2, schema3, schema4, schema5);
   }
 
   @Test
@@ -285,6 +325,51 @@ class JSQLSchemaDiffTest {
             , new Attribute("last_order_date", "date", AttributeStatus.ADDED)
             , new Attribute("purchased_categories", "string", AttributeStatus.ADDED)
             , new Attribute("days_since_first_order", "long", AttributeStatus.ADDED)
+            , new Attribute("purchase_date", "date", AttributeStatus.REMOVED)
+    );
+    //@formatter:on
+
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(getStarlakeSchemas());
+    List<Attribute> actual = diff.getDiff(sqlStr, "starbake_analytics.customer_purchase_history");
+
+    Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+  }
+
+  @Test
+  void testIssue118() throws JSQLParserException, SQLException {
+    //@formatter:off
+    String sqlStr =
+          "WITH order_details AS (\n" +
+                  "        SELECT  o.order_id\n" +
+                  "                , o.order_date\n" +
+                  "                , o.customer_id\n" +
+                  "                , Array_Agg( p.name || ' (' || o.quantity || ')' ) AS purchased_items\n" +
+                  "                , Sum( o.quantity * p.price ) AS total_order_value\n" +
+                  "                , p.cost\n" +
+                  "        FROM starbake.orders o\n" +
+                  "            JOIN starbake.products p\n" +
+                  "                ON o.product_id = p.product_id\n" +
+                  "        GROUP BY    o.order_id\n" +
+                  "                    , o.order_date\n" +
+                  "                    , o.customer_id\n" +
+                  "                    , cost )\n" +
+                  "SELECT  order_id\n" +
+                  "        , order_date\n" +
+                  "        , customer_id\n" +
+                  "        , purchased_items\n" +
+                  "        , total_order_value\n" +
+                  "        , cost\n" +
+                  "FROM order_details\n" +
+                  "ORDER BY order_id\n" +
+                  ";";
+
+    List<Attribute> expected = List.of(
+            new Attribute("order_id", "long")
+            , new Attribute("order_date", "date", AttributeStatus.UNCHANGED)
+            , new Attribute("customer_id", "long", AttributeStatus.ADDED)
+            , new Attribute("purchased_items", "string", AttributeStatus.ADDED)
+            , new Attribute("total_order_value", "decimal", AttributeStatus.ADDED)
+            , new Attribute("cost", "double", AttributeStatus.ADDED)
             , new Attribute("purchase_date", "date", AttributeStatus.REMOVED)
     );
     //@formatter:on
