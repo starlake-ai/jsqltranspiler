@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.Collection;
 import java.util.List;
 
 class JSQLSchemaDiffTest {
@@ -198,8 +199,8 @@ class JSQLSchemaDiffTest {
     - name: "product_id"
       type: "int"
    */
-  @Test
-  void testIssue114() throws JSQLParserException, SQLException {
+
+  public static Collection<DBSchema> getStarlakeSchemas() {
     //@formatter:off
     DBSchema schema1 = new DBSchema(
             ""
@@ -240,7 +241,13 @@ class JSQLSchemaDiffTest {
             , new Attribute("customer_id", "long")
             , new Attribute("purchase_date", "date")
     );
+    //@formatter:off
 
+    return List.of(schema1, schema2, schema3, schema4);
+  }
+
+  @Test
+  void testIssue114() throws JSQLParserException, SQLException {
     String sqlStr =
             "WITH customer_orders AS (\n"
             + "        SELECT  o.customer_id\n"
@@ -282,7 +289,7 @@ class JSQLSchemaDiffTest {
     );
     //@formatter:on
 
-    JSQLSchemaDiff diff = new JSQLSchemaDiff(schema1, schema2, schema3, schema4);
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(getStarlakeSchemas());
     List<Attribute> actual = diff.getDiff(sqlStr, "starbake_analytics.customer_purchase_history");
 
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
