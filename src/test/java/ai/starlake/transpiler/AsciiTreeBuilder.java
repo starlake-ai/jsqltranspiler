@@ -70,15 +70,17 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
       }
 
     } else if (expression instanceof Column) {
-
-      if (column.tableCatalog != null && !column.tableCatalog.isEmpty()) {
+      if (!StringUtils.isEmpty(column.tableCatalog)) {
         b.append(column.tableCatalog).append(".")
             .append(column.tableSchema != null ? column.tableSchema : "").append(".");
-      } else if (column.tableSchema != null && !column.tableSchema.isEmpty()) {
+      } else if (!StringUtils.isEmpty(column.tableSchema)) {
         b.append(column.tableSchema).append(".");
       }
-      b.append(column.tableName).append(".").append(column.columnName);
 
+      if (!StringUtils.isEmpty(column.tableName)) {
+        b.append(column.tableName).append(".");
+      }
+      b.append(column.columnName);
 
       if (!StringUtils.equals(StringUtils.defaultIfEmpty(column.tableCatalog, column.scopeCatalog),
           column.scopeCatalog)
@@ -125,7 +127,52 @@ public class AsciiTreeBuilder extends TreeBuilder<String> {
 
       b.append(expression.getClass().getSimpleName()).append(": ").append(expression);
     } else {
-      b.append("unresolvable");
+      if (!StringUtils.isEmpty(column.tableCatalog)) {
+        b.append(column.tableCatalog).append(".")
+            .append(column.tableSchema != null ? column.tableSchema : "").append(".");
+      } else if (!StringUtils.isEmpty(column.tableSchema)) {
+        b.append(column.tableSchema).append(".");
+      }
+
+      if (!StringUtils.isEmpty(column.tableName)) {
+        b.append(column.tableName).append(".");
+      }
+
+      b.append(column.columnName);
+
+      if (!StringUtils.equals(StringUtils.defaultIfEmpty(column.tableCatalog, column.scopeCatalog),
+          column.scopeCatalog)
+          || !StringUtils.equals(StringUtils.defaultIfEmpty(column.tableSchema, column.scopeSchema),
+              column.scopeSchema)
+          || !StringUtils.equals(column.tableName, column.scopeTable)) {
+        b.append(" → ");
+        if (column.scopeCatalog != null && !column.scopeCatalog.isEmpty()) {
+          b.append(column.scopeCatalog).append(".")
+              .append(column.scopeSchema != null ? column.scopeSchema : "").append(".");
+        } else if (column.scopeSchema != null && !column.scopeSchema.isEmpty()) {
+          b.append(column.scopeSchema).append(".");
+        }
+
+        if (!StringUtils.isEmpty(column.scopeTable)) {
+          b.append(column.scopeTable).append(".");
+        }
+
+        b.append(column.columnName);
+      }
+
+      b.append(" : ").append(column.typeName);
+
+      if (column.columnSize > 0) {
+        b.append("(").append(column.columnSize);
+        if (column.decimalDigits > 0) {
+          b.append(", ").append(column.decimalDigits);
+        }
+        b.append(")");
+      }
+
+      if (!StringUtils.isEmpty(column.remarks)) {
+        b.append(" ").append(column.remarks);
+      }
     }
 
     return b.toString();
