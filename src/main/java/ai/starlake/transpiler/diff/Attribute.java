@@ -55,7 +55,7 @@ public class Attribute {
 
   public Attribute(String name, Class<?> type) {
     this.name = name;
-    this.type = type.getSimpleName();
+    this.type = type.getSimpleName().toLowerCase();
     this.isArray = false;
     this.attributes = null;
     this.status = AttributeStatus.UNCHANGED;
@@ -71,7 +71,7 @@ public class Attribute {
 
   public Attribute(String name, Class<?> type, AttributeStatus status) {
     this.name = name;
-    this.type = type.getSimpleName();
+    this.type = type.getSimpleName().toLowerCase();
     this.isArray = false;
     this.attributes = null;
     this.status = status;

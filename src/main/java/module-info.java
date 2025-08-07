@@ -19,4 +19,5 @@ module JSQLFormatter.JSQLTranspiler.main {
     requires org.json;
     requires java.sql;
     requires java.desktop;
+    requires com.h2database;
 }

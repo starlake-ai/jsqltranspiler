@@ -64,6 +64,9 @@ public class TypeMappingSystem {
     // double
     putCaseInsensitive("double", "DOUBLE", "DOUBLE", "DOUBLE PRECISION");
 
+    // float
+    putCaseInsensitive("float", "DOUBLE", "DOUBLE", "DOUBLE PRECISION");
+
     // long
     putCaseInsensitive("long", "BIGINT", "BIGINT", "INT");
 
@@ -252,7 +255,8 @@ public class TypeMappingSystem {
         } else if (columnSize != null && columnSize > 0) {
           return "DECIMAL(" + columnSize + ")";
         } else {
-          return "DECIMAL(64)";
+          // max 38 for DuckDB
+          return "DECIMAL(38)";
         }
       case "FLOAT":
         if (columnSize != null && columnSize > 0) {

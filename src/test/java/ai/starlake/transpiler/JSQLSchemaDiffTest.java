@@ -45,7 +45,7 @@ class JSQLSchemaDiffTest {
     List<Attribute> expected = List.of(
             new Attribute("order_id", "string")
             , new Attribute("order_date", "timestamp")
-            , new Attribute("total_revenue", "decimal", AttributeStatus.ADDED)
+            , new Attribute("total_revenue", "double", AttributeStatus.ADDED)
             , new Attribute("id", Long.class, AttributeStatus.REMOVED)
     );
     //@formatter:on
@@ -90,7 +90,7 @@ class JSQLSchemaDiffTest {
     List<Attribute> expected = List.of(
             new Attribute("order_id", "string")
             , new Attribute("order_date", "timestamp")
-            , new Attribute("total_revenue", "decimal", AttributeStatus.ADDED)
+            , new Attribute("total_revenue", "double", AttributeStatus.ADDED)
             , new Attribute("id", Long.class, AttributeStatus.REMOVED)
     );
     //@formatter:on
@@ -117,7 +117,7 @@ class JSQLSchemaDiffTest {
             , "order_lines"
             , new Attribute("order_id", Long.class)
             , new Attribute("quantity", Long.class)
-            , new Attribute("sale_price", Float.class)
+            , new Attribute("sale_price", Double.class)
     );
     DBSchema schema3 = new DBSchema(
             ""
@@ -142,7 +142,7 @@ class JSQLSchemaDiffTest {
     List<Attribute> expected = List.of(
             new Attribute("order_id", "long")
             , new Attribute("order_date", "timestamp")
-            , new Attribute("total_revenue", "decimal", AttributeStatus.ADDED)
+            , new Attribute("total_revenue", "double", AttributeStatus.ADDED)
     );
     //@formatter:on
 
@@ -273,17 +273,36 @@ class JSQLSchemaDiffTest {
 
     DBSchema schema5 = new DBSchema(
             ""
-            , "auditing"
+            , "audit"
             , "audit_kpi"
-            , new Attribute("order_id1", "long")
-            , new Attribute("order_date1", "date")
-            , new Attribute("customer_id1", "long")
-            , new Attribute("purchased_items1", "string")
-            , new Attribute("total_order_value1", "decimal")
+            , new Attribute("order_id", "long")
+            , new Attribute("order_date", "date")
+            , new Attribute("customer_id", "long")
+            , new Attribute("purchased_items", "string")
+            , new Attribute("total_order_value", "decimal")
+    );
+
+    DBSchema schema6 = new DBSchema(
+            ""
+            , "audit"
+            , "audit"
+            , new Attribute("JOBID", "string")
+            , new Attribute("PATHS", "string")
+            , new Attribute("SCHEMA", "string")
+            , new Attribute("SUCCESS", "boolean")
+            , new Attribute("COUNT", "long")
+            , new Attribute("COUNTACCEPTED", "long")
+            , new Attribute("COUNTREJECTED", "long")
+            , new Attribute("TIMESTAMP", "timestamp")
+            , new Attribute("DURATION", "long")
+            , new Attribute("MESSAGE", "string")
+            , new Attribute("STEP", "string")
+            , new Attribute("DATABASE", "string")
+            , new Attribute("TENANT", "string")
     );
     //@formatter:off
 
-    return List.of(schema1, schema2, schema3, schema4, schema5);
+    return List.of(schema1, schema2, schema3, schema4, schema5, schema6);
   }
 
   @Test
@@ -320,7 +339,7 @@ class JSQLSchemaDiffTest {
             , new Attribute("customer_name", "string", AttributeStatus.ADDED)
             , new Attribute("email", "string", AttributeStatus.ADDED)
             , new Attribute("total_orders", "long", AttributeStatus.ADDED)
-            , new Attribute("total_spent", "decimal", AttributeStatus.ADDED)
+            , new Attribute("total_spent", "double", AttributeStatus.ADDED)
             , new Attribute("first_order_date", "date", AttributeStatus.ADDED)
             , new Attribute("last_order_date", "date", AttributeStatus.ADDED)
             , new Attribute("purchased_categories", "string", AttributeStatus.ADDED)
@@ -368,7 +387,7 @@ class JSQLSchemaDiffTest {
             , new Attribute("order_date", "date", AttributeStatus.UNCHANGED)
             , new Attribute("customer_id", "long", AttributeStatus.ADDED)
             , new Attribute("purchased_items", "string", AttributeStatus.ADDED)
-            , new Attribute("total_order_value", "decimal", AttributeStatus.ADDED)
+            , new Attribute("total_order_value", "double", AttributeStatus.ADDED)
             , new Attribute("cost", "double", AttributeStatus.ADDED)
             , new Attribute("purchase_date", "date", AttributeStatus.REMOVED)
     );
@@ -376,6 +395,35 @@ class JSQLSchemaDiffTest {
 
     JSQLSchemaDiff diff = new JSQLSchemaDiff(getStarlakeSchemas());
     List<Attribute> actual = diff.getDiff(sqlStr, "starbake_analytics.customer_purchase_history");
+
+    Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+  }
+
+  @Test
+  void testIssue116() throws JSQLParserException, SQLException {
+    //@formatter:off
+    String sqlStr =
+            "select * from audit.audit";
+
+    List<Attribute> expected = List.of(
+            new Attribute("JOBID", "string")
+            , new Attribute("PATHS", "string", AttributeStatus.UNCHANGED)
+            , new Attribute("SCHEMA", "string", AttributeStatus.UNCHANGED)
+            , new Attribute("SUCCESS", "boolean", AttributeStatus.UNCHANGED)
+            , new Attribute("COUNT", "long", AttributeStatus.UNCHANGED)
+            , new Attribute("COUNTACCEPTED", "long", AttributeStatus.UNCHANGED)
+            , new Attribute("COUNTREJECTED", "long", AttributeStatus.UNCHANGED)
+            , new Attribute("TIMESTAMP", "timestamp", AttributeStatus.UNCHANGED)
+            , new Attribute("DURATION", "long", AttributeStatus.UNCHANGED)
+            , new Attribute("MESSAGE", "string", AttributeStatus.UNCHANGED)
+            , new Attribute("STEP", "string", AttributeStatus.UNCHANGED)
+            , new Attribute("DATABASE", "string", AttributeStatus.UNCHANGED)
+            , new Attribute("TENANT", "string", AttributeStatus.UNCHANGED)
+    );
+    //@formatter:on
+
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(getStarlakeSchemas());
+    List<Attribute> actual = diff.getDiff(sqlStr, "audit.audit");
 
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
   }
