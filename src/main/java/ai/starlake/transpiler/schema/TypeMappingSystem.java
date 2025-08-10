@@ -21,6 +21,8 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Type mapping system that handles: 1. JDBC Schema types to DDL column types (using YAML config) 2.
@@ -197,6 +199,38 @@ public class TypeMappingSystem {
     JDBC_TYPE_TO_TYPE.put(Types.JAVA_OBJECT, "variant");
   }
 
+  private static final Pattern ARRAY_PATTERN =
+      Pattern.compile("^(.*?)\\s*((\\[\\s*\\d*\\s*\\])+\\s*)$");
+
+  public static ParsedType parseType(String typeName) {
+    Matcher m = ARRAY_PATTERN.matcher(typeName);
+    if (m.matches()) {
+      String baseType = m.group(1).trim(); // group 1 = typename without brackets
+      String brackets = m.group(2).replaceAll("\\s+", ""); // group 2 = all bracket parts (no
+                                                           // spaces)
+      return new ParsedType(true, baseType, brackets);
+    } else {
+      return new ParsedType(false, typeName.trim(), "");
+    }
+  }
+
+  public static class ParsedType {
+    public final boolean isArray;
+    public final String baseType;
+    public final String brackets;
+
+    public ParsedType(boolean isArray, String baseType, String brackets) {
+      this.isArray = isArray;
+      this.baseType = baseType;
+      this.brackets = brackets;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("isArray=%s, baseType='%s', brackets='%s'", isArray, baseType, brackets);
+    }
+  }
+
   /**
    * Maps type name to DDL column type for specific database
    */
@@ -206,7 +240,11 @@ public class TypeMappingSystem {
       return "VARCHAR(255)";
     }
 
-    String normalizedType = typeName.toLowerCase().trim();
+    ParsedType parsedType = parseType(typeName.toLowerCase().trim());
+    if (parsedType.baseType.startsWith("struct")) {
+      return parsedType.baseType;
+    }
+
     Map<String, String> mapping;
 
     switch (database.toLowerCase()) {
@@ -224,10 +262,8 @@ public class TypeMappingSystem {
         mapping = TYPE_TO_H2_DDL; // Default to H2
     }
 
-    String ddlType = mapping.get(normalizedType);
-    if (ddlType == null) {
-      return "VARCHAR(255)"; // Fallback
-    }
+    String ddlType =
+        mapping.get(parsedType.baseType) + (parsedType.isArray ? parsedType.brackets : "");
 
     // Apply size/precision for certain types
     return applyPrecisionAndScale(ddlType, columnSize, decimalDigits);
@@ -339,31 +375,52 @@ public class TypeMappingSystem {
    * Enhanced column definition generator using the type mapping system
    */
   public static String generateColumnDefinition(JdbcColumn column, String database) {
+    return generateColumnDefinition(column.columnName, column.typeName, column.dataType,
+        column.columnSize, column.decimalDigits, column.nullable, column.columnDefinition,
+        database);
+  }
+
+  /**
+   * Enhanced column definition generator using the type mapping system
+   */
+  public static String generateColumnDefinition(String columnName, String typeName,
+      String database) {
+    return generateColumnDefinition(columnName, typeName, Types.OTHER, null, null, null, null,
+        database);
+
+  }
+
+  /**
+   * Enhanced column definition generator using the type mapping system
+   */
+  public static String generateColumnDefinition(String columnName, String typeName,
+      Integer dataType, Integer columnSize, Integer decimalDigits, Integer nullable,
+      String columnDefinition, String database) {
     StringBuilder colDef = new StringBuilder();
 
-    colDef.append(column.columnName).append(" ");
+    colDef.append(columnName).append(" ");
 
     // Use type mapping system
     String ddlType;
-    if (column.typeName != null) {
+    if (typeName != null) {
       // Use type name if available
-      ddlType = mapTypeToDDL(column.typeName, database, column.columnSize, column.decimalDigits);
+      ddlType = mapTypeToDDL(typeName, database, columnSize, decimalDigits);
     } else {
       // Fall back to JDBC type
-      String typeName = JDBC_TYPE_TO_TYPE.get(column.dataType);
-      ddlType = mapTypeToDDL(typeName, database, column.columnSize, column.decimalDigits);
+      String typeNameStr = JDBC_TYPE_TO_TYPE.get(dataType);
+      ddlType = mapTypeToDDL(typeNameStr, database, columnSize, decimalDigits);
     }
 
     colDef.append(ddlType);
 
     // Nullable constraint
-    if (column.nullable != null && column.nullable == 0) {
+    if (nullable != null && nullable == 0) {
       colDef.append(" NOT NULL");
     }
 
     // Default value
-    if (column.columnDefinition != null && !column.columnDefinition.trim().isEmpty()) {
-      colDef.append(" DEFAULT ").append(column.columnDefinition);
+    if (columnDefinition != null && !columnDefinition.trim().isEmpty()) {
+      colDef.append(" DEFAULT ").append(columnDefinition);
     }
 
     // Auto increment

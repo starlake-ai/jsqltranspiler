@@ -17,6 +17,8 @@
 package ai.starlake.transpiler.diff;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Objects;
 
 
 public class Attribute {
@@ -28,20 +30,19 @@ public class Attribute {
   ArrayList<Attribute> attributes; // present only if typ is "struct"
 
   public boolean isNestedField() {
-    assert type.equalsIgnoreCase("struct");
-    return attributes != null && !attributes.isEmpty();
+    return "struct".equalsIgnoreCase(type) && attributes != null && !attributes.isEmpty();
   }
 
   public boolean isArray() {
     return isArray;
   }
 
-  public Attribute(String name, String type, boolean array, ArrayList<Attribute> attributes,
+  public Attribute(String name, String type, boolean array, Collection<Attribute> attributes,
       AttributeStatus status) {
     this.name = name;
     this.type = type;
     this.isArray = array;
-    this.attributes = attributes;
+    this.attributes = attributes != null ? new ArrayList<>(attributes) : null;
     this.status = status;
   }
 
@@ -110,8 +111,8 @@ public class Attribute {
     }
 
     Attribute attribute = (Attribute) o;
-    return isArray == attribute.isArray && name.equals(attribute.name)
-        && type.equals(attribute.type);
+    return isArray == attribute.isArray && name.equalsIgnoreCase(attribute.name)
+        && Objects.equals(type, attribute.type);
   }
 
   @Override

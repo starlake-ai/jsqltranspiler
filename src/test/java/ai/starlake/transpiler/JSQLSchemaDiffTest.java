@@ -300,9 +300,36 @@ class JSQLSchemaDiffTest {
             , new Attribute("DATABASE", "string")
             , new Attribute("TENANT", "string")
     );
+
+    DBSchema schema99 = new DBSchema(
+            ""
+            , "starbake"
+            , "array_test"
+            , new Attribute("keys", "string", true, null, AttributeStatus.ADDED)
+            , new Attribute(
+                    "values1"
+                  , "struct"
+                  , false
+                  , List.of(
+                          new Attribute("field1", "string")
+                          , new Attribute("field2", "double")
+                    )
+                  , AttributeStatus.ADDED
+            )
+            , new Attribute(
+                  "values2"
+                        , "struct"
+                        , true
+                        , List.of(
+                        new Attribute("field1", "string")
+                        , new Attribute("field2", "double")
+                  )
+                  , AttributeStatus.ADDED
+          )
+    );
     //@formatter:off
 
-    return List.of(schema1, schema2, schema3, schema4, schema5, schema6);
+    return List.of(schema1, schema2, schema3, schema4, schema5, schema6, schema99);
   }
 
   @Test
@@ -342,7 +369,7 @@ class JSQLSchemaDiffTest {
             , new Attribute("total_spent", "double", AttributeStatus.ADDED)
             , new Attribute("first_order_date", "date", AttributeStatus.ADDED)
             , new Attribute("last_order_date", "date", AttributeStatus.ADDED)
-            , new Attribute("purchased_categories", "string", AttributeStatus.ADDED)
+            , new Attribute("purchased_categories", "string", true, null, AttributeStatus.ADDED)
             , new Attribute("days_since_first_order", "long", AttributeStatus.ADDED)
             , new Attribute("purchase_date", "date", AttributeStatus.REMOVED)
     );
@@ -386,7 +413,7 @@ class JSQLSchemaDiffTest {
             new Attribute("order_id", "long")
             , new Attribute("order_date", "date", AttributeStatus.UNCHANGED)
             , new Attribute("customer_id", "long", AttributeStatus.ADDED)
-            , new Attribute("purchased_items", "string", AttributeStatus.ADDED)
+            , new Attribute("purchased_items", "string", true, null, AttributeStatus.ADDED)
             , new Attribute("total_order_value", "double", AttributeStatus.ADDED)
             , new Attribute("cost", "double", AttributeStatus.ADDED)
             , new Attribute("purchase_date", "date", AttributeStatus.REMOVED)
@@ -424,6 +451,67 @@ class JSQLSchemaDiffTest {
 
     JSQLSchemaDiff diff = new JSQLSchemaDiff(getStarlakeSchemas());
     List<Attribute> actual = diff.getDiff(sqlStr, "audit.audit");
+
+    Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+  }
+
+  @Test
+  void testArrays() throws JSQLParserException, SQLException {
+    //@formatter:off
+    DBSchema schema99 = new DBSchema(
+            ""
+            , "starbake"
+            , "array_test"
+            , new Attribute("keys", "string", true, null, AttributeStatus.ADDED)
+            , new Attribute(
+                    "values1"
+                    , "struct"
+                    , false
+                    , List.of(
+                      new Attribute("field1", "string")
+                      , new Attribute("field2", "double"))
+                  , AttributeStatus.ADDED)
+            , new Attribute(
+                  "values2"
+                  , "struct"
+                  , false
+                  , List.of(
+                      new Attribute("field1", "string")
+                      , new Attribute("field2", "double"))
+                  , AttributeStatus.ADDED)
+            );
+
+    String sqlStr =
+            "select * from starbake.array_test";
+
+    List<Attribute> expected = List.of(
+            new Attribute(
+                    "keys"
+                    , "string"
+                    , true
+                    , null
+                    , AttributeStatus.UNCHANGED )
+            , new Attribute(
+                    "values1"
+                    , "struct"
+                    , false
+                    , List.of(
+                        new Attribute("field1", "string")
+                        , new Attribute("field2", "double"))
+                    ,  AttributeStatus.UNCHANGED)
+            , new Attribute(
+                    "values2"
+                    , "struct"
+                    , false
+                    , List.of(
+                        new Attribute("field1", "string")
+                        , new Attribute("field2", "double"))
+                    ,  AttributeStatus.UNCHANGED)
+    );
+    //@formatter:on
+
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(schema99);
+    List<Attribute> actual = diff.getDiff(sqlStr, "starbake.array_test");
 
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
   }

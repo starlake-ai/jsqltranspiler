@@ -25,19 +25,30 @@ import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import ai.starlake.transpiler.schema.JdbcTable;
 import ai.starlake.transpiler.schema.TypeMappingSystem;
 import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Function;
+import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
+import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.SelectItem;
 
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,6 +56,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class JSQLSchemaDiff {
   public final static Logger LOGGER = Logger.getLogger(JSQLSchemaDiff.class.getName());
@@ -61,6 +74,33 @@ public class JSQLSchemaDiff {
   public List<Attribute> getDiff(String sqlStr, String qualifiedTargetTableName)
       throws SQLException, JSQLParserException {
     return getDiff(JSQLTranspiler.Dialect.SNOWFLAKE, sqlStr, qualifiedTargetTableName);
+  }
+
+  private static final Pattern STRUCT_PATTERN =
+      Pattern.compile("^\\s*STRUCT\\s*\\((.*)\\)\\s*$", Pattern.CASE_INSENSITIVE);
+
+  public static String[][] parseStruct(String expression) {
+    Matcher m = STRUCT_PATTERN.matcher(expression);
+    if (!m.matches()) {
+      throw new IllegalArgumentException("Not a valid STRUCT expression: " + expression);
+    }
+
+    String inside = m.group(1).trim();
+
+    // Split by commas not inside parentheses
+    String[] parts = inside.split("\\s*,\\s*");
+    List<String[]> result = new ArrayList<>();
+
+    for (String part : parts) {
+      // Split by first whitespace to separate name and type
+      String[] tokens = part.trim().split("\\s+", 2);
+      if (tokens.length != 2) {
+        throw new IllegalArgumentException("Invalid field definition: " + part);
+      }
+      result.add(new String[] {tokens[0], tokens[1]});
+    }
+
+    return result.toArray(new String[0][]);
   }
 
   public List<Attribute> getDiff(JSQLTranspiler.Dialect dialect, String sqlStr,
@@ -94,7 +134,24 @@ public class JSQLSchemaDiff {
         } else if (!column.typeName.equalsIgnoreCase(table.columns.get(columnName).typeName)) {
           status = AttributeStatus.MODIFIED;
         }
-        Attribute attribute = new Attribute(columnName, typeName, status);
+
+        // arrays
+        boolean isArray = typeName.endsWith("[]");
+        if (isArray) {
+          typeName = typeName.substring(0, typeName.length() - 2);
+        }
+
+        // struct
+        ArrayList<Attribute> a = null;
+        if (typeName.toLowerCase().startsWith("struct")) {
+          a = new ArrayList<>();
+          for (String[] fieldStr : parseStruct(typeName)) {
+            a.add(new Attribute(fieldStr[0], fieldStr[1].toLowerCase()));
+          }
+
+          typeName = "struct";
+        }
+        Attribute attribute = new Attribute(columnName, typeName, isArray, a, status);
         attributes.add(attribute);
       }
 
@@ -204,11 +261,62 @@ public class JSQLSchemaDiff {
           select.getSelectItems().remove(i - 1);
         }
       }
+
+      // add a `typeOf` only when DuckDB is used
+      try {
+        if (conn.getMetaData().getDriverName().toLowerCase().contains("duck")) {
+          /* Rewrite the query for getting the column-type of an empty table
+          SELECT  *
+                  , Typeof( s.s )
+          FROM (  SELECT 1 )
+              LEFT JOIN ( SELECT array_test.values2 AS s
+                          FROM starbake.array_test ) AS s
+                  ON ( 1 = 1 )
+          ;
+          */
+          select.getSelectItems().get(0).setAlias(new Alias("s"));
+          select = new PlainSelect(
+              new ParenthesedSelect().withSelect(new PlainSelect().addSelectItem(new LongValue(1))))
+              .withSelectItems(new SelectItem<>(new AllColumns()),
+                  new SelectItem<>(new Function("typeOf", new Column("s.s"))))
+              .addJoins(new Join()
+                  .setFromItem(new ParenthesedSelect().withSelect(select).withAlias(new Alias("s")))
+                  .withLeft(true).addOnExpression(new ParenthesedExpressionList<>(
+                      new EqualsTo(new LongValue(1), new LongValue(1)))));
+
+          LOGGER.fine(select.toString());
+        }
+
+      } catch (Exception ignore) {
+        // we just tried
+      }
+
       try (PreparedStatement pst = conn.prepareStatement(select.toString());) {
         ResultSetMetaData resultSetMetaData = pst.getMetaData();
-        typeName = TypeMappingSystem.mapResultSetToTypeName(resultSetMetaData, 1,
-            conn.getMetaData().getDriverName().toLowerCase().contains("duck") ? "duckdb" : "h2");
-        typeName = typeName.toLowerCase();
+        switch (resultSetMetaData.getColumnCount()) {
+          case 1:
+            typeName = TypeMappingSystem.mapResultSetToTypeName(resultSetMetaData, 1, "h2");
+            typeName = typeName.toLowerCase();
+            break;
+
+          case 3:
+            // execute the query to get the precise column type
+            try (ResultSet rs = pst.executeQuery()) {
+              if (rs.next()) {
+                typeName = rs.getString(3);
+              }
+            }
+            if (typeName == null || !typeName.toLowerCase().startsWith("struct")) {
+              typeName = TypeMappingSystem.mapResultSetToTypeName(resultSetMetaData, 2, "duckdb");
+              typeName = typeName.toLowerCase();
+
+              int type = resultSetMetaData.getColumnType(2);
+              if (type == Types.ARRAY) {
+                typeName += "[]";
+              }
+            }
+            break;
+        }
       } catch (SQLException ex) {
         LOGGER.log(Level.WARNING, "Failed execute the query:\n" + select, ex);
       }

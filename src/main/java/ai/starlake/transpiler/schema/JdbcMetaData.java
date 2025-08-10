@@ -124,7 +124,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
       columnJoiner.add(columnDef);
     }
 
-    ddl.append(columnJoiner.toString());
+    ddl.append(columnJoiner);
 
     // Primary key constraint
     if (table.primaryKey != null && !table.primaryKey.columnNames.isEmpty()) {
@@ -323,9 +323,30 @@ public final class JdbcMetaData implements DatabaseMetaData {
         jdbcSchema.put(jdbcTable);
 
         for (Attribute attribute : entry.getValue()) {
-          JdbcColumn jdbcColumn =
-              new JdbcColumn(schema.getCatalogName(), schema.getSchemaName(), entry.getKey(),
-                  attribute.getName(), Types.OTHER, attribute.getType(), 0, 0, 0, "", null);
+          int dataType = Types.OTHER;
+          String typeName = attribute.getType();
+
+          if (attribute.isNestedField()) {
+            dataType = Types.STRUCT;
+            StringBuilder builder = new StringBuilder("STRUCT( ");
+            int i = 0;
+            for (Attribute a : attribute.getAttributes()) {
+              if (i++ > 0) {
+                builder.append(", ");
+              }
+              builder.append(
+                  TypeMappingSystem.generateColumnDefinition(a.getName(), a.getType(), "duckdb"));
+            }
+            builder.append(")");
+            typeName = builder.toString();
+
+          } else if (attribute.isArray()) {
+            dataType = Types.ARRAY;
+            typeName = attribute.getType() + "[]";
+          }
+
+          JdbcColumn jdbcColumn = new JdbcColumn(schema.getCatalogName(), schema.getSchemaName(),
+              entry.getKey(), attribute.getName(), dataType, typeName, 0, 0, 0, "", null);
           jdbcTable.put(jdbcColumn.columnName, jdbcColumn);
         }
       }
