@@ -537,4 +537,19 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     final JdbcResultSetMetaData resultSetMetaData = columResolver.getResultSetMetaData(sqlStr);
     Assertions.assertThat(resultSetMetaData.getColumns()).isNotEmpty();
   }
+
+  @Test
+  void testIssue2291NPE() throws JSQLParserException {
+    String sqlStr = "select *, 5 as testColumn from foo where foo.id  = 10";
+    String expected = "SELECT foo.id, foo.name, 5 AS testColumn FROM foo WHERE foo.id = 10";
+
+    JdbcMetaData metaData = new JdbcMetaData("", "sch", new String[][] {{"foo", "id", "name"}});
+
+    JSQLResolver resolver = new JSQLResolver(metaData);
+    Set<JdbcColumn> resolved = resolver.resolve(sqlStr);
+    Assertions.assertThat(resolved).hasSize(3);
+
+    String rewritten = resolver.getResolvedStatementText(sqlStr);
+    Assertions.assertThat(rewritten).isEqualToNormalizingUnicode(expected);
+  }
 }
