@@ -23,6 +23,7 @@ import net.sf.jsqlparser.statement.Statement;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
@@ -32,7 +33,7 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.Properties;
 
-class JSQLConnectionReplacerTest {
+class JSQLReplacerTest {
   Connection conn;
   JdbcMetaData metaData;
 
@@ -114,6 +115,77 @@ class JSQLConnectionReplacerTest {
         "with a as (SELECT a.b from (select c.b from test.c) a) SELECT a.b from a inner join a using(b)";
     assertThatRewritesInto(sqlStr, expected);
   }
+
+  @Test
+  void testSelect() throws SQLException, JSQLParserException {
+    String sqlStr = "SELECT b FROM a;";
+    String expected = "SELECT b FROM test.c;";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testInsert() throws SQLException, JSQLParserException {
+    String sqlStr = "INSERT INTO a VALUES('1');";
+    String expected = "INSERT INTO test.c VALUES('1');";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  @Disabled
+  void testUpdate() throws SQLException, JSQLParserException {
+    String sqlStr = "UPDATE a set b=1;";
+    String expected = "UPDATE test.c set b=1;";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testDelete() throws SQLException, JSQLParserException {
+    String sqlStr = "DELETE FROM a;";
+    String expected = "DELETE FROM test.c;";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testTruncate() throws SQLException, JSQLParserException {
+    String sqlStr = "TRUNCATE TABLE a;";
+    String expected = "TRUNCATE TABLE test.c;";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testDrop() throws SQLException, JSQLParserException {
+    String sqlStr = "DROP TABLE a;";
+    String expected = "DROP TABLE test.c;";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testCreateIndex() throws SQLException, JSQLParserException {
+    String sqlStr = "CREATE INDEX a_idx1 ON a(b);";
+    String expected = "CREATE INDEX a_idx1 ON test.c(b);";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  @Disabled
+  void testMerge1() throws SQLException, JSQLParserException {
+    String sqlStr = "MERGE INTO a USING a s ON (a.b=s.b) WHEN MATCHED THEN UPDATE SET a.b=s.b";
+    String expected =
+        "MERGE INTO test.c USING test.c s ON (a.b=s.b) WHEN MATCHED THEN UPDATE SET a.b=s.b;";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  @Disabled
+  void testMerge2() throws SQLException, JSQLParserException {
+    String sqlStr =
+        "MERGE INTO a t USING (select * from a) s ON (t.b=s.b) WHEN MATCHED THEN UPDATE SET t.b=s.b";
+    String expected =
+        "MERGE INTO test.c t USING (select * from test.c) s ON (t.b=s.b) WHEN MATCHED THEN UPDATE SET t.b=s.b;";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+
 
   Statement assertThatRewritesInto(String sqlStr, String expected)
       throws JSQLParserException, SQLException {

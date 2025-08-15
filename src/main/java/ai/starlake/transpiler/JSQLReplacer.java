@@ -25,11 +25,25 @@ import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.StatementVisitorAdapter;
+import net.sf.jsqlparser.statement.alter.Alter;
+import net.sf.jsqlparser.statement.alter.RenameTableStatement;
+import net.sf.jsqlparser.statement.create.index.CreateIndex;
+import net.sf.jsqlparser.statement.create.table.CreateTable;
+import net.sf.jsqlparser.statement.create.view.CreateView;
+import net.sf.jsqlparser.statement.delete.Delete;
+import net.sf.jsqlparser.statement.delete.ParenthesedDelete;
+import net.sf.jsqlparser.statement.drop.Drop;
+import net.sf.jsqlparser.statement.insert.Insert;
+import net.sf.jsqlparser.statement.insert.ParenthesedInsert;
+import net.sf.jsqlparser.statement.merge.Merge;
 import net.sf.jsqlparser.statement.merge.MergeOperationVisitorAdapter;
 import net.sf.jsqlparser.statement.select.FromItemVisitorAdapter;
 import net.sf.jsqlparser.statement.select.PivotVisitorAdapter;
 import net.sf.jsqlparser.statement.select.SelectItemVisitorAdapter;
 import net.sf.jsqlparser.statement.select.SelectVisitorAdapter;
+import net.sf.jsqlparser.statement.truncate.Truncate;
+import net.sf.jsqlparser.statement.update.ParenthesedUpdate;
+import net.sf.jsqlparser.statement.update.Update;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -194,7 +208,173 @@ public class JSQLReplacer {
 
   private final StatementVisitorAdapter<Void> statementVisitor =
       new StatementVisitorAdapter<>(expressionVisitor, pivotVisitorAdapter, selectItemVisitor,
-          fromItemVisitor, selectVisitor, mergeOperationVisitor);
+          fromItemVisitor, selectVisitor, mergeOperationVisitor) {
+        @Override
+        public <S> Void visit(Delete delete, S context) {
+          Table t = delete.getTable();
+          if (t != null) {
+            t.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                resolver.metaData.getCurrentSchemaName());
+
+            if (replaceTables.containsKey(t.getFullyQualifiedName())) {
+              t.setName(replaceTables.get(t.getFullyQualifiedName()));
+            }
+          } else {
+            for (Table t1 : delete.getTables()) {
+              t1.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                  resolver.metaData.getCurrentSchemaName());
+
+              if (replaceTables.containsKey(t1.getFullyQualifiedName())) {
+                t1.setName(replaceTables.get(t1.getFullyQualifiedName()));
+              }
+            }
+          }
+
+          return super.visit(delete, context);
+        }
+
+        @Override
+        public <S> Void visit(ParenthesedDelete delete, S context) {
+          return visit(delete.getDelete(), context);
+        }
+
+        @Override
+        public <S> Void visit(Update update, S context) {
+          Table t = update.getTable();
+          if (t != null) {
+            t.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                resolver.metaData.getCurrentSchemaName());
+
+            if (replaceTables.containsKey(t.getFullyQualifiedName())) {
+              t.setName(replaceTables.get(t.getFullyQualifiedName()));
+            }
+          }
+          return super.visit(update, context);
+        }
+
+        @Override
+        public <S> Void visit(ParenthesedUpdate update, S context) {
+          return visit(update.getUpdate(), context);
+        }
+
+        @Override
+        public <S> Void visit(Insert insert, S context) {
+          Table t = insert.getTable();
+          if (t != null) {
+            t.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                resolver.metaData.getCurrentSchemaName());
+
+            if (replaceTables.containsKey(t.getFullyQualifiedName())) {
+              t.setName(replaceTables.get(t.getFullyQualifiedName()));
+            }
+          }
+          return super.visit(insert, context);
+        }
+
+        @Override
+        public <S> Void visit(ParenthesedInsert insert, S context) {
+          return visit(insert.getInsert(), context);
+        }
+
+        @Override
+        public <S> Void visit(Drop drop, S context) {
+          if ("TABLE".equalsIgnoreCase(drop.getType())) {
+            Table t = drop.getName();
+            if (t != null) {
+              t.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                  resolver.metaData.getCurrentSchemaName());
+
+              if (replaceTables.containsKey(t.getFullyQualifiedName())) {
+                t.setName(replaceTables.get(t.getFullyQualifiedName()));
+              }
+            }
+          }
+          return super.visit(drop, context);
+        }
+
+        @Override
+        public <S> Void visit(Truncate truncate, S context) {
+          Table t = truncate.getTable();
+          if (t != null) {
+            t.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                resolver.metaData.getCurrentSchemaName());
+
+            if (replaceTables.containsKey(t.getFullyQualifiedName())) {
+              t.setName(replaceTables.get(t.getFullyQualifiedName()));
+            }
+          } else {
+            for (Table t1 : truncate.getTables()) {
+              t1.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                  resolver.metaData.getCurrentSchemaName());
+
+              if (replaceTables.containsKey(t1.getFullyQualifiedName())) {
+                t1.setName(replaceTables.get(t1.getFullyQualifiedName()));
+              }
+            }
+          }
+          return super.visit(truncate, context);
+        }
+
+        @Override
+        public <S> Void visit(CreateIndex createIndex, S context) {
+          Table t = createIndex.getTable();
+          if (t != null) {
+            t.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                resolver.metaData.getCurrentSchemaName());
+
+            if (replaceTables.containsKey(t.getFullyQualifiedName())) {
+              t.setName(replaceTables.get(t.getFullyQualifiedName()));
+            }
+          }
+          return super.visit(createIndex, context);
+        }
+
+        @Override
+        public <S> Void visit(CreateTable createTable, S context) {
+          return super.visit(createTable, context);
+        }
+
+        @Override
+        public <S> Void visit(CreateView createView, S context) {
+          return super.visit(createView, context);
+        }
+
+        @Override
+        public <S> Void visit(Alter alter, S context) {
+          return super.visit(alter, context);
+        }
+
+        @Override
+        public <S> Void visit(Merge merge, S context) {
+          Table t = merge.getTable();
+          if (t != null) {
+            t.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                resolver.metaData.getCurrentSchemaName());
+
+            if (replaceTables.containsKey(t.getFullyQualifiedName())) {
+              t.setName(replaceTables.get(t.getFullyQualifiedName()));
+            }
+          }
+
+          return super.visit(merge, context);
+        }
+
+        @Override
+        public <S> Void visit(RenameTableStatement renameTableStatement, S context) {
+          for (Entry<Table, Table> e : renameTableStatement.getTableNames()) {
+            Table t = e.getKey();
+            if (t != null) {
+              t.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                  resolver.metaData.getCurrentSchemaName());
+
+              if (replaceTables.containsKey(t.getFullyQualifiedName())) {
+                t.setName(replaceTables.get(t.getFullyQualifiedName()));
+              }
+            }
+          }
+          return super.visit(renameTableStatement, context);
+        }
+      };
 
   /**
    * Replace physically existing table names in a given statement.
