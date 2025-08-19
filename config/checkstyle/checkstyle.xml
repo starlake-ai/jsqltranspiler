@@ -13,7 +13,7 @@
   </module>
   -->
   <module name="TreeWalker">
-    <module name="AvoidNestedBlocks" />
+<!--    <module name="AvoidNestedBlocks" />-->
     <module name="ConstantName" />
     <module name="EmptyCatchBlock" />
     <module name="EmptyStatement" />

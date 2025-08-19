@@ -147,26 +147,25 @@ public class JSQLReplacer {
         public <S> Void visit(Column column, S context) {
           if (column.getTable() != null) {
             Table table = column.getTable();
-            if (table.getResolvedTable() != null
-                && replaceTables
-                    .containsKey(
-                        table.getResolvedTable()
-                            .setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
-                                resolver.metaData.getCurrentSchemaName())
-                            .getFullyQualifiedName())) {
+            Table resolved = table.getResolvedTable();
+            if (resolved != null) {
+              resolved.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                  resolver.metaData.getCurrentSchemaName());
 
-              String replacementName =
-                  replaceTables.get(table.getResolvedTable().getFullyQualifiedName());
+              if (replaceTables.containsKey(resolved.getFullyQualifiedName())) {
+                String replacementName =
+                    replaceTables.get(table.getResolvedTable().getFullyQualifiedName());
 
-              if (table.getDatabaseName() != null) {
-                table.setName(replacementName);
-              } else {
-                Table replacementTable = new Table(replacementName);
+                if (table.getDatabaseName() != null) {
+                  table.setName(replacementName);
+                } else {
+                  Table replacementTable = new Table(replacementName);
 
-                if (table.getSchemaName() != null) {
-                  table.setSchemaName(replacementTable.getSchemaName());
+                  if (table.getSchemaName() != null) {
+                    table.setSchemaName(replacementTable.getSchemaName());
+                  }
+                  table.setName(replacementTable.getName());
                 }
-                table.setName(replacementTable.getName());
               }
             }
           }

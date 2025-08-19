@@ -79,6 +79,21 @@ class JSQLReplacerTest {
   }
 
   @Test
+  void testSimpleAlias() throws SQLException, JSQLParserException {
+    String sqlStr = "SELECT b.b  from a as b";
+    String expected = "SELECT b.b from test.c as b";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  @Disabled
+  void testShadowingAlias() throws SQLException, JSQLParserException {
+    String sqlStr = "SELECT a.b  from a as a";
+    String expected = "SELECT a.b from test.c as a";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
   void testSubSelect() throws SQLException, JSQLParserException {
     String sqlStr = "SELECT a.b from (select * from a) a";
     String expected = "SELECT a.b from (SELECT c.b from test.c) a";
@@ -131,10 +146,24 @@ class JSQLReplacerTest {
   }
 
   @Test
-  @Disabled
-  void testUpdate() throws SQLException, JSQLParserException {
+  void testUpdate1() throws SQLException, JSQLParserException {
     String sqlStr = "UPDATE a set b=1;";
     String expected = "UPDATE test.c set b=1;";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  void testUpdate2() throws SQLException, JSQLParserException {
+    String sqlStr = "UPDATE a set a.b=1;";
+    String expected = "UPDATE test.c set c.b=1;";
+    assertThatRewritesInto(sqlStr, expected);
+  }
+
+  @Test
+  @Disabled
+  void testUpdateWithShadowingAlias() throws SQLException, JSQLParserException {
+    String sqlStr = "UPDATE a as a set a.b=1;";
+    String expected = "UPDATE test.c as a set a.b=1;";
     assertThatRewritesInto(sqlStr, expected);
   }
 
@@ -167,21 +196,19 @@ class JSQLReplacerTest {
   }
 
   @Test
-  @Disabled
   void testMerge1() throws SQLException, JSQLParserException {
     String sqlStr = "MERGE INTO a USING a s ON (a.b=s.b) WHEN MATCHED THEN UPDATE SET a.b=s.b";
     String expected =
-        "MERGE INTO test.c USING test.c s ON (a.b=s.b) WHEN MATCHED THEN UPDATE SET a.b=s.b;";
+        "MERGE INTO test.c USING test.c s ON (c.b=s.b) WHEN MATCHED THEN UPDATE SET c.b=s.b;";
     assertThatRewritesInto(sqlStr, expected);
   }
 
   @Test
-  @Disabled
   void testMerge2() throws SQLException, JSQLParserException {
     String sqlStr =
         "MERGE INTO a t USING (select * from a) s ON (t.b=s.b) WHEN MATCHED THEN UPDATE SET t.b=s.b";
     String expected =
-        "MERGE INTO test.c t USING (select * from test.c) s ON (t.b=s.b) WHEN MATCHED THEN UPDATE SET t.b=s.b;";
+        "MERGE INTO test.c t USING (select c.b from test.c) s ON (t.b=s.b) WHEN MATCHED THEN UPDATE SET t.b=s.b;";
     assertThatRewritesInto(sqlStr, expected);
   }
 
