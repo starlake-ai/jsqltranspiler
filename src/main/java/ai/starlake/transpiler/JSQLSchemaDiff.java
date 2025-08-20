@@ -30,12 +30,14 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.GroupByElement;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
@@ -119,7 +121,6 @@ public class JSQLSchemaDiff {
       } catch (Exception ex) {
         LOGGER.log(Level.WARNING, "Failed to rewrite the query:\n" + sqlStr, ex);
       }
-
 
       final JdbcTable table = meta.getTable(new Table(qualifiedTargetTableName));
       int c = 1;
@@ -232,6 +233,32 @@ public class JSQLSchemaDiff {
 
     boolean hasWildcards = false;
     PlainSelect select = (PlainSelect) CCJSqlParserUtil.parse(sqlStr);
+
+    // rewrite positional `GROUP BY` items
+    GroupByElement groupBy = select.getGroupBy();
+    if (groupBy != null) {
+      ExpressionList<Expression> expressions = new ExpressionList<>();
+      for (Expression expression : groupBy.getGroupByExpressionList()) {
+        if (expression instanceof LongValue) {
+          long l = ((LongValue) expression).getValue() - 1;
+          expressions.add(select.getSelectItems().get((int) l).getExpression());
+        } else {
+          expressions.add(expression);
+        }
+      }
+      groupBy.setGroupByExpressions(expressions);
+    }
+
+    // remove any filter clauses
+    select.setWhere(null);
+    select.setHaving(null);
+    select.setLimit(null);
+    select.setQualify(null);
+
+    // remove order by (since it can be ordinal)
+    select.setOrderByElements(null);
+
+
     final int size = select.getSelectItems().size();
     for (int i = 0; i < size; i++) {
       Expression expression = select.getSelectItems().get(i).getExpression();
@@ -243,9 +270,9 @@ public class JSQLSchemaDiff {
 
     if (hasWildcards) {
       JSQLColumResolver resolver = new JSQLColumResolver(meta);
-      return resolver.getResolvedStatementText(sqlStr);
+      return resolver.getResolvedStatementText(select.toString());
     } else {
-      return sqlStr;
+      return select.toString();
     }
   }
 

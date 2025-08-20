@@ -17,16 +17,12 @@
 package ai.starlake.transpiler;
 
 import net.sf.jsqlparser.expression.Alias;
-import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.LongValue;
-import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.parser.Node;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.piped.FromQuery;
 import net.sf.jsqlparser.statement.piped.SelectPipeOperator;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.FromItemVisitor;
-import net.sf.jsqlparser.statement.select.GroupByElement;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.Pivot;
@@ -119,19 +115,6 @@ public class JSQLSelectTranspiler extends SelectDeParser {
         plainSelect.setFromItem(null);
       }
     }
-
-    // check Group Items for positions
-    GroupByElement groupBy = plainSelect.getGroupBy();
-    ExpressionList<Expression> expressions = new ExpressionList<>();
-    for (Expression expression : groupBy.getGroupByExpressionList()) {
-      if (expression instanceof LongValue) {
-        long l = ((LongValue) expression).getValue() - 1;
-        expressions.add(plainSelect.getSelectItems().get((int) l).getExpression());
-      } else {
-        expressions.add(expression);
-      }
-    }
-    groupBy.setGroupByExpressions(expressions);
 
     super.visit(plainSelect, params);
     return builder;
