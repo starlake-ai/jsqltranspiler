@@ -531,4 +531,30 @@ class JSQLSchemaDiffTest {
 
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
   }
+
+  @Test
+  void testIssue120AggregateFunctions() throws SQLException, JSQLParserException {
+
+    List<DBSchema> schemas = List.of(
+        new DBSchema("", "starbake", "orders", new Attribute("customer_id", "long"),
+            new Attribute("order_id", "long"), new Attribute("status", "string"),
+            new Attribute("timestamp", "iso_date_time")),
+        new DBSchema("", "starbake", "order_lines", new Attribute("order_id", "long"),
+            new Attribute("product_id", "long"), new Attribute("quantity", "int"),
+            new Attribute("sale_price", "double")));
+
+    String sqlStr = "select orders.order_id, sum(quantity) as qty\n"
+        + "from starbake.orders, starbake.order_lines\n"
+        + "where orders.order_id = order_lines.order_id\n" + "group by 1";
+
+
+    List<Attribute> expected =
+        List.of(new Attribute("order_id", "long", false, null, AttributeStatus.UNCHANGED),
+            new Attribute("qty", "variant", false, null, AttributeStatus.UNCHANGED));
+
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(schemas);
+    List<Attribute> actual = diff.getDiff(sqlStr, "audit.audit_kpi");
+
+    Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+  }
 }
