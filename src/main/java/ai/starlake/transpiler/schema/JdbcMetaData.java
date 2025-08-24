@@ -54,7 +54,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
   public final static Logger LOGGER = Logger.getLogger(JdbcMetaData.class.getName());
   public static final Map<Integer, String> SQL_TYPE_NAME_MAP = new HashMap<>();
 
-  private CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs = new CaseInsensitiveLinkedHashMap<>();
+  private final CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs = new CaseInsensitiveLinkedHashMap<>();
   private String currentCatalogName;
   private String currentSchemaName;
   private String catalogSeparator = ".";
@@ -170,6 +170,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
   private static String mapTypeToH2(Integer jdbcType, String typeName, Integer columnSize,
       Integer decimalDigits) {
     // First try Java class type mapping
+    String s = columnSize!=null && columnSize > 0 ? "VARCHAR(" + columnSize + ")"
+                                                  :"VARCHAR(255)";
     if (typeName != null) {
       String upperType = typeName.toUpperCase();
       switch (upperType) {
@@ -178,8 +180,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
           return "BIGINT";
         case "STRING":
         case "JAVA.LANG.STRING":
-          return columnSize != null && columnSize > 0 ? "VARCHAR(" + columnSize + ")"
-              : "VARCHAR(255)";
+          return s;
         case "OBJECT":
         case "JAVA.LANG.OBJECT":
           return "JSON";
@@ -227,8 +228,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
           }
           return "DECIMAL";
         case Types.VARCHAR:
-          return columnSize != null && columnSize > 0 ? "VARCHAR(" + columnSize + ")"
-              : "VARCHAR(255)";
+          return s;
         case Types.CHAR:
           return columnSize != null && columnSize > 0 ? "CHAR(" + columnSize + ")" : "CHAR(1)";
         case Types.CLOB:
@@ -400,14 +400,14 @@ public final class JdbcMetaData implements DatabaseMetaData {
   /**
    * Derives JDBC MetaData object from a physical database connection.
    *
-   * @param con the physical database connection
+   * @param conn the physical database connection
    * @throws SQLException when the database fails to return CURRENT_CATALOG or CURRENT_SCHEMA
    */
-  public JdbcMetaData(Connection con) throws SQLException {
-    DatabaseMetaData metaData = con.getMetaData();
+  public JdbcMetaData(Connection conn) throws SQLException {
+    DatabaseMetaData metaData = conn.getMetaData();
     this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
 
-    try (Statement statement = con.createStatement();
+    try (Statement statement = conn.createStatement();
         ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
       if (rs.next()) {
         currentCatalogName = JdbcUtils.getStringSafe(rs, 1, "");
@@ -432,10 +432,56 @@ public final class JdbcMetaData implements DatabaseMetaData {
         this.currentSchemaName)) {
       put(jdbcTable);
       jdbcTable.getColumns(metaData);
-      if (jdbcTable.tableType.contains("TABLE")) {
-        jdbcTable.getIndices(metaData, true);
-        jdbcTable.getPrimaryKey(metaData);
+//      if (jdbcTable.tableType.contains("TABLE")) {
+//        jdbcTable.getIndices(metaData, true);
+//        jdbcTable.getPrimaryKey(metaData);
+//      }
+    }
+  }
+
+  public void updateTable(Connection conn, Table t) throws SQLException {
+    for (JdbcTable jdbcTable : JdbcTable.getTables(conn.getMetaData(), t.getCatalogName(),
+            t.getSchemaName())) {
+      DatabaseMetaData metaData = conn.getMetaData();
+      this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
+
+      try (Statement statement = conn.createStatement();
+           ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
+        if (rs.next()) {
+          currentCatalogName = JdbcUtils.getStringSafe(rs, 1, "");
+          currentSchemaName = JdbcUtils.getStringSafe(rs, 2, "");
+        } else {
+          throw new SQLException();
+        }
+      } catch (SQLException ex) {
+        currentCatalogName = "";
+        currentSchemaName = "";
       }
+
+      String catalogName = t.getUnquotedCatalogName();
+      if (catalogName==null || catalogName.isEmpty()) {
+        catalogName = currentCatalogName;
+      }
+      if (!catalogs.containsKey(catalogName)) {
+        catalogs.put(catalogName, new JdbcCatalog(catalogName, "."));
+      }
+      JdbcCatalog jdbcCatalog = catalogs.get(catalogName);
+
+      String schemaName = t.getUnquotedSchemaName();
+      if (schemaName==null || schemaName.isEmpty()) {
+        schemaName = currentSchemaName;
+      }
+      if (!jdbcCatalog.containsKey(schemaName)) {
+        jdbcCatalog.put(new JdbcSchema(schemaName, catalogName));
+      }
+      JdbcSchema schema = jdbcCatalog.get(schemaName);
+
+      schema.put(jdbcTable);
+      jdbcTable.getColumns(metaData);
+//      if (jdbcTable.tableType.contains("TABLE")) {
+//        jdbcTable.getIndices(metaData, true);
+//        jdbcTable.getPrimaryKey(metaData);
+//      }
     }
   }
 

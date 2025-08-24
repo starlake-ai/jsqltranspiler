@@ -78,13 +78,18 @@ public class JdbcTable implements Comparable<JdbcTable> {
   public JdbcTable() {}
 
   public static Collection<JdbcTable> getTables(DatabaseMetaData metaData, String currentCatalog,
-      String currentSchema) throws SQLException {
+                                                String currentSchema) throws SQLException {
+    return getTables(metaData, currentCatalog, currentSchema, "%");
+  }
+
+  public static Collection<JdbcTable> getTables(DatabaseMetaData metaData, String currentCatalog,
+      String currentSchema, String tableNamePattern) throws SQLException {
     ArrayList<JdbcTable> jdbcTables = new ArrayList<>();
 
     JdbcUtils.DatabaseSpecific dbSpecific =
         JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
 
-    try (ResultSet rs = metaData.getTables(null, null, "%", dbSpecific.tableTypes);) {
+    try (ResultSet rs = metaData.getTables(currentCatalog, currentSchema, tableNamePattern, dbSpecific.tableTypes);) {
       while (rs.next()) {
         // TABLE_CATALOG String => catalog name (may be null)
         String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT", currentCatalog);
