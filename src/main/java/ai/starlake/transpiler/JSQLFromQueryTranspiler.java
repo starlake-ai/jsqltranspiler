@@ -359,30 +359,20 @@ public class JSQLFromQueryTranspiler implements FromQueryVisitor<PlainSelect, Pl
     setOperationList.addSelects(plainSelect);
 
     for (ParenthesedSelect select : setOperationPipeOperator.getSelects()) {
+      String modifier = setOperationPipeOperator.getModifier();
+
       switch (setOperationPipeOperator.getSetOperationType()) {
         case INTERSECT:
-          setOperationList.addOperations(new IntersectOp()
-              .withAll(setOperationPipeOperator.getModifier().toUpperCase().contains("ALL"))
-              .withDistinct(
-                  setOperationPipeOperator.getModifier().toUpperCase().contains("DISTINCT")));
+          setOperationList.addOperations(new IntersectOp(modifier));
           break;
         case EXCEPT:
-          setOperationList.addOperations(new ExceptOp()
-              .withAll(setOperationPipeOperator.getModifier().toUpperCase().contains("ALL"))
-              .withDistinct(
-                  setOperationPipeOperator.getModifier().toUpperCase().contains("DISTINCT")));
+          setOperationList.addOperations(new ExceptOp(modifier));
           break;
         case MINUS:
-          setOperationList.addOperations(new MinusOp()
-              .withAll(setOperationPipeOperator.getModifier().toUpperCase().contains("ALL"))
-              .withDistinct(
-                  setOperationPipeOperator.getModifier().toUpperCase().contains("DISTINCT")));
+          setOperationList.addOperations(new MinusOp(modifier));
           break;
         case UNION:
-          setOperationList.addOperations(new UnionOp()
-              .withAll(setOperationPipeOperator.getModifier().toUpperCase().contains("ALL"))
-              .withDistinct(
-                  setOperationPipeOperator.getModifier().toUpperCase().contains("DISTINCT")));
+          setOperationList.addOperations(new UnionOp(modifier));
           break;
       }
       setOperationList.addSelects(select.getSelect());
