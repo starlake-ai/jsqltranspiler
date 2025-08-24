@@ -54,7 +54,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
   public final static Logger LOGGER = Logger.getLogger(JdbcMetaData.class.getName());
   public static final Map<Integer, String> SQL_TYPE_NAME_MAP = new HashMap<>();
 
-  private final CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs = new CaseInsensitiveLinkedHashMap<>();
+  private final CaseInsensitiveLinkedHashMap<JdbcCatalog> catalogs =
+      new CaseInsensitiveLinkedHashMap<>();
   private String currentCatalogName;
   private String currentSchemaName;
   private String catalogSeparator = ".";
@@ -170,8 +171,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
   private static String mapTypeToH2(Integer jdbcType, String typeName, Integer columnSize,
       Integer decimalDigits) {
     // First try Java class type mapping
-    String s = columnSize!=null && columnSize > 0 ? "VARCHAR(" + columnSize + ")"
-                                                  :"VARCHAR(255)";
+    String s =
+        columnSize != null && columnSize > 0 ? "VARCHAR(" + columnSize + ")" : "VARCHAR(255)";
     if (typeName != null) {
       String upperType = typeName.toUpperCase();
       switch (upperType) {
@@ -428,25 +429,24 @@ public final class JdbcMetaData implements DatabaseMetaData {
       put(jdbcSchema);
     }
 
-    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, this.currentCatalogName,
-        this.currentSchemaName)) {
+    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, null, null)) {
       put(jdbcTable);
       jdbcTable.getColumns(metaData);
-//      if (jdbcTable.tableType.contains("TABLE")) {
-//        jdbcTable.getIndices(metaData, true);
-//        jdbcTable.getPrimaryKey(metaData);
-//      }
+      // if (jdbcTable.tableType.contains("TABLE")) {
+      // jdbcTable.getIndices(metaData, true);
+      // jdbcTable.getPrimaryKey(metaData);
+      // }
     }
   }
 
   public void updateTable(Connection conn, Table t) throws SQLException {
     for (JdbcTable jdbcTable : JdbcTable.getTables(conn.getMetaData(), t.getCatalogName(),
-            t.getSchemaName())) {
+        t.getSchemaName())) {
       DatabaseMetaData metaData = conn.getMetaData();
       this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
 
       try (Statement statement = conn.createStatement();
-           ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
+          ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
         if (rs.next()) {
           currentCatalogName = JdbcUtils.getStringSafe(rs, 1, "");
           currentSchemaName = JdbcUtils.getStringSafe(rs, 2, "");
@@ -459,29 +459,29 @@ public final class JdbcMetaData implements DatabaseMetaData {
       }
 
       String catalogName = t.getUnquotedCatalogName();
-      if (catalogName==null || catalogName.isEmpty()) {
+      if (catalogName == null || catalogName.isEmpty()) {
         catalogName = currentCatalogName;
       }
       if (!catalogs.containsKey(catalogName)) {
         catalogs.put(catalogName, new JdbcCatalog(catalogName, "."));
       }
-      JdbcCatalog jdbcCatalog = catalogs.get(catalogName);
+      JdbcCatalog jdbcCatalog = catalogs.get(catalogName.toUpperCase());
 
       String schemaName = t.getUnquotedSchemaName();
-      if (schemaName==null || schemaName.isEmpty()) {
+      if (schemaName == null || schemaName.isEmpty()) {
         schemaName = currentSchemaName;
       }
       if (!jdbcCatalog.containsKey(schemaName)) {
         jdbcCatalog.put(new JdbcSchema(schemaName, catalogName));
       }
-      JdbcSchema schema = jdbcCatalog.get(schemaName);
+      JdbcSchema schema = jdbcCatalog.get(schemaName.toUpperCase());
 
       schema.put(jdbcTable);
       jdbcTable.getColumns(metaData);
-//      if (jdbcTable.tableType.contains("TABLE")) {
-//        jdbcTable.getIndices(metaData, true);
-//        jdbcTable.getPrimaryKey(metaData);
-//      }
+      // if (jdbcTable.tableType.contains("TABLE")) {
+      // jdbcTable.getIndices(metaData, true);
+      // jdbcTable.getPrimaryKey(metaData);
+      // }
     }
   }
 
