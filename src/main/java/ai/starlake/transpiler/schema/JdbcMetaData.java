@@ -440,42 +440,41 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   public void updateTable(Connection conn, Table t) throws SQLException {
-    for (JdbcTable jdbcTable : JdbcTable.getTables(conn.getMetaData(), t.getCatalogName(),
-        t.getSchemaName())) {
-      DatabaseMetaData metaData = conn.getMetaData();
-      this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
+    DatabaseMetaData metaData = conn.getMetaData();
+    this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
 
-      try (Statement statement = conn.createStatement();
-          ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
-        if (rs.next()) {
-          currentCatalogName = JdbcUtils.getStringSafe(rs, 1, "");
-          currentSchemaName = JdbcUtils.getStringSafe(rs, 2, "");
-        } else {
-          throw new SQLException();
-        }
-      } catch (SQLException ex) {
-        currentCatalogName = "";
-        currentSchemaName = "";
+    try (Statement statement = conn.createStatement();
+        ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
+      if (rs.next()) {
+        currentCatalogName = JdbcUtils.getStringSafe(rs, 1, "");
+        currentSchemaName = JdbcUtils.getStringSafe(rs, 2, "");
+      } else {
+        throw new SQLException();
       }
+    } catch (SQLException ex) {
+      currentCatalogName = "";
+      currentSchemaName = "";
+    }
 
-      String catalogName = t.getUnquotedCatalogName();
-      if (catalogName == null || catalogName.isEmpty()) {
-        catalogName = currentCatalogName;
-      }
-      if (!catalogs.containsKey(catalogName)) {
-        catalogs.put(catalogName, new JdbcCatalog(catalogName, "."));
-      }
-      JdbcCatalog jdbcCatalog = catalogs.get(catalogName.toUpperCase());
+    String catalogName = t.getUnquotedCatalogName();
+    if (catalogName == null || catalogName.isEmpty()) {
+      catalogName = currentCatalogName;
+    }
+    if (!catalogs.containsKey(catalogName)) {
+      catalogs.put(catalogName, new JdbcCatalog(catalogName, "."));
+    }
+    JdbcCatalog jdbcCatalog = catalogs.get(catalogName.toUpperCase());
 
-      String schemaName = t.getUnquotedSchemaName();
-      if (schemaName == null || schemaName.isEmpty()) {
-        schemaName = currentSchemaName;
-      }
-      if (!jdbcCatalog.containsKey(schemaName)) {
-        jdbcCatalog.put(new JdbcSchema(schemaName, catalogName));
-      }
-      JdbcSchema schema = jdbcCatalog.get(schemaName.toUpperCase());
+    String schemaName = t.getUnquotedSchemaName();
+    if (schemaName == null || schemaName.isEmpty()) {
+      schemaName = currentSchemaName;
+    }
+    if (!jdbcCatalog.containsKey(schemaName)) {
+      jdbcCatalog.put(new JdbcSchema(schemaName, catalogName));
+    }
+    JdbcSchema schema = jdbcCatalog.get(schemaName.toUpperCase());
 
+    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, null, null, t.getUnquotedName().toUpperCase())) {
       schema.put(jdbcTable);
       jdbcTable.getColumns(metaData);
       // if (jdbcTable.tableType.contains("TABLE")) {
