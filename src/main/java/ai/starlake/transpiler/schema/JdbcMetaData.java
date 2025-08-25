@@ -474,7 +474,8 @@ public final class JdbcMetaData implements DatabaseMetaData {
     }
     JdbcSchema schema = jdbcCatalog.get(schemaName.toUpperCase());
 
-    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, null, null, t.getUnquotedName().toUpperCase())) {
+    for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, null, null,
+        t.getUnquotedName().toUpperCase())) {
       schema.put(jdbcTable);
       jdbcTable.getColumns(metaData);
       // if (jdbcTable.tableType.contains("TABLE")) {
