@@ -164,9 +164,11 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
     functions.add(function);
 
     JdbcColumn col = new JdbcColumn(function.getName(), function);
-    for (Expression expression : function.getParameters()) {
-      List<JdbcColumn> subColumns = expression.accept(this, context);
-      col.add(subColumns);
+    if (function.getParameters()!=null) {
+      for (Expression expression : function.getParameters()) {
+        List<JdbcColumn> subColumns = expression.accept(this, context);
+        col.add(subColumns);
+      }
     }
     return List.of(col);
   }
