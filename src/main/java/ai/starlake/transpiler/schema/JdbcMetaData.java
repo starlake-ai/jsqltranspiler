@@ -421,22 +421,65 @@ public final class JdbcMetaData implements DatabaseMetaData {
       currentSchemaName = "";
     }
 
-    for (JdbcCatalog jdbcCatalog : JdbcCatalog.getCatalogs(metaData)) {
-      put(jdbcCatalog);
+    try {
+      for (JdbcCatalog jdbcCatalog : JdbcCatalog.getCatalogsFromInformationSchema(conn)) {
+        put(jdbcCatalog);
+      }
+    } catch (SQLException ex) {
+      LOGGER.warning("Failed get Catalogs from INFORMATION_SCHEMA, use DatabaseMetaData now.");
+      for (JdbcCatalog jdbcCatalog : JdbcCatalog.getCatalogs(metaData)) {
+        put(jdbcCatalog);
+      }
     }
 
-    for (JdbcSchema jdbcSchema : JdbcSchema.getSchemas(metaData)) {
-      put(jdbcSchema);
+    try {
+      for (JdbcSchema jdbcSchema : JdbcSchema.getSchemasFromInformationSchema(conn)) {
+        put(jdbcSchema);
+      }
+    } catch (SQLException ex) {
+      LOGGER.warning("Failed get Schemas from INFORMATION_SCHEMA, use DatabaseMetaData now.");
+      for (JdbcSchema jdbcSchema : JdbcSchema.getSchemas(metaData)) {
+        put(jdbcSchema);
+      }
     }
 
     for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, null, null)) {
-      put(jdbcTable);
-      jdbcTable.getColumns(metaData);
-      // if (jdbcTable.tableType.contains("TABLE")) {
-      // jdbcTable.getIndices(metaData, true);
-      // jdbcTable.getPrimaryKey(metaData);
-      // }
+      String tableCatalog = jdbcTable.tableCatalog;
+      String tableSchema = jdbcTable.tableSchema;
+      JdbcCatalog catalog = catalogs.get(tableCatalog);
+      if (catalog != null) {
+        JdbcSchema schema = catalog.get(tableSchema);
+        if (schema != null) {
+          schema.put(jdbcTable);
+        }
+      }
     }
+
+    for (JdbcColumn column : JdbcTable.getColumns(metaData)) {
+      String tableCatalog = column.tableCatalog;
+      String tableSchema = column.tableSchema;
+      String tableName = column.tableName;
+
+      JdbcCatalog catalog = catalogs.get(tableCatalog);
+      if (catalog != null) {
+        JdbcSchema schema = catalog.get(tableSchema);
+        if (schema != null) {
+          JdbcTable table = schema.get(tableName);
+          if (table != null) {
+            table.columns.put(column.columnName, column);
+          }
+        }
+      }
+    }
+
+    // for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, null, null)) {
+    // put(jdbcTable);
+    // jdbcTable.getColumns(metaData);
+    // // if (jdbcTable.tableType.contains("TABLE")) {
+    // // jdbcTable.getIndices(metaData, true);
+    // // jdbcTable.getPrimaryKey(metaData);
+    // // }
+    // }
   }
 
   public void updateTable(Connection conn, Table t) throws SQLException {

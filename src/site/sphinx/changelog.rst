@@ -8,6 +8,99 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **style: formatting**
+    
+    Andreas Reichel, 2025-08-25
+  * **feat: schema single table update**
+    
+    Andreas Reichel, 2025-08-25
+  * **fix: NPE**
+    
+    Andreas Reichel, 2025-08-25
+  * **feat: MetaData from Connection**
+    
+    Andreas Reichel, 2025-08-24
+  * **fix: `SetOperation` modifier**
+    
+    Andreas Reichel, 2025-08-24
+  * **feat: single table DatabaseMetaData**
+    
+    Andreas Reichel, 2025-08-24
+  * **style: update licenses**
+    
+    Andreas Reichel, 2025-08-20
+  * **feat: rewrite `GROUP BY position` into the `GROUP BY expression` equivalent**
+    
+    Andreas Reichel, 2025-08-20
+  * **feat: rewrite `GROUP BY position` into the `GROUP BY expression` equivalent**
+    
+    Andreas Reichel, 2025-08-20
+  * **feat: table replace for DML and DDL statements**
+    
+    Andreas Reichel, 2025-08-19
+  * **feat: table replace for DML and DDL statements**
+    
+    Andreas Reichel, 2025-08-15
+  * **test: add issue https://github.com/JSQLParser/JSqlParser/issues/2291**
+    
+    Andreas Reichel, 2025-08-14
+  * **style: apply license headers**
+    
+    Andreas Reichel, 2025-08-10
+  * **feat: `ARRAY` and `STRUCT` support in schema diff**
+    
+    Andreas Reichel, 2025-08-10
+  * **feat: use DuckDB in memory for determining the column type**
+    
+    Andreas Reichel, 2025-08-07
+  * **fix: DECIMAL w/o precision or scale**
+    
+    Andreas Reichel, 2025-08-06
+  * **fix: DECIMAL w/o precision or scale**
+    
+    Andreas Reichel, 2025-08-06
+  * **feat: move DBSchema translation into constructor**
+    
+    Andreas Reichel, 2025-08-06
+  * **test: add test for issue #119**
+    
+    Andreas Reichel, 2025-08-06
+  * **feat: move DBSchema translation to the constructor**
+    
+    Andreas Reichel, 2025-08-06
+  * **style: beautify the ASCII tree output**
+    
+    Andreas Reichel, 2025-08-06
+  * **test: add test for issue #115**
+    
+    manticore-projects, 2025-08-05
+  * **test: issue #115**
+    
+    manticore-projects, 2025-07-27
+  * **fix: avoid possible NPE**
+    
+    manticore-projects, 2025-07-27
+  * **test: issue #115**
+    
+    manticore-projects, 2025-07-27
+  * **chore: update licences**
+    
+    manticore-projects, 2025-07-21
+  * **feat: retrieve column types from functions**
+    
+    manticore-projects, 2025-07-21
+  * **feat: retrieve column types from functions**
+    
+    manticore-projects, 2025-07-20
+  * **style: CI/QA**
+    
+    manticore-projects, 2025-07-20
+  * **fix: Diff detection must consider column labels**
+    
+    manticore-projects, 2025-07-20
+  * **feat: Multi-Schema Diff**
+    
+    manticore-projects, 2025-07-15
   * **this file list the accepted type names for attributes and their mapping to database types (#109)**
     
     manticore-projects, 2025-07-08

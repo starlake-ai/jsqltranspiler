@@ -15,9 +15,11 @@ package ai.starlake.transpiler.schema;
 
 import net.sf.jsqlparser.schema.Table;
 
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -47,6 +49,31 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
   }
 
   public JdbcSchema() {}
+
+  public static Collection<JdbcSchema> getSchemasFromInformationSchema(Connection conn)
+      throws SQLException {
+    ArrayList<JdbcSchema> jdbcSchemas = new ArrayList<>();
+
+    String sqlStr =
+        String.format("SELECT * FROM %s.information_schema.schemata", conn.getCatalog());
+    try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sqlStr)) {
+
+      while (rs.next()) {
+        // TABLE_SCHEM String => schema name
+        String tableSchema = JdbcUtils.getStringSafe(rs, "SCHEMA_NAME");
+        // TABLE_CATALOG String => catalog name (maybe null)
+        String tableCatalog = JdbcUtils.getStringSafe(rs, "CATALOG_NAME", "");
+        if (tableSchema != null && !tableSchema.isBlank()) {
+          JdbcSchema jdbcSchema = new JdbcSchema(tableSchema, tableCatalog);
+          jdbcSchemas.add(jdbcSchema);
+        }
+      }
+      // add <empty> schema as some DBs don't have the concept of schema for tables
+      jdbcSchemas.add(new JdbcSchema("", ""));
+
+    }
+    return jdbcSchemas;
+  }
 
   public static Collection<JdbcSchema> getSchemas(DatabaseMetaData metaData) throws SQLException {
     ArrayList<JdbcSchema> jdbcSchemas = new ArrayList<>();
@@ -85,13 +112,13 @@ public class JdbcSchema implements Comparable<JdbcSchema> {
     JdbcTable jdbcTable = tables.get(unquotedTableName);
 
     // Virtual tables from WITH items shadow physical tables and synonyms
-    if (jdbcTable!=null && jdbcTable.tableType.equalsIgnoreCase("VIRTUAL TABLE")) {
+    if (jdbcTable != null && jdbcTable.tableType.equalsIgnoreCase("VIRTUAL TABLE")) {
       return jdbcTable;
-    } else if ( droppedTables.containsKey(unquotedTableName) ) {
+    } else if (droppedTables.containsKey(unquotedTableName)) {
       return null;
     } else if (synonyms.containsKey(unquotedTableName)) {
       final JdbcTable synonym = synonyms.get(unquotedTableName);
-      synonym.tableName=unquotedTableName;
+      synonym.tableName = unquotedTableName;
       return synonym;
     } else {
       return jdbcTable;

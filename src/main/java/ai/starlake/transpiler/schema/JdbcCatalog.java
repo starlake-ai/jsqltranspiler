@@ -13,9 +13,11 @@
  */
 package ai.starlake.transpiler.schema;
 
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -41,6 +43,28 @@ public class JdbcCatalog implements Comparable<JdbcCatalog> {
   }
 
   public JdbcCatalog() {}
+
+  public static Collection<JdbcCatalog> getCatalogsFromInformationSchema(Connection conn)
+      throws SQLException {
+    ArrayList<JdbcCatalog> jdbcCatalogs = new ArrayList<>();
+
+    String sqlStr =
+        String.format("SELECT * FROM %s.information_schema.databases", conn.getCatalog());
+    try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sqlStr)) {
+      String catalogSeparator = ".";
+      while (rs.next()) {
+        String tableCatalog = JdbcUtils.getStringSafe(rs, "DATABASE_NAME");
+        if (tableCatalog != null && !tableCatalog.isEmpty()) {
+          JdbcCatalog jdbcCatalog = new JdbcCatalog(tableCatalog, catalogSeparator);
+          jdbcCatalogs.add(jdbcCatalog);
+        }
+      }
+      // add <empty> catalog as some DBs don't have the concept of catalog for tables
+      jdbcCatalogs.add(new JdbcCatalog("", "."));
+
+    }
+    return jdbcCatalogs;
+  }
 
   public static Collection<JdbcCatalog> getCatalogs(DatabaseMetaData metaData) throws SQLException {
     ArrayList<JdbcCatalog> jdbcCatalogs = new ArrayList<>();
