@@ -219,11 +219,16 @@ public class JdbcTable implements Comparable<JdbcTable> {
   }
 
   public static Collection<JdbcColumn> getColumns(DatabaseMetaData metaData) throws SQLException {
+    return getColumns(metaData, null, "%", "%");
+  }
+
+  public static Collection<JdbcColumn> getColumns(DatabaseMetaData metaData, String catalog,
+      String schemaPattern, String tableNamePattern) throws SQLException {
     ArrayList<JdbcColumn> jdbcColumns = new ArrayList<>();
     JdbcUtils.DatabaseSpecific dbSpecific =
         JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
 
-    try (ResultSet rs = metaData.getColumns(null, null, null, "%");) {
+    try (ResultSet rs = metaData.getColumns(catalog, schemaPattern, tableNamePattern, "%");) {
       while (rs.next()) {
         // TABLE_CATALOG String => catalog name (may be null)
         String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT", "");

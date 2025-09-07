@@ -1586,6 +1586,41 @@ JSQLSchemaDiff
 
 
 
+| **parseStruct** (expression) → :ref:`String[][]<java.lang.String[][]>`
+|          :ref:`String<java.lang.String>` expression
+|          returns :ref:`String[][]<java.lang.String[][]>`
+
+
+
+| **getDiff** (dialect, sqlStr, qualifiedTargetTableName) → :ref:`Attribute><java.util.List<ai.starlake.transpiler.diff.Attribute>>`
+|          :ref:`Dialect<ai.starlake.transpiler.JSQLTranspiler.Dialect>` dialect
+|          :ref:`String<java.lang.String>` sqlStr
+|          :ref:`String<java.lang.String>` qualifiedTargetTableName
+|          returns :ref:`Attribute><java.util.List<ai.starlake.transpiler.diff.Attribute>>`
+
+
+
+| **prepareConnection** () → :ref:`Connection<java.sql.Connection>`
+|          returns :ref:`Connection<java.sql.Connection>`
+
+
+
+| **rewriteQuery** (dialect, sqlStr, intoDialect) → :ref:`String<java.lang.String>`
+|          :ref:`Dialect<ai.starlake.transpiler.JSQLTranspiler.Dialect>` dialect
+|          :ref:`String<java.lang.String>` sqlStr
+|          :ref:`Dialect<ai.starlake.transpiler.JSQLTranspiler.Dialect>` intoDialect
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **getDataType** (conn, sqlStr, columIndex) → :ref:`String<java.lang.String>`
+|          :ref:`Connection<java.sql.Connection>` conn
+|          :ref:`String<java.lang.String>` sqlStr
+|          int columIndex
+|          returns :ref:`String<java.lang.String>`
+
+
+
 
 ..  _ai.starlake.transpiler.JSQLSelectTranspiler:
 
@@ -2147,7 +2182,7 @@ Attribute
 |          :ref:`String<java.lang.String>` name
 |          :ref:`String<java.lang.String>` type
 |          boolean array
-|          :ref:`Attribute><java.util.ArrayList<ai.starlake.transpiler.diff.Attribute>>` attributes
+|          :ref:`Attribute><java.util.Collection<ai.starlake.transpiler.diff.Attribute>>` attributes
 |          :ref:`AttributeStatus<ai.starlake.transpiler.diff.AttributeStatus>` status
 
 
@@ -3098,6 +3133,11 @@ JdbcMetaData
 |          :ref:`String[][]<java.lang.String[][]>` schemaDefinition
 
 
+| **JdbcMetaData** (schemas)
+| Instantiates a new JDBC MetaData object from the starlake schema api. Empty CURRENT_CATALOG and empty CURRENT_SCHEMA.
+|          :ref:`DBSchema><java.util.Collection<ai.starlake.transpiler.diff.DBSchema>>` schemas
+
+
 | **JdbcMetaData** (catalogName, schemaName, schemaDefinition)
 | Instantiates a new virtual JDBC MetaData object for the given CURRENT_CATALOG and CURRENT_SCHEMA and creates tables from the provided definition.
 |          :ref:`String<java.lang.String>` catalogName
@@ -3115,15 +3155,54 @@ JdbcMetaData
 | Instantiates a new virtual JDBC MetaData object with an empty CURRENT_CATALOG and an empty CURRENT_SCHEMA.
 
 
-| **JdbcMetaData** (con)
+| **JdbcMetaData** (conn)
 | Derives JDBC MetaData object from a physical database connection.
-|          :ref:`Connection<java.sql.Connection>` con
+|          :ref:`Connection<java.sql.Connection>` conn
 
 
-| **getTypeName** (sqlType) → :ref:`String<java.lang.String>`
+| **getDDLStr** (catalogName) → :ref:`String<java.lang.String>`
+|          :ref:`String<java.lang.String>` catalogName
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **generateCreateTableDDL** (table, includeSchema) → :ref:`String<java.lang.String>`
+| Generates a CREATE TABLE DDL statement for this JdbcTable
+|          :ref:`JdbcTable<ai.starlake.transpiler.schema.JdbcTable>` table
+|          boolean includeSchema
+|          returns :ref:`String<java.lang.String>`
+
+
+
+
+                Generates column definition string for a JdbcColumn
+                |          :ref:`JdbcColumn<ai.starlake.transpiler.schema.JdbcColumn>` column
+
+                |          returns :ref:`String<java.lang.String>`
+
+
+            
+                Maps both Java class types and JDBC types to H2 column types
+                |          :ref:`Integer<java.lang.Integer>` jdbcType
+
+                |          :ref:`String<java.lang.String>` typeName
+
+                |          :ref:`Integer<java.lang.Integer>` columnSize
+
+                |          :ref:`Integer<java.lang.Integer>` decimalDigits
+
+                |          returns :ref:`String<java.lang.String>`
+
+
+            | **getTypeName** (sqlType) → :ref:`String<java.lang.String>`
 |          int sqlType
 |          returns :ref:`String<java.lang.String>`
 
+
+
+| **updateTable** (conn, t)
+|          :ref:`Connection<java.sql.Connection>` conn
+|          :ref:`Table<net.sf.jsqlparser.schema.Table>` t
 
 
 | **put** (jdbcCatalog) → :ref:`JdbcCatalog<ai.starlake.transpiler.schema.JdbcCatalog>`
@@ -5250,6 +5329,15 @@ JdbcTable
 
 
 
+| **getTables** (metaData, currentCatalog, currentSchema, tableNamePattern) → :ref:`JdbcTable><java.util.Collection<ai.starlake.transpiler.schema.JdbcTable>>`
+|          :ref:`DatabaseMetaData<java.sql.DatabaseMetaData>` metaData
+|          :ref:`String<java.lang.String>` currentCatalog
+|          :ref:`String<java.lang.String>` currentSchema
+|          :ref:`String<java.lang.String>` tableNamePattern
+|          returns :ref:`JdbcTable><java.util.Collection<ai.starlake.transpiler.schema.JdbcTable>>`
+
+
+
 | **getColumns** (metaData)
 |          :ref:`DatabaseMetaData<java.sql.DatabaseMetaData>` metaData
 
@@ -5607,6 +5695,174 @@ SampleSchemaProvider
 | **getTables** (tableName) → :ref:`String>><java.util.Map<java.lang.String,java.util.Map<java.lang.String,java.lang.String>>>`
 |          :ref:`String<java.lang.String>` tableName
 |          returns :ref:`String>><java.util.Map<java.lang.String,java.util.Map<java.lang.String,java.lang.String>>>`
+
+
+
+
+..  _ai.starlake.transpiler.schema.TypeMappingSystem:
+
+=======================================================================
+TypeMappingSystem
+=======================================================================
+
+*extends:* :ref:`Object<java.lang.Object>` 
+
+| Type mapping system that handles: 1. JDBC Schema types to DDL column types (using YAML config) 2. ResultSetMetaData back to type names (reverse mapping)
+
+| **TypeMappingSystem** ()
+
+
+
+                Initialize all mappings based on the YAML configuration All keys are stored in lowercase for
+ case-insensitive lookup
+                |          returns void
+
+
+            
+                Helper method to add case-insensitive mappings for all databases
+                |          :ref:`String<java.lang.String>` typeName
+
+                |          :ref:`String<java.lang.String>` h2Type
+
+                |          :ref:`String<java.lang.String>` duckdbType
+
+                |          :ref:`String<java.lang.String>` postgresType
+
+                |          returns void
+
+
+            
+                Initialize reverse mappings from DDL types back to type names All keys stored in uppercase for
+ case-insensitive lookup
+                |          returns void
+
+
+            
+                Helper method to add case-insensitive reverse mappings for H2 and DuckDB
+                |          :ref:`String<java.lang.String>` ddlType
+
+                |          :ref:`String<java.lang.String>` typeName
+
+                |          returns void
+
+
+            
+                Helper method to add case-insensitive reverse mappings for PostgreSQL
+                |          :ref:`String<java.lang.String>` ddlType
+
+                |          :ref:`String<java.lang.String>` typeName
+
+                |          returns void
+
+
+            
+                Initialize JDBC type code to type name mappings
+                |          returns void
+
+
+            | **parseType** (typeName) → :ref:`ParsedType<ai.starlake.transpiler.schema.TypeMappingSystem.ParsedType>`
+|          :ref:`String<java.lang.String>` typeName
+|          returns :ref:`ParsedType<ai.starlake.transpiler.schema.TypeMappingSystem.ParsedType>`
+
+
+
+| **mapTypeToDDL** (typeName, database, columnSize, decimalDigits) → :ref:`String<java.lang.String>`
+| Maps type name to DDL column type for specific database
+|          :ref:`String<java.lang.String>` typeName
+|          :ref:`String<java.lang.String>` database
+|          :ref:`Integer<java.lang.Integer>` columnSize
+|          :ref:`Integer<java.lang.Integer>` decimalDigits
+|          returns :ref:`String<java.lang.String>`
+
+
+
+
+                Apply precision and scale to DDL types where applicable
+                |          :ref:`String<java.lang.String>` ddlType
+
+                |          :ref:`Integer<java.lang.Integer>` columnSize
+
+                |          :ref:`Integer<java.lang.Integer>` decimalDigits
+
+                |          returns :ref:`String<java.lang.String>`
+
+
+            | **mapResultSetToTypeName** (metaData, columnIndex, database) → :ref:`String<java.lang.String>`
+| Maps ResultSetMetaData back to type name
+|          :ref:`ResultSetMetaData<java.sql.ResultSetMetaData>` metaData
+|          int columnIndex
+|          :ref:`String<java.lang.String>` database
+|          returns :ref:`String<java.lang.String>`
+
+
+
+
+                Maps DDL type name back to our type system
+                |          :ref:`String<java.lang.String>` ddlTypeName
+
+                |          :ref:`String<java.lang.String>` database
+
+                |          returns :ref:`String<java.lang.String>`
+
+
+            | **generateColumnDefinition** (column, database) → :ref:`String<java.lang.String>`
+| Enhanced column definition generator using the type mapping system
+|          :ref:`JdbcColumn<ai.starlake.transpiler.schema.JdbcColumn>` column
+|          :ref:`String<java.lang.String>` database
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **generateColumnDefinition** (columnName, typeName, database) → :ref:`String<java.lang.String>`
+| Enhanced column definition generator using the type mapping system
+|          :ref:`String<java.lang.String>` columnName
+|          :ref:`String<java.lang.String>` typeName
+|          :ref:`String<java.lang.String>` database
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **generateColumnDefinition** (columnName, typeName, dataType, columnSize, decimalDigits, nullable, columnDefinition, database) → :ref:`String<java.lang.String>`
+| Enhanced column definition generator using the type mapping system
+|          :ref:`String<java.lang.String>` columnName
+|          :ref:`String<java.lang.String>` typeName
+|          :ref:`Integer<java.lang.Integer>` dataType
+|          :ref:`Integer<java.lang.Integer>` columnSize
+|          :ref:`Integer<java.lang.Integer>` decimalDigits
+|          :ref:`Integer<java.lang.Integer>` nullable
+|          :ref:`String<java.lang.String>` columnDefinition
+|          :ref:`String<java.lang.String>` database
+|          returns :ref:`String<java.lang.String>`
+
+
+
+| **generateCreateTableDDL** (table, database, includeSchema) → :ref:`String<java.lang.String>`
+| Example usage for creating table DDL
+|          :ref:`JdbcTable<ai.starlake.transpiler.schema.JdbcTable>` table
+|          :ref:`String<java.lang.String>` database
+|          boolean includeSchema
+|          returns :ref:`String<java.lang.String>`
+
+
+
+
+..  _ai.starlake.transpiler.schema.TypeMappingSystem.ParsedType:
+
+=======================================================================
+ParsedType
+=======================================================================
+
+*extends:* :ref:`Object<java.lang.Object>` 
+
+| **ParsedType** (isArray, baseType, brackets)
+|          boolean isArray
+|          :ref:`String<java.lang.String>` baseType
+|          :ref:`String<java.lang.String>` brackets
+
+
+| *@Override*
+| **toString** () → :ref:`String<java.lang.String>`
+|          returns :ref:`String<java.lang.String>`
 
 
 

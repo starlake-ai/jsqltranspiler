@@ -471,15 +471,6 @@ public final class JdbcMetaData implements DatabaseMetaData {
         }
       }
     }
-
-    // for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, null, null)) {
-    // put(jdbcTable);
-    // jdbcTable.getColumns(metaData);
-    // // if (jdbcTable.tableType.contains("TABLE")) {
-    // // jdbcTable.getIndices(metaData, true);
-    // // jdbcTable.getPrimaryKey(metaData);
-    // // }
-    // }
   }
 
   public void updateTable(Connection conn, Table t) throws SQLException {
@@ -520,11 +511,11 @@ public final class JdbcMetaData implements DatabaseMetaData {
     for (JdbcTable jdbcTable : JdbcTable.getTables(metaData, null, null,
         t.getUnquotedName().toUpperCase())) {
       schema.put(jdbcTable);
-      jdbcTable.getColumns(metaData);
-      // if (jdbcTable.tableType.contains("TABLE")) {
-      // jdbcTable.getIndices(metaData, true);
-      // jdbcTable.getPrimaryKey(metaData);
-      // }
+
+      for (JdbcColumn column : JdbcTable.getColumns(metaData, jdbcTable.tableCatalog,
+          jdbcTable.tableSchema, jdbcTable.tableName)) {
+        jdbcTable.columns.put(column.columnName, column);
+      }
     }
   }
 
