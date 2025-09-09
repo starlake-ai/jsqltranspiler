@@ -529,6 +529,97 @@ class JSQLSchemaDiffTest {
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
   }
 
+    @Test
+    void testArrayScalarAddedRemoved() throws Exception {
+        DBSchema schema = new DBSchema(
+                "", "db", "table",
+                new Attribute("id", "string", true, null, AttributeStatus.ADDED)
+        );
+
+        String sqlStr = "select array_construct('a', 'b') as names from db.table";
+
+        List<Attribute> expected = List.of(
+                new Attribute("id", "string", true, null, AttributeStatus.REMOVED),
+                new Attribute("names", "string", true, null, AttributeStatus.ADDED)
+        );
+
+        JSQLSchemaDiff diff = new JSQLSchemaDiff(schema);
+        List<Attribute> actual = diff.getDiff(sqlStr, "db.table");
+
+        Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+    }
+
+    @Test
+    void testStructFieldAddedRemoved() throws Exception {
+        DBSchema schema = new DBSchema(
+                "", "db", "table",
+                new Attribute("user", "struct", false,
+                        List.of(
+                                new Attribute("id", "string"),
+                                new Attribute("name", "string")
+                        ),
+                        AttributeStatus.ADDED)
+        );
+
+        String sqlStr = "select object_construct(\n" +
+                "    'id', 'abc-912'::STRING,\n" +
+                "    'age', 42::INT\n" +
+                ") as user_info";
+
+        List<Attribute> expected = List.of(
+                new Attribute("user", "struct", false,
+                        List.of(
+                                new Attribute("id", "string"),
+                                new Attribute("name", "string")
+                        ),
+                        AttributeStatus.REMOVED),
+                new Attribute("user_info", "struct", false,
+                        List.of(
+                                new Attribute("id", "string"),
+                                new Attribute("age", "int")
+                        ),
+                        AttributeStatus.ADDED)
+        );
+
+        JSQLSchemaDiff diff = new JSQLSchemaDiff(schema);
+        List<Attribute> actual = diff.getDiff(sqlStr, "db.table");
+
+        Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+    }
+
+    @Test
+    void testStructFieldAttributeChanges() throws Exception {
+        DBSchema schema = new DBSchema(
+                "", "db", "table",
+                new Attribute("user", "struct", false,
+                        List.of(
+                                new Attribute("id", "string"),
+                                new Attribute("name", "string")
+                        ),
+                        AttributeStatus.ADDED)
+        );
+
+        String sqlStr = "select object_construct(\n" +
+                "    'id', 'abc-912'::STRING,\n" +
+                "    'age', 42::INT\n" +
+                ") as user";
+
+        List<Attribute> expected = List.of(
+                new Attribute("user", "struct", false,
+                        List.of(
+                                new Attribute("id", "string", false, null, AttributeStatus.UNCHANGED),
+                                new Attribute("age", "int", false, null, AttributeStatus.REMOVED)
+                        ),
+                        AttributeStatus.MODIFIED)
+        );
+
+        JSQLSchemaDiff diff = new JSQLSchemaDiff(schema);
+        List<Attribute> actual = diff.getDiff(sqlStr, "db.table");
+
+        Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+    }
+
+
   @Test
   void testIssue120AggregateFunctions() throws SQLException, JSQLParserException {
 
