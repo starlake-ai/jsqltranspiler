@@ -2141,4 +2141,46 @@ public final class JdbcMetaData implements DatabaseMetaData {
       throw new CatalogNotFoundException(fromTable.getUnquotedCatalogName());
     }
   }
+
+  public void dropSynonym(String fromTableName, String toTableName) {
+    if (fromTableName == null || fromTableName.isEmpty()) {
+      throw new RuntimeException("Table name must not be empty!");
+    } else if (toTableName == null || toTableName.isEmpty()) {
+      throw new RuntimeException("Table name must not be empty!");
+    }
+
+    Table fromTable =
+        new Table(fromTableName).setUnsetCatalogAndSchema(currentCatalogName, currentSchemaName);
+    Table toTable =
+        new Table(toTableName).setUnsetCatalogAndSchema(currentCatalogName, currentSchemaName);
+    JdbcTable jdbcTable = getTable(toTable);
+    if (jdbcTable == null) {
+      throw new TableNotFoundException(toTable.getFullyQualifiedName(), List.of());
+    }
+
+    JdbcCatalog fromCatalog = catalogs.get(fromTable.getUnquotedCatalogName());
+    if (fromCatalog != null) {
+      JdbcSchema fromSchema = fromCatalog.get(fromTable.getUnquotedSchemaName());
+      if (fromSchema != null) {
+        fromSchema.synonyms.remove(fromTable.getUnquotedName(), jdbcTable);
+        fromSchema.remove(fromTable.getUnquotedName(), jdbcTable);
+      } else {
+        throw new SchemaNotFoundException(fromTable.getUnquotedSchemaName());
+      }
+    } else {
+      throw new CatalogNotFoundException(fromTable.getUnquotedCatalogName());
+    }
+
+    JdbcCatalog toCatalog = catalogs.get(toTable.getUnquotedCatalogName());
+    if (toCatalog != null) {
+      JdbcSchema toSchema = toCatalog.get(toTable.getUnquotedSchemaName());
+      if (toSchema != null) {
+        toSchema.remove(fromTable.getUnquotedName(), jdbcTable);
+      } else {
+        throw new SchemaNotFoundException(fromTable.getUnquotedSchemaName());
+      }
+    } else {
+      throw new CatalogNotFoundException(fromTable.getUnquotedCatalogName());
+    }
+  }
 }
