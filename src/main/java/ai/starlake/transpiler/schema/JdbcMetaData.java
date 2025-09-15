@@ -519,6 +519,30 @@ public final class JdbcMetaData implements DatabaseMetaData {
     }
   }
 
+  public void dropTable(Table t) throws SQLException {
+    String catalogName = t.getUnquotedCatalogName();
+    if (catalogName == null || catalogName.isEmpty()) {
+      catalogName = currentCatalogName;
+    }
+    if (!catalogs.containsKey(catalogName)) {
+      catalogs.put(catalogName, new JdbcCatalog(catalogName, "."));
+    }
+    JdbcCatalog jdbcCatalog = catalogs.get(catalogName.toUpperCase());
+
+    String schemaName = t.getUnquotedSchemaName();
+    if (schemaName == null || schemaName.isEmpty()) {
+      schemaName = currentSchemaName;
+    }
+    if (!jdbcCatalog.containsKey(schemaName)) {
+      jdbcCatalog.put(new JdbcSchema(schemaName, catalogName));
+    }
+    JdbcSchema schema = jdbcCatalog.get(schemaName.toUpperCase());
+
+    if (schema.containsKey(t.getFullyQualifiedName())) {
+      schema.remove(t.getFullyQualifiedName());
+    }
+  }
+
   public JdbcCatalog put(JdbcCatalog jdbcCatalog) {
     return catalogs.put(jdbcCatalog.tableCatalog.toUpperCase(), jdbcCatalog);
   }

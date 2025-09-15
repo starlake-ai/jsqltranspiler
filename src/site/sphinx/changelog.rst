@@ -8,6 +8,18 @@ Latest Changes since |JSQLTRANSPILER_VERSION|
 =============================================================
 
 
+  * **test: add more tests to `STRUCT` and `ARRAY` (currently disabled)**
+    
+    Andreas Reichel, 2025-09-09
+  * **fix: MetaData fetch columns on table update**
+    
+    Andreas Reichel, 2025-09-07
+  * **test: add some test cases**
+    
+    tiboun, 2025-09-01
+  * **feat: faster `DatabaseMetaData` using INFORMATION_SCHEMA**
+    
+    Andreas Reichel, 2025-08-26
   * **style: formatting**
     
     Andreas Reichel, 2025-08-25

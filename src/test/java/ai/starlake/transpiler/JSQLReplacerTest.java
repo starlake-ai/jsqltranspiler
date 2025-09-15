@@ -209,6 +209,12 @@ class JSQLReplacerTest {
     assertThatRewritesInto(sqlStr, expected);
   }
 
+  @Test
+  void testAlter() throws SQLException, JSQLParserException {
+    String sqlStr = "ALTER TABLE a ADD COLUMN c VARCHAR(20);";
+    String expected = "ALTER TABLE test.c ADD COLUMN c VARCHAR(20);";
+    assertThatRewritesInto(sqlStr, expected);
+  }
 
 
   Statement assertThatRewritesInto(String sqlStr, String expected)

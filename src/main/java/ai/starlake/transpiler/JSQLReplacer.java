@@ -337,6 +337,15 @@ public class JSQLReplacer {
 
         @Override
         public <S> Void visit(Alter alter, S context) {
+          Table t = alter.getTable();
+          if (t != null) {
+            t.setUnsetCatalogAndSchema(resolver.metaData.getCurrentCatalogName(),
+                resolver.metaData.getCurrentSchemaName());
+
+            if (replaceTables.containsKey(t.getFullyQualifiedName())) {
+              t.setName(replaceTables.get(t.getFullyQualifiedName()));
+            }
+          }
           return super.visit(alter, context);
         }
 
