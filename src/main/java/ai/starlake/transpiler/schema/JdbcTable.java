@@ -17,6 +17,7 @@ import net.sf.jsqlparser.schema.Column;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -32,6 +33,7 @@ import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
@@ -156,8 +158,9 @@ public class JdbcTable implements Comparable<JdbcTable> {
     try {
       jdbcTables =
           getTablesFromInformationSchema(metaData, currentCatalog, currentSchema, tableNamePattern);
-    } catch (SQLException e) {
-      LOGGER.warning("Failed get Tables from INFORMATION_SCHEMA, use DatabaseMetaData now.");
+    } catch (SQLException ex) {
+      LOGGER.log(Level.FINE, "Failed get Tables from INFORMATION_SCHEMA, use DatabaseMetaData now.",
+          ex);
 
       JdbcUtils.DatabaseSpecific dbSpecific =
           JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
@@ -222,107 +225,270 @@ public class JdbcTable implements Comparable<JdbcTable> {
     return getColumns(metaData, null, "%", "%");
   }
 
+  public static Collection<JdbcColumn> getColumnsFromSchemaInformation(Connection connection,
+      String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
+    ArrayList<JdbcColumn> jdbcColumns = new ArrayList<>();
+
+    // Build the query to fetch column information from INFORMATION_SCHEMA
+    StringBuilder query = new StringBuilder(
+        "SELECT " + "  TABLE_CATALOG, " + "  TABLE_SCHEMA, " + "  TABLE_NAME, " + "  COLUMN_NAME, "
+            + "  ORDINAL_POSITION, " + "  COLUMN_DEFAULT, " + "  IS_NULLABLE, " + "  DATA_TYPE, "
+            + "  CHARACTER_MAXIMUM_LENGTH, " + "  NUMERIC_PRECISION, " + "  NUMERIC_SCALE, "
+            + "  COMMENT, " + "  IS_IDENTITY " + "FROM INFORMATION_SCHEMA.COLUMNS " + "WHERE 1=1");
+
+    List<Object> params = new ArrayList<>();
+
+    if (catalog != null && !catalog.isEmpty()) {
+      query.append(" AND TABLE_CATALOG = ?");
+      params.add(catalog);
+    }
+
+    if (schemaPattern != null && !schemaPattern.isEmpty()) {
+      if (schemaPattern.contains("%")) {
+        query.append(" AND TABLE_SCHEMA LIKE ?");
+        params.add(schemaPattern);
+      } else {
+        query.append(" AND TABLE_SCHEMA = ?");
+        params.add(schemaPattern);
+      }
+    }
+
+    if (tableNamePattern != null && !tableNamePattern.isEmpty()) {
+      if (tableNamePattern.contains("%")) {
+        query.append(" AND TABLE_NAME LIKE ?");
+        params.add(tableNamePattern);
+      } else {
+        query.append(" AND TABLE_NAME = ?");
+        params.add(tableNamePattern);
+      }
+    }
+
+    query.append(" ORDER BY TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION");
+
+    try (PreparedStatement stmt = connection.prepareStatement(query.toString())) {
+      // Set parameters
+      for (int i = 0; i < params.size(); i++) {
+        stmt.setObject(i + 1, params.get(i));
+      }
+
+      try (ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+          String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CATALOG", "");
+          String tableSchema = JdbcUtils.getStringSafe(rs, "TABLE_SCHEMA", "");
+          String tableName = JdbcUtils.getStringSafe(rs, "TABLE_NAME");
+          String columnName = JdbcUtils.getStringSafe(rs, "COLUMN_NAME");
+
+          // Map Snowflake data types to JDBC types
+          String typeName = JdbcUtils.getStringSafe(rs, "DATA_TYPE");
+          Integer dataType = mapSnowflakeTypeToJdbcType(typeName);
+
+          Integer columnSize = JdbcUtils.getIntSafe(rs, "CHARACTER_MAXIMUM_LENGTH");
+          if (columnSize == null) {
+            columnSize = JdbcUtils.getIntSafe(rs, "NUMERIC_PRECISION");
+          }
+
+          Integer decimalDigits = JdbcUtils.getIntSafe(rs, "NUMERIC_SCALE");
+          Integer numericPrecisionRadix = (dataType != null && isNumericType(dataType)) ? 10 : null;
+
+          String isNullable = JdbcUtils.getStringSafe(rs, "IS_NULLABLE");
+          Integer nullable = "YES".equalsIgnoreCase(isNullable) ? DatabaseMetaData.columnNullable
+              : DatabaseMetaData.columnNoNulls;
+
+          String remarks = JdbcUtils.getStringSafe(rs, "COMMENT");
+          String columnDefinition = JdbcUtils.getStringSafe(rs, "COLUMN_DEFAULT");
+          Integer characterOctetLength = JdbcUtils.getIntSafe(rs, "CHARACTER_MAXIMUM_LENGTH");
+          Integer ordinalPosition = JdbcUtils.getIntSafe(rs, "ORDINAL_POSITION");
+
+          String isIdentity = JdbcUtils.getStringSafe(rs, "IS_IDENTITY");
+          String isAutoIncrement = "YES".equalsIgnoreCase(isIdentity) ? "YES" : "NO";
+
+          // Snowflake doesn't have generated columns in the same way
+          String isGeneratedColumn = "NO";
+
+          // Scope attributes are not applicable for Snowflake
+          String scopeCatalog = null;
+          String scopeSchema = null;
+          String scopeTable = null;
+          String scopeColumn = null;
+          Short sourceDataType = null;
+
+          JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
+              dataType, typeName, columnSize, decimalDigits, numericPrecisionRadix, nullable,
+              remarks, columnDefinition, characterOctetLength, ordinalPosition, isNullable,
+              scopeCatalog, scopeSchema, scopeTable, scopeColumn, sourceDataType, isAutoIncrement,
+              isGeneratedColumn, new Column(columnName));
+
+          jdbcColumns.add(jdbcColumn);
+        }
+      }
+    }
+
+    return jdbcColumns;
+  }
+
+  private static Integer mapSnowflakeTypeToJdbcType(String snowflakeType) {
+    if (snowflakeType == null) {
+      return java.sql.Types.OTHER;
+    }
+
+    String upperType = snowflakeType.toUpperCase();
+
+    if (upperType.startsWith("NUMBER") || upperType.equals("NUMERIC")
+        || upperType.equals("DECIMAL")) {
+      return java.sql.Types.NUMERIC;
+    } else if (upperType.equals("INTEGER") || upperType.equals("INT")) {
+      return java.sql.Types.INTEGER;
+    } else if (upperType.equals("BIGINT")) {
+      return java.sql.Types.BIGINT;
+    } else if (upperType.equals("SMALLINT")) {
+      return java.sql.Types.SMALLINT;
+    } else if (upperType.equals("FLOAT") || upperType.equals("FLOAT4")
+        || upperType.equals("FLOAT8")) {
+      return java.sql.Types.FLOAT;
+    } else if (upperType.equals("DOUBLE") || upperType.equals("DOUBLE PRECISION")
+        || upperType.equals("REAL")) {
+      return java.sql.Types.DOUBLE;
+    } else if (upperType.startsWith("VARCHAR") || upperType.equals("STRING")
+        || upperType.equals("TEXT")) {
+      return java.sql.Types.VARCHAR;
+    } else if (upperType.startsWith("CHAR")) {
+      return java.sql.Types.CHAR;
+    } else if (upperType.equals("BINARY") || upperType.equals("VARBINARY")) {
+      return java.sql.Types.BINARY;
+    } else if (upperType.equals("BOOLEAN")) {
+      return java.sql.Types.BOOLEAN;
+    } else if (upperType.equals("DATE")) {
+      return java.sql.Types.DATE;
+    } else if (upperType.equals("TIME")) {
+      return java.sql.Types.TIME;
+    } else if (upperType.equals("TIMESTAMP") || upperType.startsWith("TIMESTAMP_")) {
+      return java.sql.Types.TIMESTAMP;
+    } else if (upperType.equals("VARIANT") || upperType.equals("OBJECT")
+        || upperType.equals("ARRAY")) {
+      return java.sql.Types.OTHER;
+    }
+
+    return java.sql.Types.OTHER;
+  }
+
+  private static boolean isNumericType(int jdbcType) {
+    return jdbcType == java.sql.Types.NUMERIC || jdbcType == java.sql.Types.DECIMAL
+        || jdbcType == java.sql.Types.INTEGER || jdbcType == java.sql.Types.BIGINT
+        || jdbcType == java.sql.Types.SMALLINT || jdbcType == java.sql.Types.TINYINT
+        || jdbcType == java.sql.Types.FLOAT || jdbcType == java.sql.Types.DOUBLE
+        || jdbcType == java.sql.Types.REAL;
+  }
+
   public static Collection<JdbcColumn> getColumns(DatabaseMetaData metaData, String catalog,
       String schemaPattern, String tableNamePattern) throws SQLException {
     ArrayList<JdbcColumn> jdbcColumns = new ArrayList<>();
-    JdbcUtils.DatabaseSpecific dbSpecific =
-        JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
 
-    try (ResultSet rs = metaData.getColumns(catalog, schemaPattern, tableNamePattern, "%");) {
-      while (rs.next()) {
-        // TABLE_CATALOG String => catalog name (may be null)
-        String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT", "");
+    try {
+      return getColumnsFromSchemaInformation(metaData.getConnection(), catalog, schemaPattern,
+          tableNamePattern);
+    } catch (SQLException ex) {
+      LOGGER.log(Level.FINE,
+          "Failed get Table Columns from INFORMATION_SCHEMA, use DatabaseMetaData now.", ex);
 
-        // TABLE_SCHEM String => schema name
-        String tableSchema = JdbcUtils.getStringSafe(rs, "TABLE_SCHEM", "");
+      JdbcUtils.DatabaseSpecific dbSpecific =
+          JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
 
-        if (!dbSpecific.processSchema(tableSchema)) {
-          continue;
+      try (ResultSet rs = metaData.getColumns(catalog, schemaPattern, tableNamePattern, "%");) {
+        while (rs.next()) {
+          // TABLE_CATALOG String => catalog name (may be null)
+          String tableCatalog = JdbcUtils.getStringSafe(rs, "TABLE_CAT", "");
+
+          // TABLE_SCHEM String => schema name
+          String tableSchema = JdbcUtils.getStringSafe(rs, "TABLE_SCHEM", "");
+
+          if (!dbSpecific.processSchema(tableSchema)) {
+            continue;
+          }
+
+          // TABLE_NAME String => table name
+          String tableName = JdbcUtils.getStringSafe(rs, "TABLE_NAME");
+
+          // COLUMN_NAME String => column name
+          String columnName = JdbcUtils.getStringSafe(rs, "COLUMN_NAME");
+
+          // DATA_TYPE int => SQL type from java.sql.Types
+          Integer dataType = JdbcUtils.getIntSafe(rs, "DATA_TYPE");
+
+          // TYPE_NAME String => Data source dependent type name, for a UDT the type name
+          // is fully
+          // qualified
+          String typeName = JdbcUtils.getStringSafe(rs, "TYPE_NAME");
+
+          // COLUMN_SIZE int => column size.
+          Integer columnSize = JdbcUtils.getIntSafe(rs, "COLUMN_SIZE");
+
+          // DECIMAL_DIGITS int => the number of fractional digits.
+          // Null is returned for data types where DECIMAL_DIGITS is not applicable.
+          Integer decimalDigits = JdbcUtils.getIntSafe(rs, "DECIMAL_DIGITS");
+
+          // NUM_PREC_RADIX int => Radix (typically either 10 or 2)
+          Integer numericPrecicionRadix = JdbcUtils.getIntSafe(rs, "NUM_PREC_RADIX");
+
+          // NULLABLE int => is NULL allowed.
+          Integer nullable = JdbcUtils.getIntSafe(rs, "NULLABLE");
+
+          // REMARKS String => comment describing column (may be null)
+          String remarks = JdbcUtils.getStringSafe(rs, "REMARKS");
+
+          // COLUMN_DEF String => default value for the column, which should be
+          // interpreted as a string when the value is enclosed in single quotes (may be
+          // null)
+          String columnDefinition = JdbcUtils.getStringSafe(rs, "COLUMN_DEF");
+
+          // CHAR_OCTET_LENGTH int => for char types the maximum number of bytes in the
+          // column
+          Integer characterOctetLength = JdbcUtils.getIntSafe(rs, "CHAR_OCTET_LENGTH");
+
+          // ORDINAL_POSITION int => index of column in table (starting at 1)
+          Integer ordinalPosition = JdbcUtils.getIntSafe(rs, "ORDINAL_POSITION");
+
+          // IS_NULLABLE String => ISO rules are used to determine the nullability for a
+          // column.
+          String isNullable = JdbcUtils.getStringSafe(rs, "IS_NULLABLE");
+
+          // SCOPE_CATALOG String => catalog of table that is the scope of a reference
+          // attribute
+          // (null if DATA_TYPE isn't REF)
+          String scopeCatalog = JdbcUtils.getStringSafe(rs, "SCOPE_CATALOG");
+
+          // SCOPE_SCHEMA String => schema of table that is the scope of a reference
+          // attribute
+          // (null if the DATA_TYPE isn't REF)
+          String scopeSchema = JdbcUtils.getStringSafe(rs, "SCOPE_SCHEMA");
+
+          // SCOPE_TABLE String => table name that this the scope of a reference attribute
+          // (null if the DATA_TYPE isn't REF)
+          String scopeTable = JdbcUtils.getStringSafe(rs, "SCOPE_TABLE");
+
+          // SCOPE_COLUMNT String => table name that this the scope of a reference
+          // attribute
+          // (null if the DATA_TYPE isn't REF)
+          String scopeColumn = JdbcUtils.getStringSafe(rs, "SCOPE_COLUMN");
+
+          // SOURCE_DATA_TYPE short => source type of a distinct type or user-generated
+          // Ref type,
+          // SQL type from java.sql.Types (null if DATA_TYPE isn't DISTINCT or
+          // user-generated REF)
+          Short sourceDataType = JdbcUtils.getShortSafe(rs, "SOURCE_DATA_TYPE");
+
+          // IS_AUTOINCREMENT String => Indicates whether this column is auto incremented
+          String isAutoIncrement = JdbcUtils.getStringSafe(rs, "IS_AUTOINCREMENT");
+
+          // IS_GENERATEDCOLUMN String => Indicates whether this is a generated column
+          String isGeneratedColumn = JdbcUtils.getStringSafe(rs, "IS_GENERATEDCOLUMN");
+          JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
+              dataType, typeName, columnSize, decimalDigits, numericPrecicionRadix, nullable,
+              remarks, columnDefinition, characterOctetLength, ordinalPosition, isNullable,
+              scopeCatalog, scopeSchema, scopeTable, scopeColumn, sourceDataType, isAutoIncrement,
+              isGeneratedColumn, new Column(columnName));
+
+          jdbcColumns.add(jdbcColumn);
         }
-
-        // TABLE_NAME String => table name
-        String tableName = JdbcUtils.getStringSafe(rs, "TABLE_NAME");
-
-        // COLUMN_NAME String => column name
-        String columnName = JdbcUtils.getStringSafe(rs, "COLUMN_NAME");
-
-        // DATA_TYPE int => SQL type from java.sql.Types
-        Integer dataType = JdbcUtils.getIntSafe(rs, "DATA_TYPE");
-
-        // TYPE_NAME String => Data source dependent type name, for a UDT the type name
-        // is fully
-        // qualified
-        String typeName = JdbcUtils.getStringSafe(rs, "TYPE_NAME");
-
-        // COLUMN_SIZE int => column size.
-        Integer columnSize = JdbcUtils.getIntSafe(rs, "COLUMN_SIZE");
-
-        // DECIMAL_DIGITS int => the number of fractional digits.
-        // Null is returned for data types where DECIMAL_DIGITS is not applicable.
-        Integer decimalDigits = JdbcUtils.getIntSafe(rs, "DECIMAL_DIGITS");
-
-        // NUM_PREC_RADIX int => Radix (typically either 10 or 2)
-        Integer numericPrecicionRadix = JdbcUtils.getIntSafe(rs, "NUM_PREC_RADIX");
-
-        // NULLABLE int => is NULL allowed.
-        Integer nullable = JdbcUtils.getIntSafe(rs, "NULLABLE");
-
-        // REMARKS String => comment describing column (may be null)
-        String remarks = JdbcUtils.getStringSafe(rs, "REMARKS");
-
-        // COLUMN_DEF String => default value for the column, which should be
-        // interpreted as a string when the value is enclosed in single quotes (may be
-        // null)
-        String columnDefinition = JdbcUtils.getStringSafe(rs, "COLUMN_DEF");
-
-        // CHAR_OCTET_LENGTH int => for char types the maximum number of bytes in the
-        // column
-        Integer characterOctetLength = JdbcUtils.getIntSafe(rs, "CHAR_OCTET_LENGTH");
-
-        // ORDINAL_POSITION int => index of column in table (starting at 1)
-        Integer ordinalPosition = JdbcUtils.getIntSafe(rs, "ORDINAL_POSITION");
-
-        // IS_NULLABLE String => ISO rules are used to determine the nullability for a
-        // column.
-        String isNullable = JdbcUtils.getStringSafe(rs, "IS_NULLABLE");
-
-        // SCOPE_CATALOG String => catalog of table that is the scope of a reference
-        // attribute
-        // (null if DATA_TYPE isn't REF)
-        String scopeCatalog = JdbcUtils.getStringSafe(rs, "SCOPE_CATALOG");
-
-        // SCOPE_SCHEMA String => schema of table that is the scope of a reference
-        // attribute
-        // (null if the DATA_TYPE isn't REF)
-        String scopeSchema = JdbcUtils.getStringSafe(rs, "SCOPE_SCHEMA");
-
-        // SCOPE_TABLE String => table name that this the scope of a reference attribute
-        // (null if the DATA_TYPE isn't REF)
-        String scopeTable = JdbcUtils.getStringSafe(rs, "SCOPE_TABLE");
-
-        // SCOPE_COLUMNT String => table name that this the scope of a reference
-        // attribute
-        // (null if the DATA_TYPE isn't REF)
-        String scopeColumn = JdbcUtils.getStringSafe(rs, "SCOPE_COLUMN");
-
-        // SOURCE_DATA_TYPE short => source type of a distinct type or user-generated
-        // Ref type,
-        // SQL type from java.sql.Types (null if DATA_TYPE isn't DISTINCT or
-        // user-generated REF)
-        Short sourceDataType = JdbcUtils.getShortSafe(rs, "SOURCE_DATA_TYPE");
-
-        // IS_AUTOINCREMENT String => Indicates whether this column is auto incremented
-        String isAutoIncrement = JdbcUtils.getStringSafe(rs, "IS_AUTOINCREMENT");
-
-        // IS_GENERATEDCOLUMN String => Indicates whether this is a generated column
-        String isGeneratedColumn = JdbcUtils.getStringSafe(rs, "IS_GENERATEDCOLUMN");
-        JdbcColumn jdbcColumn = new JdbcColumn(tableCatalog, tableSchema, tableName, columnName,
-            dataType, typeName, columnSize, decimalDigits, numericPrecicionRadix, nullable, remarks,
-            columnDefinition, characterOctetLength, ordinalPosition, isNullable, scopeCatalog,
-            scopeSchema, scopeTable, scopeColumn, sourceDataType, isAutoIncrement,
-            isGeneratedColumn, new Column(columnName));
-
-        jdbcColumns.add(jdbcColumn);
       }
     }
     return jdbcColumns;

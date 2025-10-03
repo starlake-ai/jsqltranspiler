@@ -49,6 +49,7 @@ dependencies {
     // testImplementation 'org.duckdb:duckdb_jdbc:1.3.1.0'
 
     testImplementation 'org.duckdb:duckdb_jdbc:1.2.1'
+    testImplementation 'net.snowflake:snowflake-jdbc:+'
 
     testImplementation 'org.apache.commons:commons-compress:+'
     testImplementation 'com.opencsv:opencsv:+'
@@ -237,6 +238,16 @@ test {
             tempAndMove true
         }
     }
+
+    // Prefer Gradle property, fall back to environment variable
+    environment "SNOWFLAKE_USER", project.findProperty("SNOWFLAKE_USER") ?: System.getenv("SNOWFLAKE_USER")
+    environment "SNOWFLAKE_PASSWORD", project.findProperty("SNOWFLAKE_PASSWORD") ?: System.getenv("SNOWFLAKE_PASSWORD")
+    environment "SNOWFLAKE_ACCOUNT", project.findProperty("SNOWFLAKE_ACCOUNT") ?: System.getenv("SNOWFLAKE_ACCOUNT")
+    environment "SNOWFLAKE_WAREHOUSE", project.findProperty("SNOWFLAKE_WAREHOUSE") ?: System.getenv("SNOWFLAKE_WAREHOUSE")
+    environment "SNOWFLAKE_DATABASE", project.findProperty("SNOWFLAKE_DATABASE") ?: System.getenv("SNOWFLAKE_DATABASE")
+    environment "SNOWFLAKE_SCHEMA", project.findProperty("SNOWFLAKE_SCHEMA") ?: System.getenv("SNOWFLAKE_SCHEMA")
+
+    jvmArgs '--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED'
 }
 
 license {
