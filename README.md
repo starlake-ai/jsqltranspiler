@@ -1,4 +1,4 @@
-# [JSQLTranspiler](https://starlake.ai/starlake/index.html#sql-transpiler) - Transpile Dialect, Resolve Columns, Show Lineage, Refactor Queries
+# [JSQLTranspiler](https://labs.starlake.ai/) - Transpile Dialect, Resolve Columns, Show Lineage, Refactor Queries
 
 [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/ai.starlake.jsqltranspiler/jsqltranspiler?server=https%3A%2F%2Fs01.oss.sonatype.org)](https://s01.oss.sonatype.org/#nexus-search;quick~ai.starlake.jsqltranspiler/jsqltranspiler)
 [![JavaDoc](https://javadoc.io/badge2/ai.starlake.jsqltranspiler/jsqltranspiler/javadoc.svg)](https://javadoc.io/doc/ai.starlake.jsqltranspiler/jsqltranspiler)
