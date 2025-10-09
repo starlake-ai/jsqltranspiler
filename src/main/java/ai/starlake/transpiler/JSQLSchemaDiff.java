@@ -24,6 +24,7 @@ import ai.starlake.transpiler.schema.TypeMappingSystem;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
@@ -31,14 +32,18 @@ import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.MultiPartName;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.FromItemVisitor;
+import net.sf.jsqlparser.statement.select.FromItemVisitorAdapter;
 import net.sf.jsqlparser.statement.select.GroupByElement;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.select.SelectVisitorAdapter;
 
 import java.sql.Connection;
 import java.sql.Driver;
@@ -277,6 +282,41 @@ public class JSQLSchemaDiff {
     String typeName = "";
     try {
       PlainSelect select = (PlainSelect) CCJSqlParserUtil.parse(sqlStr);
+
+      // normalise back tick quotes in columns since DuckDB does not support those
+      ExpressionVisitorAdapter<Void> expressionVisitor = new ExpressionVisitorAdapter<>() {
+        @Override
+        public <S> Void visit(Column column, S context) {
+          column.setColumnName(
+              MultiPartName.replaceBackticksWithDoubleQuotes(column.getFullyQualifiedName()));
+          return super.visit(column, context);
+        }
+      };
+
+      // normalise backtick quotes in tables since DuckDB does not support those
+      FromItemVisitor<Void> fromItemVisitor = new FromItemVisitorAdapter<>(expressionVisitor) {
+        @Override
+        public <S> Void visit(Table table, S context) {
+          ArrayList<String> normalisedNameParts = new ArrayList<>();
+          for (String s : table.getNameParts()) {
+            normalisedNameParts.add(MultiPartName.replaceBackticksWithDoubleQuotes(s));
+          }
+          table.setNameParts(normalisedNameParts);
+
+          if (table.getAlias() != null) {
+            table.getAlias().setName(
+                MultiPartName.replaceBackticksWithDoubleQuotes(table.getAlias().getName()));
+          }
+          return super.visit(table, context);
+        }
+      };
+
+      SelectVisitorAdapter<Void> selectVisitor =
+          new SelectVisitorAdapter<>(expressionVisitor, fromItemVisitor);
+      expressionVisitor.setSelectVisitor(selectVisitor);
+
+      select.accept(selectVisitor, null);
+      select.accept(fromItemVisitor, null);
 
       // test if any wildcards included
       final int size = select.getSelectItems().size();

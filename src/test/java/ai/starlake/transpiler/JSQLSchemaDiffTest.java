@@ -621,4 +621,26 @@ class JSQLSchemaDiffTest {
 
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
   }
+
+  @Test
+  void testIssueQuoting() throws JSQLParserException, SQLException {
+    //@formatter:off
+    String sqlStr =
+            "select *, 1 as two  from `starbake`.`customers`";
+
+    List<Attribute> expected = List.of(
+            new Attribute("id", "integer")
+            , new Attribute("first_name", "string")
+            , new Attribute("last_name", "string")
+            , new Attribute("email", "string")
+            , new Attribute("join_date", "date")
+            , new Attribute("two", "integer")
+    );
+    //@formatter:on
+
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(getStarlakeSchemas());
+    List<Attribute> actual = diff.getDiff(sqlStr, "starbake.customers");
+
+    Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+  }
 }

@@ -71,6 +71,7 @@ import net.sf.jsqlparser.statement.grant.Grant;
 import net.sf.jsqlparser.statement.imprt.Import;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.insert.ParenthesedInsert;
+import net.sf.jsqlparser.statement.lock.LockStatement;
 import net.sf.jsqlparser.statement.merge.Merge;
 import net.sf.jsqlparser.statement.merge.MergeDelete;
 import net.sf.jsqlparser.statement.merge.MergeInsert;
@@ -1415,6 +1416,11 @@ public class JSQLResolver extends JSQLColumResolver {
 
     @Override
     public <S> JdbcResultSetMetaData visit(Export export, S context) {
+      return null;
+    }
+
+    @Override
+    public <S> JdbcResultSetMetaData visit(LockStatement lock, S context) {
       return null;
     }
   }
