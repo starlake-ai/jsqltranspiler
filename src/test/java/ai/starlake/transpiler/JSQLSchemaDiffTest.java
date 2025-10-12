@@ -614,7 +614,7 @@ class JSQLSchemaDiffTest {
 
     List<Attribute> expected =
         List.of(new Attribute("order_id", "long", false, null, AttributeStatus.UNCHANGED),
-            new Attribute("qty", "variant", false, null, AttributeStatus.UNCHANGED));
+            new Attribute("qty", "long", false, null, AttributeStatus.UNCHANGED));
 
     JSQLSchemaDiff diff = new JSQLSchemaDiff(schemas);
     List<Attribute> actual = diff.getDiff(sqlStr, "audit.audit_kpi");
