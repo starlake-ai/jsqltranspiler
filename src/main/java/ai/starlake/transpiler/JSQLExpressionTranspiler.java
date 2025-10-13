@@ -67,6 +67,7 @@ import net.sf.jsqlparser.util.deparser.ExpressionDeParser;
 import net.sf.jsqlparser.util.deparser.SelectDeParser;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -148,6 +149,9 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     , ST_builder, ST_NUMPOINTS, ST_DISTANCE, ST_MAXDISTANCE, ST_BOUNDINGBOX, ST_EXTENT, ST_PERIMETER, ST_LENGTH, ST_CLOSESTPOINT
     // GEO_MODE
     , ST_AREA
+
+    // Snowflake STRUCT functions
+    , OBJECT_CONSTRUCT, OBJECT_CONSTRUCT_KEEP_NULL
     ;
     //@formatter:on
 
@@ -1479,6 +1483,19 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               function.setName("ST_Area_Spheroid");
               break;
           }
+        case OBJECT_CONSTRUCT:
+        case OBJECT_CONSTRUCT_KEEP_NULL:
+          if (paramCount == 1 && parameters.get(0) instanceof AllColumns
+              || parameters.get(0) instanceof AllColumns) {
+            warning("`AllColumns` \"*\" is not supported.");
+          } else {
+            ArrayList<SelectItem<?>> items = new ArrayList<>();
+            for (int i = 0; i < paramCount; i += 2) {
+              items.add(new SelectItem<>(parameters.get(i + 1), parameters.get(i).toString()));
+            }
+            rewrittenExpression = new StructType(StructType.Dialect.DUCKDB, items);
+          }
+          break;
       }
     }
     if (rewrittenExpression == null) {

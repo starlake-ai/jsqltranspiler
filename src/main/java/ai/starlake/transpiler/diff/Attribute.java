@@ -61,8 +61,8 @@ public class Attribute {
 
   public Attribute(String name, String type, AttributeStatus status) {
     this.name = name;
-    this.type = type;
-    this.isArray = false;
+    this.type = type.endsWith("[]") ? type.substring(0, type.length() - 2) : type;
+    this.isArray = type.endsWith("[]");
     this.attributes = null;
     this.status = status;
   }

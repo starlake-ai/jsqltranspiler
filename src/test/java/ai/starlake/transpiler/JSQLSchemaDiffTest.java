@@ -18,7 +18,6 @@ import ai.starlake.transpiler.diff.AttributeStatus;
 import ai.starlake.transpiler.diff.DBSchema;
 import net.sf.jsqlparser.JSQLParserException;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
@@ -531,7 +530,6 @@ class JSQLSchemaDiffTest {
   }
 
   @Test
-  @Disabled
   void testArrayScalarAddedRemoved() throws Exception {
     DBSchema schema = new DBSchema("", "db", "table",
         new Attribute("id", "string", true, null, AttributeStatus.ADDED));
@@ -549,7 +547,6 @@ class JSQLSchemaDiffTest {
   }
 
   @Test
-  @Disabled
   void testStructFieldAddedRemoved() throws Exception {
     DBSchema schema = new DBSchema("", "db", "table",
         new Attribute("user", "struct", false,
@@ -574,7 +571,6 @@ class JSQLSchemaDiffTest {
   }
 
   @Test
-  @Disabled
   void testStructFieldAttributeChanges() throws Exception {
     DBSchema schema = new DBSchema("", "db", "table",
         new Attribute("user", "struct", false,

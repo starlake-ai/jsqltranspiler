@@ -170,9 +170,27 @@ public class JSQLSchemaDiff {
             }
           }
 
+          String typeName = column.typeName;
+          // arrays
+          boolean isArray = column.typeName.endsWith("[]");
+          if (isArray) {
+            typeName = column.typeName.substring(0, column.typeName.length() - 2);
+          }
+
+          // struct
+          ArrayList<Attribute> a = null;
+          if (column.typeName.toLowerCase().startsWith("struct")) {
+            a = new ArrayList<>();
+            for (String[] fieldStr : parseStruct(column.typeName)) {
+              a.add(new Attribute(fieldStr[0], fieldStr[1].toLowerCase()));
+            }
+
+            typeName = "struct";
+          }
+
           if (!found) {
             Attribute attribute =
-                new Attribute(column.columnName, column.typeName, AttributeStatus.REMOVED);
+                new Attribute(column.columnName, typeName, isArray, a, AttributeStatus.REMOVED);
             attributes.add(attribute);
           }
         }
