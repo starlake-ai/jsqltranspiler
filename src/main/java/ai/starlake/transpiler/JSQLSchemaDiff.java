@@ -34,7 +34,6 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.MultiPartName;
 import net.sf.jsqlparser.schema.Table;
-import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.FromItemVisitor;
 import net.sf.jsqlparser.statement.select.FromItemVisitorAdapter;
@@ -209,11 +208,24 @@ public class JSQLSchemaDiff {
 
     Connection conn = driver.connect(urlStr, info);
     try (java.sql.Statement st = conn.createStatement()) {
-      for (Statement stmt : CCJSqlParserUtil.parseStatements(ddlStr)) {
-        try {
-          st.executeUpdate(stmt.toString());
-        } catch (Exception ex) {
-          LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + stmt, ex);
+      // @Todo: this can fail for STRUCT when the parser is not supporting it
+
+      // for (Statement stmt : CCJSqlParserUtil.parseStatements(ddlStr)) {
+      // try {
+      // st.executeUpdate(stmt.toString());
+      // } catch (Exception ex) {
+      // LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + stmt, ex);
+      // }
+      // }
+
+      // @Todo: so for now a simple SPLIT() will do
+      for (String s : ddlStr.split("\\;")) {
+        if (!s.isBlank()) {
+          try {
+            st.executeUpdate(s);
+          } catch (Exception ex) {
+            LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + s, ex);
+          }
         }
       }
 

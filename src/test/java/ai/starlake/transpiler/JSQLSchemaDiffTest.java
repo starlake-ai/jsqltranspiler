@@ -643,4 +643,43 @@ class JSQLSchemaDiffTest {
 
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
   }
+
+  @Test
+  void testIssue129() throws JSQLParserException, SQLException {
+    //@formatter:off
+    List<DBSchema> schemas = List.of(
+            new DBSchema(
+                    ""
+                    , "star1"
+                    , "table1"
+                    , new Attribute("cnt", "long")
+            )
+            , new DBSchema(
+                    ""
+                    , "IT"
+                    , "users"
+                    , new Attribute(
+                            "details"
+                            , "struct"
+                            , false
+                            ,  List.of(new Attribute("id", "string"), new Attribute("name", "string"))
+                            , AttributeStatus.ADDED)
+                    , new Attribute("name", "string")
+
+            )
+    );
+
+    String sqlStr =
+            "select count(*) as cnt from IT.users";
+
+    List<Attribute> expected = List.of(
+            new Attribute("cnt", "long")
+    );
+    //@formatter:on
+
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(schemas);
+    List<Attribute> actual = diff.getDiff(sqlStr, "star1.table1");
+
+    Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+  }
 }
