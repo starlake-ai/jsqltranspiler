@@ -1483,6 +1483,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
               function.setName("ST_Area_Spheroid");
               break;
           }
+          break;
         case OBJECT_CONSTRUCT:
         case OBJECT_CONSTRUCT_KEEP_NULL:
           if (paramCount == 1 && parameters.get(0) instanceof AllColumns
@@ -2433,26 +2434,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       case OBJECT:
         builder.append("JSON_OBJECT( ");
         int i = 0;
-
         for (JsonKeyValuePair keyValuePair : jsonFunction.getKeyValuePairs()) {
           if (i > 0) {
             builder.append(", ");
           }
-
-          if (keyValuePair.isUsingValueKeyword()) {
-            if (keyValuePair.isUsingKeyKeyword()) {
-              builder.append("KEY ");
-            }
-
-            builder.append(keyValuePair.getKey()).append(" VALUE ").append(keyValuePair.getValue());
-          } else {
-            builder.append(keyValuePair.getKey()).append(":").append(keyValuePair.getValue());
-          }
-
-          if (keyValuePair.isUsingFormatJson()) {
-            builder.append(" FORMAT JSON");
-          }
-
+          keyValuePair.append(builder);
           ++i;
         }
 
