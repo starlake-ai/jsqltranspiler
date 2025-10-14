@@ -100,7 +100,7 @@ public class JSQLSchemaDiff {
       if (tokens.length != 2) {
         throw new IllegalArgumentException("Invalid field definition: " + part);
       }
-      result.add(new String[] {tokens[0], tokens[1]});
+      result.add(new String[] {tokens[0], TypeMappingSystem.mapDDLToTypeName(tokens[1], "DuckDB")});
     }
 
     return result.toArray(new String[0][]);
@@ -124,16 +124,14 @@ public class JSQLSchemaDiff {
       }
 
       final JdbcTable table = meta.getTable(new Table(qualifiedTargetTableName));
-      int c = 1;
-      for (JdbcColumn column : resultSetMetaData.getColumns()) {
+      for (int c = 1; c <= resultSetMetaData.getColumnCount(); c++) {
         String columnName = resultSetMetaData.getColumnLabel(c);
         String typeName = getDataType(conn, sqlStr, c);
-        c++;
 
         AttributeStatus status = AttributeStatus.UNCHANGED;
         if (table == null || !table.columns.containsKey(columnName)) {
           status = AttributeStatus.ADDED;
-        } else if (!column.typeName.equalsIgnoreCase(table.columns.get(columnName).typeName)) {
+        } else if (!typeName.equalsIgnoreCase(table.columns.get(columnName).typeName)) {
           status = AttributeStatus.MODIFIED;
         }
 
@@ -146,6 +144,9 @@ public class JSQLSchemaDiff {
         // struct
         ArrayList<Attribute> a = null;
         if (typeName.toLowerCase().startsWith("struct")) {
+          if (status == AttributeStatus.MODIFIED) {
+            status = AttributeStatus.UNCHANGED;
+          }
           a = new ArrayList<>();
           for (String[] fieldStr : parseStruct(typeName)) {
             a.add(new Attribute(fieldStr[0], fieldStr[1].toLowerCase()));

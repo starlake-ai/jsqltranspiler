@@ -155,7 +155,7 @@ class JSQLSchemaDiffTest {
     List<Attribute> expected = List.of(
             new Attribute("order_id", "long")
             , new Attribute("order_date", "timestamp")
-            , new Attribute("total_revenue", "double", AttributeStatus.ADDED)
+            , new Attribute("total_revenue", "double")
     );
     //@formatter:on
 
@@ -281,7 +281,14 @@ class JSQLSchemaDiffTest {
             , "starbake_analytics"
             , "customer_purchase_history"
             , new Attribute("customer_id", "long")
-            , new Attribute("purchase_date", "date")
+            , new Attribute("customer_name", "string")
+            , new Attribute("email", "string")
+            , new Attribute("total_orders", "long")
+            , new Attribute("total_spent", "double")
+            , new Attribute("first_order_date", "date")
+            , new Attribute("last_order_date", "date")
+            , new Attribute("purchased_categories", "string", true, null, AttributeStatus.UNCHANGED)
+            , new Attribute("days_since_first_order", "long")
     );
 
     DBSchema schema5 = new DBSchema(
@@ -314,6 +321,36 @@ class JSQLSchemaDiffTest {
             , new Attribute("TENANT", "string")
     );
 
+      DBSchema schema7 = new DBSchema(
+              ""
+              , "starbake_kpis"
+              , "overall_kpis"
+              , new Attribute("total_customers", "long")
+              , new Attribute("total_orders", "long")
+              , new Attribute("total_revenue", "double")
+              , new Attribute("avg_order_value", "double")
+              , new Attribute("avg_orders_per_customer", "double")
+              , new Attribute("avg_spent_per_customer", "double")
+              , new Attribute("earliest_order_date", "date")
+              , new Attribute("latest_order_date", "date")
+              , new Attribute("avg_customer_lifetime_days", "double")
+              , new Attribute("avg_categories_per_customer", "double")
+              , new Attribute("customer_order_rate", "double")
+              , new Attribute("daily_revenue", "double")
+              , new Attribute("daily_order_rate", "double")
+      );
+
+      DBSchema schema8 = new DBSchema(
+              ""
+              , "starbake_analytics"
+              , "order_items_analysis"
+              , new Attribute("order_id", "long")
+              , new Attribute("order_date", "date")
+              , new Attribute("customer_id", "long")
+              , new Attribute("purchased_items", "string", true, null, AttributeStatus.UNCHANGED)
+              , new Attribute("total_order_value", "double")
+      );
+
     DBSchema schema99 = new DBSchema(
             ""
             , "starbake"
@@ -342,7 +379,7 @@ class JSQLSchemaDiffTest {
     );
     //@formatter:off
 
-    return List.of(schema1, schema2, schema3, schema4, schema5, schema6, schema99);
+    return List.of(schema1, schema2, schema3, schema4, schema5, schema6, schema7, schema8, schema99);
   }
 
   @Test
@@ -376,15 +413,14 @@ class JSQLSchemaDiffTest {
 
     List<Attribute> expected = List.of(
             new Attribute("customer_id", "long")
-            , new Attribute("customer_name", "string", AttributeStatus.ADDED)
-            , new Attribute("email", "string", AttributeStatus.ADDED)
-            , new Attribute("total_orders", "long", AttributeStatus.ADDED)
-            , new Attribute("total_spent", "double", AttributeStatus.ADDED)
-            , new Attribute("first_order_date", "date", AttributeStatus.ADDED)
-            , new Attribute("last_order_date", "date", AttributeStatus.ADDED)
-            , new Attribute("purchased_categories", "string", true, null, AttributeStatus.ADDED)
-            , new Attribute("days_since_first_order", "long", AttributeStatus.ADDED)
-            , new Attribute("purchase_date", "date", AttributeStatus.REMOVED)
+            , new Attribute("customer_name", "string", AttributeStatus.UNCHANGED)
+            , new Attribute("email", "string", AttributeStatus.UNCHANGED)
+            , new Attribute("total_orders", "long", AttributeStatus.UNCHANGED)
+            , new Attribute("total_spent", "double", AttributeStatus.UNCHANGED)
+            , new Attribute("first_order_date", "date", AttributeStatus.UNCHANGED)
+            , new Attribute("last_order_date", "date", AttributeStatus.UNCHANGED)
+            , new Attribute("purchased_categories", "string", true, null, AttributeStatus.UNCHANGED)
+            , new Attribute("days_since_first_order", "long", AttributeStatus.UNCHANGED)
     );
     //@formatter:on
 
@@ -423,13 +459,22 @@ class JSQLSchemaDiffTest {
                   ";";
 
     List<Attribute> expected = List.of(
-            new Attribute("order_id", "long")
-            , new Attribute("order_date", "date", AttributeStatus.UNCHANGED)
-            , new Attribute("customer_id", "long", AttributeStatus.ADDED)
-            , new Attribute("purchased_items", "string", true, null, AttributeStatus.ADDED)
-            , new Attribute("total_order_value", "double", AttributeStatus.ADDED)
-            , new Attribute("cost", "double", AttributeStatus.ADDED)
-            , new Attribute("purchase_date", "date", AttributeStatus.REMOVED)
+            new Attribute("order_id", "long", false, null, AttributeStatus.ADDED)
+            , new Attribute("order_date", "date", false, null, AttributeStatus.ADDED)
+            , new Attribute("customer_id", "long")
+            , new Attribute("purchased_items", "string", true, null, AttributeStatus.ADDED )
+            , new Attribute("total_order_value", "double", false, null, AttributeStatus.ADDED)
+            , new Attribute("cost", "double", false, null, AttributeStatus.ADDED)
+
+            , new Attribute("customer_name", "string", false, null, AttributeStatus.REMOVED)
+            , new Attribute("email", "string", false, null, AttributeStatus.REMOVED)
+            , new Attribute("total_orders", "long", false, null, AttributeStatus.REMOVED)
+            , new Attribute("total_spent", "double", false, null, AttributeStatus.REMOVED)
+            , new Attribute("first_order_date", "date", false, null, AttributeStatus.REMOVED)
+            , new Attribute("last_order_date", "date", false, null, AttributeStatus.REMOVED)
+            , new Attribute("purchased_categories", "string", true, null, AttributeStatus.REMOVED)
+            , new Attribute("days_since_first_order", "long", false, null, AttributeStatus.REMOVED)
+
     );
     //@formatter:on
 
@@ -561,7 +606,7 @@ class JSQLSchemaDiffTest {
             List.of(new Attribute("id", "string"), new Attribute("name", "string")),
             AttributeStatus.REMOVED),
         new Attribute("user_info", "struct", false,
-            List.of(new Attribute("id", "string"), new Attribute("age", "int")),
+            List.of(new Attribute("id", "string"), new Attribute("age", "integer")),
             AttributeStatus.ADDED));
 
     JSQLSchemaDiff diff = new JSQLSchemaDiff(schema);
@@ -581,9 +626,8 @@ class JSQLSchemaDiffTest {
         + "    'age', 42::INT\n" + ") as user";
 
     List<Attribute> expected = List.of(new Attribute("user", "struct", false,
-        List.of(new Attribute("id", "string", false, null, AttributeStatus.UNCHANGED),
-            new Attribute("age", "int", false, null, AttributeStatus.REMOVED)),
-        AttributeStatus.MODIFIED));
+        List.of(new Attribute("id", "string"), new Attribute("age", "integer")),
+        AttributeStatus.UNCHANGED));
 
     JSQLSchemaDiff diff = new JSQLSchemaDiff(schema);
     List<Attribute> actual = diff.getDiff(sqlStr, "db.table");
@@ -609,8 +653,8 @@ class JSQLSchemaDiffTest {
 
 
     List<Attribute> expected =
-        List.of(new Attribute("order_id", "long", false, null, AttributeStatus.UNCHANGED),
-            new Attribute("qty", "long", false, null, AttributeStatus.UNCHANGED));
+        List.of(new Attribute("order_id", "long", false, null, AttributeStatus.ADDED),
+            new Attribute("qty", "long", false, null, AttributeStatus.ADDED));
 
     JSQLSchemaDiff diff = new JSQLSchemaDiff(schemas);
     List<Attribute> actual = diff.getDiff(sqlStr, "audit.audit_kpi");
@@ -625,12 +669,12 @@ class JSQLSchemaDiffTest {
             "select *, 1 as two  from `starbake`.`customers`";
 
     List<Attribute> expected = List.of(
-            new Attribute("id", "integer")
+            new Attribute("id", "integer", false, null, AttributeStatus.MODIFIED)
             , new Attribute("first_name", "string")
             , new Attribute("last_name", "string")
             , new Attribute("email", "string")
             , new Attribute("join_date", "date")
-            , new Attribute("two", "integer")
+            , new Attribute("two", "integer", false, null, AttributeStatus.ADDED)
     );
     //@formatter:on
 
@@ -675,6 +719,76 @@ class JSQLSchemaDiffTest {
 
     JSQLSchemaDiff diff = new JSQLSchemaDiff(schemas);
     List<Attribute> actual = diff.getDiff(sqlStr, "star1.table1");
+
+    Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+  }
+
+  @Test
+  void testIssueArraySize() throws JSQLParserException, SQLException {
+    //@formatter:off
+        String sqlStr =
+                "-- Starbake Overall KPIs\n" +
+                        "WITH customer_metrics AS (\n" +
+                        "        SELECT  Count( DISTINCT customer_id ) AS total_customers\n" +
+                        "                , Avg( total_orders ) AS avg_orders_per_customer\n" +
+                        "                , Avg( total_spent ) AS avg_spent_per_customer\n" +
+                        "                , Min( first_order_date ) AS earliest_order_date\n" +
+                        "                , Max( last_order_date ) AS latest_order_date\n" +
+                        "                , Avg( days_since_first_order ) AS avg_customer_lifetime_days\n" +
+                        "                , Avg( Array_Length( purchased_categories ) ) AS avg_categories_per_customer\n" +
+                        "        FROM starbake_analytics.customer_purchase_history )\n" +
+                        "    , order_metrics AS (\n" +
+                        "        SELECT  Count( DISTINCT order_id ) AS total_orders\n" +
+                        "                , Sum( total_order_value ) AS total_revenue\n" +
+                        "                , Avg( total_order_value ) AS avg_order_value\n" +
+                        "                , Count( DISTINCT customer_id ) AS customers_with_orders\n" +
+                        "        FROM starbake_analytics.order_items_analysis )\n" +
+                        "SELECT  cm.total_customers\n" +
+                        "        , om.total_orders\n" +
+                        "        , om.total_revenue\n" +
+                        "        , om.avg_order_value\n" +
+                        "        , cm.avg_orders_per_customer\n" +
+                        "        , cm.avg_spent_per_customer\n" +
+                        "        , cm.earliest_order_date\n" +
+                        "        , cm.latest_order_date\n" +
+                        "        , cm.avg_customer_lifetime_days\n" +
+                        "        , cm.avg_categories_per_customer\n" +
+                        "        , om.customers_with_orders::FLOAT\n" +
+                        "             / cm.total_customers AS customer_order_rate\n" +
+                        "        , om.total_revenue\n" +
+                        "             / Nullif(  Cast( cm.latest_order_date AS DATE ) -  Cast( cm.earliest_order_date AS DATE ), 0 ) AS daily_revenue\n" +
+                        "        , om.total_orders::FLOAT\n" +
+                        "             / Nullif(  Cast( cm.latest_order_date AS DATE ) -  Cast( cm.earliest_order_date AS DATE ), 0 ) AS daily_order_rate\n" +
+                        "        , om.total_revenue\n" +
+                        "             / Nullif( Datediff( 'day', cm.earliest_order_date, cm.latest_order_date ), 0 ) AS daily_revenue1\n" +
+                        "        , om.total_orders::FLOAT\n" +
+                        "             / Nullif( Datediff( 'day', cm.earliest_order_date, cm.latest_order_date ), 0 ) AS daily_order_rate1\n" +
+                        "FROM customer_metrics cm\n" +
+                        "    CROSS JOIN order_metrics om\n" +
+                        ";";
+
+        List<Attribute> expected = List.of(
+                new Attribute("total_customers", "long", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("total_orders", "long", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("total_revenue", "double", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("avg_order_value", "double", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("avg_orders_per_customer", "double", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("avg_spent_per_customer", "double", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("earliest_order_date", "date", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("latest_order_date", "date", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("avg_customer_lifetime_days", "double", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("avg_categories_per_customer", "double", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("customer_order_rate", "double", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("daily_revenue", "double", false, null, AttributeStatus.UNCHANGED)
+                , new Attribute("daily_order_rate", "double", false, null, AttributeStatus.UNCHANGED)
+
+                , new Attribute("daily_revenue1", "double", false, null, AttributeStatus.ADDED)
+                , new Attribute("daily_order_rate1", "double", false, null, AttributeStatus.ADDED)
+        );
+        //@formatter:on
+
+    JSQLSchemaDiff diff = new JSQLSchemaDiff(getStarlakeSchemas());
+    List<Attribute> actual = diff.getDiff(sqlStr, "starbake_kpis.overall_kpis");
 
     Assertions.assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
   }

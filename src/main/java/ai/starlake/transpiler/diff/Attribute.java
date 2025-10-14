@@ -101,6 +101,26 @@ public class Attribute {
     return this;
   }
 
+  // @Override
+  // public final boolean equals(Object o) {
+  // if (!(o instanceof Attribute)) {
+  // return false;
+  // }
+  //
+  // Attribute attribute = (Attribute) o;
+  // return isArray == attribute.isArray && name.equalsIgnoreCase(attribute.name)
+  // && Objects.equals(type, attribute.type);
+  // }
+  //
+  // @Override
+  // public int hashCode() {
+  // int result = name.hashCode();
+  // result = 31 * result + type.hashCode();
+  // result = 31 * result + Boolean.hashCode(isArray);
+  // return result;
+  // }
+
+
   @Override
   public final boolean equals(Object o) {
     if (!(o instanceof Attribute)) {
@@ -108,8 +128,9 @@ public class Attribute {
     }
 
     Attribute attribute = (Attribute) o;
-    return isArray == attribute.isArray && name.equalsIgnoreCase(attribute.name)
-        && Objects.equals(type, attribute.type);
+    return isArray == attribute.isArray && name.equals(attribute.name)
+        && type.equals(attribute.type) && status == attribute.status
+        && Objects.equals(attributes, attribute.attributes);
   }
 
   @Override
@@ -117,6 +138,8 @@ public class Attribute {
     int result = name.hashCode();
     result = 31 * result + type.hashCode();
     result = 31 * result + Boolean.hashCode(isArray);
+    result = 31 * result + status.hashCode();
+    result = 31 * result + Objects.hashCode(attributes);
     return result;
   }
 

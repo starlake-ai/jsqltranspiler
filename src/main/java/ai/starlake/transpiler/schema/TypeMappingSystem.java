@@ -342,7 +342,7 @@ public class TypeMappingSystem {
   /**
    * Maps DDL type name back to our type system
    */
-  private static String mapDDLToTypeName(String ddlTypeName, String database) {
+  public static String mapDDLToTypeName(String ddlTypeName, String database) {
     if (ddlTypeName == null) {
       return null;
     }
