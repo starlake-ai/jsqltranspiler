@@ -226,30 +226,25 @@ public class JSQLSchemaDiff {
     info.put("password", "");
 
     Connection conn = driver.connect(urlStr, info);
-    try (java.sql.Statement st = conn.createStatement()) {
-      // @Todo: this can fail for STRUCT when the parser is not supporting it
-
-      // for (Statement stmt : CCJSqlParserUtil.parseStatements(ddlStr)) {
-      // try {
-      // st.executeUpdate(stmt.toString());
-      // } catch (Exception ex) {
-      // LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + stmt, ex);
-      // }
-      // }
-
-      // @Todo: so for now a simple SPLIT() will do
-      for (String s : ddlStr.split("\\;")) {
-        if (!s.isBlank()) {
-          try {
+    // @Todo: so for now a simple SPLIT() will do
+    for (String s : ddlStr.split("\\;")) {
+      if (!s.isBlank()) {
+        try (java.sql.Statement st = conn.createStatement()) {
+            // @Todo: this can fail for STRUCT when the parser is not supporting it
+            // for (Statement stmt : CCJSqlParserUtil.parseStatements(ddlStr)) {
+            // try {
+            // st.executeUpdate(stmt.toString());
+            // } catch (Exception ex) {
+            // LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + stmt, ex);
+            // }
+            // }
             st.executeUpdate(s);
-          } catch (Exception ex) {
+        } catch (Exception ex) {
             LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + s, ex);
-          }
         }
       }
-
-      return conn;
     }
+    return conn;
   }
 
   public String rewriteQuery(JSQLTranspiler.Dialect dialect, String sqlStr,
