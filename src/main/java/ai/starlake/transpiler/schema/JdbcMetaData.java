@@ -84,7 +84,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
         }
 
         for (JdbcTable table : schema.tables.values()) {
-          if (!table.tableName.isEmpty()) {
+          if (!table.tableName.isEmpty() && !table.getColumns().isEmpty()) {
             builder.append(TypeMappingSystem.generateCreateTableDDL(table, "h2",
                 !schema.tableSchema.isEmpty()));
           }
