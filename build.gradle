@@ -138,7 +138,7 @@ tasks.register('generateBuildInfo') {
         def buildTime = Instant.now().toString()
 
         def content = """\
-            |package ${group}
+            |package ai.starlake.jsqltranspiler
             |
             |object BuildInfo {
             |  val name = "${project.name}"
