@@ -152,7 +152,7 @@ tasks.register('generateBuildInfo') {
     }
 }
 
-tasks.withType(Test).configureEach {
+tasks.withType(JavaCompile).configureEach {
     mustRunAfter("generateBuildInfo")
 }
 
