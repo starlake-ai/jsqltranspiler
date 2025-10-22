@@ -226,21 +226,24 @@ public class JSQLSchemaDiff {
     info.put("password", "");
 
     Connection conn = driver.connect(urlStr, info);
-    // @Todo: so for now a simple SPLIT() will do
-    for (String s : ddlStr.split("\\;")) {
-      if (!s.isBlank()) {
-        try (java.sql.Statement st = conn.createStatement()) {
-            // @Todo: this can fail for STRUCT when the parser is not supporting it
-            // for (Statement stmt : CCJSqlParserUtil.parseStatements(ddlStr)) {
-            // try {
-            // st.executeUpdate(stmt.toString());
-            // } catch (Exception ex) {
-            // LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + stmt, ex);
-            // }
-            // }
+    try (java.sql.Statement st = conn.createStatement();) {
+      // @Todo: so for now a simple SPLIT() will do
+      for (String s : ddlStr.split("\\;")) {
+        if (!s.isBlank()) {
+          // @Todo: this can fail for STRUCT when the parser is not supporting it
+          // for (Statement stmt : CCJSqlParserUtil.parseStatements(ddlStr)) {
+          // try {
+          // st.executeUpdate(stmt.toString());
+          // } catch (Exception ex) {
+          // LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + stmt, ex);
+          // }
+          // }
+
+          try {
             st.executeUpdate(s);
-        } catch (Exception ex) {
+          } catch (Exception ex) {
             LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + s, ex);
+          }
         }
       }
     }
