@@ -1,4 +1,5 @@
 import se.bjurr.gitchangelog.plugin.gradle.GitChangelogTask
+import java.time.Instant
 
 plugins {
     id 'java'
@@ -116,9 +117,40 @@ def getVersion = { boolean considerSnapshot ->
 
 // for publishing a release, call Gradle with Environment Variable RELEASE:
 // RELEASE=true gradle JSQLTranspiler:publish
-version = getVersion( !System.getenv("RELEASE") )
-group = 'ai.starlake.jsqltranspiler'
-description = 'JSQLTranspiler'
+def version = getVersion( !System.getenv("RELEASE") )
+def group = 'ai.starlake.jsqltranspiler'
+def description = 'JSQLTranspiler'
+
+tasks.register('generateBuildInfo') {
+    outputs.dir layout.buildDirectory.file("resources/main")
+    doLast {
+        def outputDir =  new File( layout.buildDirectory.file("resources/main").get().asFile, group.replace('.', '/'))
+        outputDir.mkdirs()
+
+        def gitVersionStr = providers.exec {
+            commandLine "git", "--no-pager", "-C", project.projectDir,  "describe", "--tags", "--always", "--dirty=-SNAPSHOT"
+        }.standardOutput.asText.get().trim()
+
+        def gitCommitStr = providers.exec {
+            commandLine "git", "--no-pager", "-C", project.projectDir,  "rev-parse", "--short", "HEAD"
+        }.standardOutput.asText.get().trim()
+
+        def buildTime = Instant.now().toString()
+
+        def content = """\
+            |package ${group}
+            |
+            |object BuildInfo {
+            |  val name = "${project.name}"
+            |  val version = "${gitVersionStr}"
+            |  val gitCommit = "${gitCommitStr ?: 'unknown'}"
+            |  val buildTime = "${buildTime}"
+            |}
+            """.stripMargin()
+
+        new File(outputDir, "BuildInfo.scala").text = content
+    }
+}
 
 java {
     withSourcesJar()
@@ -184,6 +216,8 @@ jar {
             "Automatic-Module-Name": "ai.starlake.transpiler"
         )
     }
+
+    dependsOn(generateBuildInfo)
 }
 
 shadowJar {
