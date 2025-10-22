@@ -117,14 +117,14 @@ def getVersion = { boolean considerSnapshot ->
 
 // for publishing a release, call Gradle with Environment Variable RELEASE:
 // RELEASE=true gradle JSQLTranspiler:publish
-def version = getVersion( !System.getenv("RELEASE") )
+version = getVersion( !System.getenv("RELEASE") )
 group = 'ai.starlake.jsqltranspiler'
 description = 'JSQLTranspiler'
 
 tasks.register('generateBuildInfo') {
     outputs.dir layout.buildDirectory.file("resources/main")
     doLast {
-        def outputDir =  new File( layout.buildDirectory.file("resources/main").get().asFile, "ai/starlake/jsqltranspiler")
+        def outputDir =  new File( layout.buildDirectory.file("generated/sources/buildinfo/java/main").get().asFile, "ai/starlake/transpiler")
         outputDir.mkdirs()
 
         def gitVersionStr = providers.exec {
@@ -138,17 +138,26 @@ tasks.register('generateBuildInfo') {
         def buildTime = Instant.now().toString()
 
         def content = """\
-            |package ai.starlake.jsqltranspiler
+            |package ai.starlake.jsqltranspiler;
             |
-            |object BuildInfo {
-            |  val name = "${project.name}"
-            |  val version = "${gitVersionStr}"
-            |  val gitCommit = "${gitCommitStr ?: 'unknown'}"
-            |  val buildTime = "${buildTime}"
+            |public final class BuildInfo {
+            |  public static final String NAME = "${project.name}";
+            |  public static final String VERSION = "${gitVersionStr}";
+            |  public static final String GIT_COMMIT = "${gitCommitStr ?: 'unknown'}";
+            |  public static final String BUILD_TIME = "${buildTime}";
             |}
             """.stripMargin()
 
-        new File(outputDir, "BuildInfo.scala").text = content
+        new File(outputDir, "BuildInfo.java").text = content
+    }
+}
+
+// Make sure the file is included in the compiled sources
+sourceSets {
+    main {
+        java {
+            srcDir layout.buildDirectory.file("generated/sources/buildinfo/java/main").get().asFile
+        }
     }
 }
 
