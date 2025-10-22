@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -65,13 +66,22 @@ import java.util.regex.Pattern;
 public class JSQLSchemaDiff {
   public final static Logger LOGGER = Logger.getLogger(JSQLSchemaDiff.class.getName());
   private final JdbcMetaData meta;
+  private final List<Exception> exceptions;
+
+  public JSQLSchemaDiff(Collection<DBSchema> schemas, List<Exception> exceptions) {
+    meta =
+        new JdbcMetaData(Objects.requireNonNull(schemas, "The list of schemas must not be null."));
+    this.exceptions =
+        Objects.requireNonNull(exceptions, "The list for holding exceptions must not be null.");
+  }
 
   public JSQLSchemaDiff(Collection<DBSchema> schemas) {
     meta = new JdbcMetaData(schemas);
+    this.exceptions = new ArrayList<>();
   }
 
   public JSQLSchemaDiff(DBSchema... schemas) {
-    this(Arrays.asList(schemas));
+    this(Arrays.asList(Objects.requireNonNull(schemas, "The list of schemas must not be null.")));
   }
 
   public List<Attribute> getDiff(String sqlStr, String qualifiedTargetTableName)
@@ -120,6 +130,7 @@ public class JSQLSchemaDiff {
         }
         sqlStr = rewriteQuery(dialect, sqlStr, intoDialect);
       } catch (Exception ex) {
+        exceptions.add(new RuntimeException("Failed to rewrite the query:\n" + sqlStr, ex));
         LOGGER.log(Level.WARNING, "Failed to rewrite the query:\n" + sqlStr, ex);
       }
 
@@ -242,6 +253,7 @@ public class JSQLSchemaDiff {
           try {
             st.executeUpdate(s);
           } catch (Exception ex) {
+            exceptions.add(new RuntimeException("Failed to execute DDL:\n" + s, ex));
             LOGGER.log(Level.WARNING, "Failed to execute DDL:\n" + s, ex);
           }
         }
@@ -258,6 +270,7 @@ public class JSQLSchemaDiff {
       try {
         sqlStr = JSQLTranspiler.transpileQuery(sqlStr, dialect);
       } catch (Exception ex) {
+        exceptions.add(new RuntimeException("Failed to transpile query:\n" + sqlStr, ex));
         LOGGER.log(Level.WARNING, "Failed to transpile query:\n" + sqlStr, ex);
       }
     }
@@ -379,9 +392,8 @@ public class JSQLSchemaDiff {
 
           LOGGER.fine(select.toString());
         }
-
-      } catch (Exception ignore) {
-        // we just tried
+      } catch (Exception ex) {
+        exceptions.add(new RuntimeException("Failed to get the Meta Data from the DuckDB", ex));
       }
 
       try (PreparedStatement pst = conn.prepareStatement(select.toString());) {
@@ -411,11 +423,18 @@ public class JSQLSchemaDiff {
             break;
         }
       } catch (SQLException ex) {
+        exceptions
+            .add(new RuntimeException("Failed to get the column type:\n" + select.toString(), ex));
         LOGGER.log(Level.WARNING, "Failed execute the query:\n" + select, ex);
       }
     } catch (JSQLParserException ex) {
+      exceptions.add(new RuntimeException("Failed to parse:\n" + sqlStr, ex));
       LOGGER.log(Level.WARNING, "Failed to parse:\n" + sqlStr, ex);
     }
     return typeName;
+  }
+
+  public List<Exception> getExceptions() {
+    return exceptions;
   }
 }
