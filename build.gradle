@@ -124,7 +124,7 @@ description = 'JSQLTranspiler'
 tasks.register('generateBuildInfo') {
     outputs.dir layout.buildDirectory.file("resources/main")
     doLast {
-        def outputDir =  new File( layout.buildDirectory.file("resources/main").get().asFile, group.replace('.', '/'))
+        def outputDir =  new File( layout.buildDirectory.file("resources/main").get().asFile, "ai/starlake/jsqltranspiler")
         outputDir.mkdirs()
 
         def gitVersionStr = providers.exec {
