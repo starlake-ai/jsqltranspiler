@@ -152,6 +152,10 @@ tasks.register('generateBuildInfo') {
     }
 }
 
+tasks.withType(Test).configureEach {
+    mustRunAfter("generateBuildInfo")
+}
+
 java {
     withSourcesJar()
     withJavadocJar()
@@ -383,6 +387,10 @@ pmd {
     }
 }
 
+tasks.withType(Pmd).configureEach {
+    mustRunAfter("generateBuildInfo")
+}
+
 checkstyle {
     sourceSets = [sourceSets.main, sourceSets.test]
     configFile = rootProject.file('config/checkstyle/checkstyle.xml')
@@ -391,6 +399,8 @@ checkstyle {
 
 tasks.withType(Checkstyle).configureEach {
     exclude '**/module-info.java', '**/package-info.java'
+
+    mustRunAfter("generateBuildInfo")
 }
 
 spotless {
