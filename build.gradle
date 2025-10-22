@@ -118,8 +118,8 @@ def getVersion = { boolean considerSnapshot ->
 // for publishing a release, call Gradle with Environment Variable RELEASE:
 // RELEASE=true gradle JSQLTranspiler:publish
 def version = getVersion( !System.getenv("RELEASE") )
-def group = 'ai.starlake.jsqltranspiler'
-def description = 'JSQLTranspiler'
+group = 'ai.starlake.jsqltranspiler'
+description = 'JSQLTranspiler'
 
 tasks.register('generateBuildInfo') {
     outputs.dir layout.buildDirectory.file("resources/main")
