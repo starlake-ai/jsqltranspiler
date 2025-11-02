@@ -1,0 +1,898 @@
+- schemaName: "FLUX_REF"
+  tables:
+    REF_BANQ_SWIFT:
+      - name: "COD_BIC11"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_BIC8"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "LIB_INST_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_CAT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+    REF_TOGE_ETB_GES:
+      - name: "COD_ETB"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_BQE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_BIC"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "LIB_ETB"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "LIB_TYPO"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+    REF_SWIFT_OPLOG:
+      - name: "OPLOG_ID"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "OPLOG_LIB"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "OPLOG_FMT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "OPLOG_SORTIE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "OPLOG_DOUT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "OPLOG_TYPOP"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "OPLOG_EDSS"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+    REF_SWIFT_TYPEVT:
+      - name: "TYPEVT_ID"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "TYPEVT_MNEMO"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "TYPEVT_LIB"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+    REF_FIB_FGD:
+      - name: "COD_REF_ORIG"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_BIC"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "LIB_ETAB"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_SITU"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "LIB_ETAB_COURT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_NAT_ACT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ORG_REP"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_AGR"
+        type: "date_yyyyMMdd"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_RET_AGR"
+        type: "date_yyyyMMdd"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_FIN_DIFF"
+        type: "date_yyyyMMdd"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ADR_LG3"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ADR_LG4"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ADR_LG5"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ADR_LG6"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_TRI"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB_ABS"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "OPT_ID"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_OPT_ID"
+        type: "date_yyyyMMdd"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "LIB_COM"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_CAT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_CAT_VBK"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "FLAG_TVA"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_FILIERE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+    REF_TOGE_DIVERS:
+      - name: "COD_IDX"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_REF"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_REF_NUM"
+        type: "long"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "LIB_IDX"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "LIB_REF"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "FLAG_STATUT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "INFO_SOURCE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+    REF_FACT_QUALIFIANT:
+      - name: "QUALIFIANT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "GROUPE_1"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "GROUPE_2"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "TOP_BANK_IDENTIQUES"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_DEB_QUALIFIANT"
+        type: "date_fr"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_FIN_QUALIFIANT"
+        type: "date_fr"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+    REF_SWIFT_STATUT:
+      - name: "STAT_ID"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "STAT_MNEMO"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "STAT_LIB"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "STAT_TYP"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+    REF_FACT_CLIENT:
+      - name: "ID_METIER"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "APPLICATION"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_DEB_CLIENT"
+        type: "date_fr"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_FIN_CLIENT"
+        type: "date_fr"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CD_BANK_AUX"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "GROUPE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ID_CLIENT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "LIB_CLIENT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CD_BANK"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+    REF_BQUE_XENOS:
+      - name: "CODE_BANQUE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CODE_XENOS"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CAISSE_EPARGNE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SOURCE_FILE_NAME"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_TS"
+        type: "datetime"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+- schemaName: "FLUX_BIP"
+  tables:
+    AGR_BIP_DAY:
+      - name: "DAT_REF"
+        type: "date"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_REF_DEM"
+        type: "date"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_PRES"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_DEST"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ECHANGE"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SENS"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "BIC_REF"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB_REF"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "BIC_DO"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB_EMT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "BIC_DEST"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB_DEST"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "BIC_CONTR"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB_CONTR"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "STAT_INTE_TRANSAC"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "TYPE_OPE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_CANAL"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CANAL_DIST"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SUB_CANAL_DIST"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ABNM_DIST"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SEGMENT_CLIENT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "PAYS_DEB_BIC"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "PAYS_CRE_BIC"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_RETOUR"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "TYP_R_MSG"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "STATUT_VIA_VIS_FIRCO"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "STATUT_PRISMOP_FRAUD"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ID_BANK_OPF"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CIB_DEP_ENT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CIB_DEP_SORT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MOTIF_REJET_1"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MOTIF_REJET_2"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MOTIF_REJET_3"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DATE_BIP"
+        type: "date"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "HEURE_BIP"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MINUTE_BIP"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SECONDE_BIP"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "TIMESTAMP_BIP"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DEVISE"
+        type: "devise"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MNT_OP"
+        type: "double"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MNT_OP_MIN"
+        type: "double"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MNT_OP_MAX"
+        type: "double"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "NB_OP"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_CHG"
+        type: "date"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_DT"
+        type: "timestamp"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "YEAR"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MONTH"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAY"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+- schemaName: "FLUX_ESP"
+  tables:
+    AGR_MASSE_DAY:
+      - name: "DAT_REF"
+        type: "date"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_REF_DEM"
+        type: "date"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAT_CHG"
+        type: "date"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SRC"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ORIGIN_FLUX"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_PRES"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_DEST"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "BIC_REF"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB_REF"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ECHANGE"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SENS"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "BIC_DO"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB_EMT"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "BIC_DEST"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB_DEST"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "BIC_CONTR"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_ETAB_CONTR"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "TYPE_OPE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_CANAL"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DEVISE"
+        type: "devise"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "PAYS_DEB"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "PAYS_CRE"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "PAYS_DEB_BIC"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "PAYS_CRE_BIC"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ICS_INI"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "ICS"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "SEQ_PRLV"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "COD_RETOUR"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "TYP_R_MSG"
+        type: "string"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "CREATION_DT"
+        type: "timestamp"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "YEAR"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MONTH"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "DAY"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "MNT_OP"
+        type: "double"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false
+      - name: "NB_OP"
+        type: "int"
+        status: "UNCHANGED"
+        array: false
+        nestedField: false

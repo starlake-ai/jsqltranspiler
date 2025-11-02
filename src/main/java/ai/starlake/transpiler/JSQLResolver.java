@@ -89,6 +89,7 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
+import net.sf.jsqlparser.statement.select.SetOperationList;
 import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.statement.select.WithItem;
 import net.sf.jsqlparser.statement.show.ShowIndexStatement;
@@ -410,6 +411,44 @@ public class JSQLResolver extends JSQLColumResolver {
     }
 
     return resultSetMetaData;
+  }
+
+  @Override
+  public <S> JdbcResultSetMetaData visit(SetOperationList setOperationList, S context) {
+    if (context instanceof JdbcMetaData) {
+      JdbcMetaData metaData1 = ((JdbcMetaData) context).copyOf();
+      JdbcResultSetMetaData resultSetMetaData = null;
+
+      // `WITH` shadows base tables
+      if (setOperationList.getWithItemsList() != null) {
+        for (WithItem<?> withItem : setOperationList.getWithItemsList()) {
+          Alias alias = withItem.getAlias();
+          JdbcResultSetMetaData rsMetaData = withItem.accept(this, metaData1.copyOf());
+          for (JdbcColumn c : rsMetaData.getColumns()) {
+            c.tableName = alias.getName();
+            c.tableSchema = metaData1.getCurrentSchemaName();
+            c.tableCatalog = metaData1.getCurrentCatalogName();
+            if (c.getExpression() instanceof Column) {
+              Column column = (Column) c.getExpression();
+              if (column.getTable() != null) {
+                column.getTable().setResolvedTable(null);
+              }
+              column.setResolvedTable(null);
+            }
+          }
+          final JdbcTable t =
+              metaData1.put(rsMetaData, alias.getUnquotedName(), "Error in WithItem " + withItem);
+          t.setTableType("VIRTUAL TABLE");
+        }
+      }
+
+      for (Select select : setOperationList.getSelects()) {
+        resultSetMetaData = select.accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData1);
+      }
+      return resultSetMetaData;
+    } else {
+      return null;
+    }
   }
 
   public List<JdbcColumn> getWhereColumns() {

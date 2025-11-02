@@ -67,6 +67,9 @@ dependencies {
     // executing sql bigquery
     testImplementation 'com.google.cloud:google-cloud-bigquery:+'
 
+    // read test schema information
+    testImplementation 'org.yaml:snakeyaml:+'
+
     // Java Doc in XML Format
     xmlDoclet ('com.manticore-projects.tools:xml-doclet:+'){ changing = true }
 }

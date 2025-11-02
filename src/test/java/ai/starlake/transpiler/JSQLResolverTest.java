@@ -13,6 +13,8 @@
  */
 package ai.starlake.transpiler;
 
+import ai.starlake.transpiler.diff.DBSchema;
+import ai.starlake.transpiler.schema.DBSchemaYamlParser;
 import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcMetaData.ErrorMode;
@@ -25,10 +27,14 @@ import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
+import org.apache.commons.io.IOUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -141,6 +147,16 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
     assertThatTableAndColumnsMatch(actualColumns, expectedColumns);
 
+  }
+
+  @Test
+  void testOperationSet() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}, {"b", "col1", "col2", "col3"}};
+
+    String sqlStr = "WITH t as (select * from a) select * from t UNION select * from t";
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    resolver.resolve(sqlStr);
   }
 
   void assertThatTableAndColumnsMatch(Set<JdbcColumn> columns, String[][] expectedColumns) {
@@ -548,5 +564,24 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
 
     String rewritten = resolver.getResolvedStatementText(sqlStr);
     Assertions.assertThat(rewritten).isEqualToNormalizingUnicode(expected);
+  }
+
+  @Test
+  @Disabled
+  void testComplexQueryWithSubStr() throws IOException, JSQLParserException {
+    String sqlStr = IOUtils.resourceToString("/ai/starlake/transpiler/JSQLResolverTest.sql",
+        Charset.defaultCharset());
+
+    InputStream is = getClass().getResourceAsStream("/ai/starlake/transpiler/JSQLResolverTest.yml");
+    Assertions.assertThat(is).isNotNull();
+
+    List<DBSchema> dbSchemas = DBSchemaYamlParser.readYamlToDBSchemas(is);
+    Assertions.assertThat(dbSchemas).isNotEmpty();
+
+    JdbcMetaData metaData = new JdbcMetaData(dbSchemas);
+
+    JSQLResolver resolver = new JSQLResolver(metaData);
+    resolver.resolve(sqlStr);
+
   }
 }
