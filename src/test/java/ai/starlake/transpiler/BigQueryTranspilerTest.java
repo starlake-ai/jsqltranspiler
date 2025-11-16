@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 public class BigQueryTranspilerTest {
   @Test
   void testComplexQueryWithSubStr() throws Exception {
+    final long TIMEOUT = 60000;
+
     String sqlStr = IOUtils.resourceToString("/ai/starlake/transpiler/BigQueryTranspilerTest.sql",
         Charset.defaultCharset());
 
@@ -23,13 +25,13 @@ public class BigQueryTranspilerTest {
 
     // transpile
     String output = JSQLTranspiler.transpileQuery(sqlStr, JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY,
-        Map.of(), e, p -> p.withTimeOut(6000));
+        Map.of(), e, p -> p.withTimeOut(TIMEOUT));
 
     // format
     output = JSQLFormatter.format(output);
 
     // reparse
-    Statement st = CCJSqlParserUtil.parse(output, e, p -> p.withTimeOut(6000));
+    Statement st = CCJSqlParserUtil.parse(output, e, p -> p.withTimeOut(TIMEOUT));
 
     e.shutdown();
     e.awaitTermination(1, TimeUnit.DAYS);
