@@ -22,8 +22,8 @@ public class BigQueryTranspilerTest {
     ExecutorService e = Executors.newSingleThreadExecutor();
 
     // transpile
-    String output =
-        JSQLTranspiler.transpileQuery(sqlStr, JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY, Map.of(), e,p -> p.withTimeOut(6000) );
+    String output = JSQLTranspiler.transpileQuery(sqlStr, JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY,
+        Map.of(), e, p -> p.withTimeOut(6000));
 
     // format
     output = JSQLFormatter.format(output);
