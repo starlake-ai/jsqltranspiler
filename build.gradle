@@ -70,6 +70,8 @@ dependencies {
     // read test schema information
     testImplementation 'org.yaml:snakeyaml:+'
 
+    testImplementation('com.manticore-projects.jsqlformatter:jsqlformatter:5.4-SNAPSHOT'){ changing = true }
+
     // Java Doc in XML Format
     xmlDoclet ('com.manticore-projects.tools:xml-doclet:+'){ changing = true }
 }
