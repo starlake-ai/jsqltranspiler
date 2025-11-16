@@ -85,7 +85,8 @@ public class JSQLTranspilerTest {
     @Override
     public boolean accept(File dir, String name) {
       String filename = name.toLowerCase().trim();
-      return filename.endsWith(".sql") && !filename.contains("disabled");
+      return filename.endsWith(".sql") && !filename.contains("disabled")
+          && !filename.contains("debug");
     }
   };
 
@@ -135,7 +136,7 @@ public class JSQLTranspilerTest {
         JSQLTranspiler.Dialect.ANY, JSQLTranspiler.Dialect.DUCK_DB));
   }
 
-  protected static Stream<Arguments> unrollParameterMap(Map<File, List<SQLTest>> map) {
+  protected static synchronized Stream<Arguments> unrollParameterMap(Map<File, List<SQLTest>> map) {
     Set<Map.Entry<File, List<SQLTest>>> entries = map.entrySet();
 
     ArrayList<Object[]> data = new ArrayList<>();
@@ -151,7 +152,7 @@ public class JSQLTranspilerTest {
   }
 
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
-  protected static Map<File, List<SQLTest>> getSqlTestMap(File[] testFiles,
+  protected static synchronized Map<File, List<SQLTest>> getSqlTestMap(File[] testFiles,
       JSQLTranspiler.Dialect inputDialect, JSQLTranspiler.Dialect outputDialect) {
     LinkedHashMap<File, List<SQLTest>> sqlMap = new LinkedHashMap<>();
 
@@ -443,7 +444,7 @@ public class JSQLTranspilerTest {
   }
 
   @AfterAll
-  static void shutdown() throws IOException {
+  static synchronized void shutdown() throws IOException {
     // delete the DuckDB
     // @todo: maybe we should delete only when all the tests have ran successfully?
     Path folderPath = Paths.get(EXTRACTION_PATH);

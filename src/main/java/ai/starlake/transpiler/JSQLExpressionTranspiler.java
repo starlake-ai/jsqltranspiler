@@ -20,6 +20,7 @@ import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
+import net.sf.jsqlparser.expression.DateUnitExpression;
 import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
@@ -226,7 +227,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
     boolean isDatePart = false;
     for (Pattern p : patterns) {
-      if (expression instanceof Column || expression instanceof Function) {
+      if (expression instanceof Column || expression instanceof Function
+          || expression instanceof DateUnitExpression) {
         Matcher matcher = p.matcher(expression.toString());
         isDatePart |= matcher.matches();
       } else if (expression instanceof StringValue) {
@@ -264,7 +266,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
     boolean isDatePart = false;
     for (Pattern p : patterns) {
-      if (expression instanceof Column || expression instanceof Function) {
+      if (expression instanceof Column || expression instanceof Function
+          || expression instanceof DateUnitExpression) {
         Matcher matcher = p.matcher(expression.toString());
         isDatePart |= matcher.matches();
       } else if (expression instanceof StringValue) {
@@ -281,7 +284,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
     boolean isDatePart = false;
     for (Pattern p : patterns) {
-      if (expression instanceof Column || expression instanceof Function) {
+      if (expression instanceof Column || expression instanceof Function
+          || expression instanceof DateUnitExpression) {
         Matcher matcher = p.matcher(expression.toString());
         isDatePart |= matcher.matches();
       } else if (expression instanceof StringValue) {
@@ -298,7 +302,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
     boolean isDatePart = false;
     for (Pattern p : patterns) {
-      if (expression instanceof Column || expression instanceof Function) {
+      if (expression instanceof Column || expression instanceof Function
+          || expression instanceof DateUnitExpression) {
         Matcher matcher = p.matcher(expression.toString());
         isDatePart |= matcher.matches();
       } else if (expression instanceof StringValue) {
@@ -315,7 +320,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
     boolean isDatePart = false;
     for (Pattern p : patterns) {
-      if (expression instanceof Column || expression instanceof Function) {
+      if (expression instanceof Column || expression instanceof Function
+          || expression instanceof DateUnitExpression) {
         Matcher matcher = p.matcher(expression.toString());
         isDatePart |= matcher.matches();
       } else if (expression instanceof StringValue) {
@@ -337,7 +343,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
             Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
     boolean isDatePart = false;
     for (Pattern p : patterns) {
-      if (expression instanceof Column || expression instanceof Function) {
+      if (expression instanceof Column || expression instanceof Function
+          || expression instanceof DateUnitExpression) {
         Matcher matcher = p.matcher(expression.toString());
         isDatePart |= matcher.matches();
       } else if (expression instanceof StringValue) {
@@ -355,7 +362,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
     boolean isDatePart = false;
     for (Pattern p : patterns) {
-      if (expression instanceof Column || expression instanceof Function) {
+      if (expression instanceof Column || expression instanceof Function
+          || expression instanceof DateUnitExpression) {
         Matcher matcher = p.matcher(expression.toString());
         isDatePart |= matcher.matches();
       } else if (expression instanceof StringValue) {
@@ -373,7 +381,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
     boolean isDatePart = false;
     for (Pattern p : patterns) {
-      if (expression instanceof Column || expression instanceof Function) {
+      if (expression instanceof Column || expression instanceof Function
+          || expression instanceof DateUnitExpression) {
         Matcher matcher = p.matcher(expression.toString());
         isDatePart |= matcher.matches();
       } else if (expression instanceof StringValue) {
@@ -391,7 +400,7 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         Pattern.MULTILINE | Pattern.CASE_INSENSITIVE)};
     boolean isDatePart = false;
     for (Pattern p : patterns) {
-      if (expression instanceof Column || expression instanceof Function) {
+      if (expression instanceof DateUnitExpression) {
         Matcher matcher = p.matcher(expression.toString());
         isDatePart |= matcher.matches();
       } else if (expression instanceof StringValue) {
@@ -2040,12 +2049,14 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
         if (parameters.get(1) instanceof IntervalExpression) {
           IntervalExpression interval = (IntervalExpression) parameters.get(1);
-          String negatedParameter =
-              interval.getParameter().startsWith("-") ? interval.getParameter().substring(1)
-                  : "-" + interval.getParameter();
-          interval
-              .setExpression(new StringValue(negatedParameter + " " + interval.getIntervalType()));
-          interval.setIntervalType(null);
+          // negative numbers must be quoted
+          if (interval.getParameter() != null) {
+            if (interval.getParameter().startsWith("-")) {
+              interval.setParameter(interval.getParameter().substring(1));
+            } else {
+              interval.setParameter("'-" + interval.getParameter() + "'");
+            }
+          }
 
           newParameters.add(interval);
         } else {
@@ -2095,9 +2106,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
         if (parameters.get(1) instanceof IntervalExpression) {
           IntervalExpression interval = (IntervalExpression) parameters.get(1);
-          interval.setExpression(
-              new StringValue(interval.getParameter() + " " + interval.getIntervalType()));
-          interval.setIntervalType(null);
+
+          // negative numbers must be quoted
+          if (interval.getParameter() != null && interval.getParameter().startsWith("-")) {
+            interval.setParameter("'" + interval.getParameter() + "'");
+          }
           newParameters.add(interval);
         } else {
           newParameters.add(
@@ -2902,5 +2915,4 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
     return super.visit(arrayConstructor, context);
   }
-
 }

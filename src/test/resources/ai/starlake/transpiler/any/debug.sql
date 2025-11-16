@@ -1,25 +1,9 @@
--- prolog
-create or replace table aggr(k int, v decimal(10,2));
-insert into aggr (k, v) values
-    (0,  0),
-    (0, 10),
-    (0, 20),
-    (0, 30),
-    (0, 40),
-    (1, 10),
-    (1, 20),
-    (2, 10),
-    (2, 20),
-    (2, 25),
-    (2, 30),
-    (3, 60),
-    (4, NULL);
+-- PROVIDED
+select DATE("2024-10-01 00:00:00+00:00") BETWEEN DATE("2024-10-01 00:00:00+00:00") AND DATE_ADD(DATE("2025-10-31"), INTERVAL "30" DAY) t;
 
--- provided
-select k, percentile_disc(0.25) within group (order by v) as perc
-  from aggr
-  group by k
-  order by k;
+-- EXPECTED
+SELECT Cast('2024-10-01 00:00:00+00:00' AS DATE) BETWEEN Cast('2024-10-01 00:00:00+00:00' AS DATE) AND DATE_ADD(Cast('2025-10-31' AS DATE), INTERVAL '30' DAY) t;
 
--- expected
-SELECT K,QUANTILE_DISC(0.25 ORDER BY V)AS PERC FROM AGGR GROUP BY K ORDER BY K;
+-- RESULT
+"t"
+"true"

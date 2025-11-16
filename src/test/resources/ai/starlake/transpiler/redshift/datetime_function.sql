@@ -126,7 +126,7 @@ order by dateid;
 
 
 -- expected
-select date_add(caldate,  (30 ||' day')::INTERVAL) as novplus30
+select date_add(caldate,  (30 ||' DAY')::INTERVAL) as novplus30
 from date
 where month='NOV'
 order by dateid;
@@ -180,7 +180,7 @@ select datediff('week',DATE '2009-01-01', DATE '2009-12-31') as numweeks;
 select datediff(hour, '2023-01-01', '2023-01-03 05:04:03') AS diff;
 
 -- expected
-select datediff('hour', DATE '2023-01-01',  TIMESTAMP WITHOUT TIME ZONE '2023-01-03T05:04:03.000') AS diff;
+select datediff('HOUR', DATE '2023-01-01',  TIMESTAMP WITHOUT TIME ZONE '2023-01-03T05:04:03.000') AS diff;
 
 -- result
 "diff"
@@ -191,7 +191,7 @@ select datediff('hour', DATE '2023-01-01',  TIMESTAMP WITHOUT TIME ZONE '2023-01
 SELECT DATE_PART(minute, timestamp '20230104 04:05:06.789') AS part;
 
 -- expected
-SELECT DATE_PART('minute', timestamp '2023-01-04T04:05:06.789') AS part;
+SELECT DATE_PART('MINUTE', timestamp '2023-01-04T04:05:06.789') AS part;
 
 -- result
 "part"
@@ -202,7 +202,7 @@ SELECT DATE_PART('minute', timestamp '2023-01-04T04:05:06.789') AS part;
 SELECT DATE_PART(minute, timestamp '20230104 04:05:06.789+0700') AS part;
 
 -- expected
-SELECT DATE_PART('minute', timestamp with time zone '2023-01-03T21:05:06.789+0000') AS part;
+SELECT DATE_PART('MINUTE', timestamp with time zone '2023-01-03T21:05:06.789+0000') AS part;
 
 -- result
 "part"
@@ -212,7 +212,7 @@ SELECT DATE_PART('minute', timestamp with time zone '2023-01-03T21:05:06.789+000
 SELECT DATE_PART(minute, DATE '20230104 04:05:06.789+0700') AS part;
 
 -- expected
-SELECT DATE_PART('minute', timestamp with time zone '2023-01-03T21:05:06.789+0000'::DATE) AS part;
+SELECT DATE_PART('MINUTE', timestamp with time zone '2023-01-03T21:05:06.789+0000'::DATE) AS part;
 
 -- result
 "part"
@@ -284,9 +284,9 @@ group by 1
 order by 1;
 
 -- expected
-select datediff('day', saletime, last_day(saletime)) as "Days Remaining", sum(qtysold) AS tally
+select datediff('DAY', saletime, last_day(saletime)) as "Days Remaining", sum(qtysold) AS tally
 from sales
-where datediff('day', saletime, last_day(saletime)) < 7
+where datediff('DAY', saletime, last_day(saletime)) < 7
 group by 1
 order by 1;
 
