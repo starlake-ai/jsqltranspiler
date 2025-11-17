@@ -240,12 +240,15 @@ public class JSQLResultSetHelperService extends ResultSetHelperService {
       case Types.CHAR:
         value = handleVarChar(rs, colIndex, trim);
         break;
+      case Types.BLOB:
+      case Types.STRUCT:
+      case Types.ARRAY:
+      case Types.OTHER:
+        value = rs.getString(colIndex);
+        break;
       default:
-        // This takes care of Types.BIT, Types.JAVA_OBJECT, and anything
-        // unknown.
         value = Objects.toString(rs.getObject(colIndex), defaultValue);
     }
-
 
     if (rs.wasNull() || value == null) {
       value = defaultValue;

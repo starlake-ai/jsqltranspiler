@@ -168,9 +168,9 @@ FROM example;
 
 -- result
 "original_geography","dumped_geographies"
-"POINT (0 0)","[{geom=POINT (0 0), path=[]}]"
-"MULTIPOINT (0 0, 1 1)","[{geom=POINT (0 0), path=[1]}, {geom=POINT (1 1), path=[2]}]"
-"GEOMETRYCOLLECTION (POINT (0 0), LINESTRING (1 2, 2 1))","[{geom=POINT (0 0), path=[1]}, {geom=LINESTRING (1 2, 2 1), path=[2]}]"
+"POINT (0 0)","[{'geom': 'POINT (0 0)', 'path': []}]"
+"MULTIPOINT (0 0, 1 1)","[{'geom': 'POINT (0 0)', 'path': [1]}, {'geom': 'POINT (1 1)', 'path': [2]}]"
+"GEOMETRYCOLLECTION (POINT (0 0), LINESTRING (1 2, 2 1))","[{'geom': 'POINT (0 0)', 'path': [1]}, {'geom': 'LINESTRING (1 2, 2 1)', 'path': [2]}]"
 
 
 -- provided

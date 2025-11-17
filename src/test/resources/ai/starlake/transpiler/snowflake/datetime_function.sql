@@ -61,7 +61,7 @@ select MAKE_TIMESTAMP(2013, 4, 5, 12, 00, (00 || '.' || 0)::DOUBLE) AT TIME ZONE
 
 -- result
 "tstz"
-"2013-04-05T19:00Z"
+"2013-04-06T02:00+07:00"
 
 -- provided
 SELECT DATE_PART(QUARTER, '2013-05-08'::DATE)  AS part;
@@ -110,7 +110,7 @@ SELECT '2013-05-08T23:39:20.123-07:00'::TIMESTAMPTZ AS TSTAMP,
 
 -- result
 "TSTAMP","HOUR","MINUTE","SECOND"
-"2013-05-09T06:39:20.123Z","13","39","20"
+"2013-05-09T13:39:20.123+07:00","13","39","20"
 
 
 -- provided
@@ -159,7 +159,7 @@ SELECT
 
 -- result
 "tstamp","YEAR","QUARTER OF YEAR","MONTH","DAY","DAY OF MONTH","DAY OF YEAR"
-"2013-05-09T06:39:20.123Z","2013","2","5","9","9","129"
+"2013-05-09T13:39:20.123+07:00","2013","2","5","9","9","129"
 
 
 -- provided

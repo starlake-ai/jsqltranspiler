@@ -320,14 +320,15 @@ insert into corn_production (farmer_ID, state, bushels) values
 SELECT state, bushels,
         RANK() OVER (PARTITION BY state ORDER BY bushels DESC) AS rank,
         DENSE_RANK() OVER (PARTITION BY state ORDER BY bushels DESC) AS dense_rank
-    FROM corn_production;
+FROM corn_production
+ORDER BY 1,2;
 
 -- result
 "state","bushels","rank","dense_rank"
-"Iowa","110.0","1","1"
 "Iowa","100.0","2","2"
-"Kansas","130.0","1","1"
+"Iowa","110.0","1","1"
 "Kansas","120.0","2","2"
+"Kansas","130.0","1","1"
 
 
 -- prolog

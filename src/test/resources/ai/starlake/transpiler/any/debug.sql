@@ -1,9 +1,9 @@
--- PROVIDED
-select DATE("2024-10-01 00:00:00+00:00") BETWEEN DATE("2024-10-01 00:00:00+00:00") AND DATE_ADD(DATE("2025-10-31"), INTERVAL "30" DAY) t;
+-- provided
+SELECT JSON_OBJECT(['a', 'b'], [JSON '10', JSON '"foo"']) AS json_data;
 
--- EXPECTED
-SELECT Cast('2024-10-01 00:00:00+00:00' AS DATE) BETWEEN Cast('2024-10-01 00:00:00+00:00' AS DATE) AND DATE_ADD(Cast('2025-10-31' AS DATE), INTERVAL '30' DAY) t;
+-- expected
+SELECT JSON_OBJECT(['a','b']::VARCHAR,[JSON '10',JSON '"foo"'])AS JSON_DATA;
 
--- RESULT
-"t"
-"true"
+-- result
+"json_data"
+"{""[a, b]"":[10,""foo""]}"

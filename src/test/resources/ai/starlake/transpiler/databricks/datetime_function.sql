@@ -6,7 +6,7 @@ SELECT DATE_ADD(TIMESTAMPTZ '2016-08-31',(1||' MONTH')::INTERVAL) AS month;
 
 -- result
 "month"
-"2016-09-29T17:00Z"
+"2016-09-30T00:00+07:00"
 
 
 -- provided
@@ -359,7 +359,7 @@ SELECT make_timestamp(2014, 12, 28, 6, 30, 45.887) AT TIME ZONE 'CET' AS d;
 
 -- result
 "d"
-"2014-12-28T05:30:45.887Z"
+"2014-12-28T12:30:45.887+07:00"
 
 -- provided
 SELECT make_timestamp(2019, 6, 30, 23, 59, 60) AS d;

@@ -449,7 +449,7 @@ SELECT regexp_split_to_array('oneAtwoBthreeC', '[ABC]') AS s;
 
 -- result
 "s"
-"[one, two, three, ]"
+"[one, two, three, '']"
 
 
 -- provided

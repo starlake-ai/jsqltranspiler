@@ -406,8 +406,8 @@ SELECT JSON_VALUE_ARRAY('{"a": [{"b": "foo", "c": 1}, {"b": "bar", "c": 2}], "d"
 SELECT IF(JSON_VALID('{"a":[{"b":"foo","c":1},{"b":"bar","c":2}],"d":"baz"}'),JSON_EXTRACT_STRING('{"a":[{"b":"foo","c":1},{"b":"bar","c":2}],"d":"baz"}','$.a[*]'),[])AS RESULT;
 
 --result
-"RESULT"
-"[{""b"":""foo"",""c"":1}, {""b"":""bar"",""c"":2}]"
+"result"
+"['{""b"":""foo"",""c"":1}', '{""b"":""bar"",""c"":2}']"
 
 
 --provided
@@ -830,7 +830,7 @@ SELECT JSON_EXTRACT_STRING('{"a":[{"b":"foo","c":1},{"b":"bar","c":2}],"d":"baz"
 
 --result
 "result"
-"[{""b"":""foo"",""c"":1}, {""b"":""bar"",""c"":2}]"
+"['{""b"":""foo"",""c"":1}', '{""b"":""bar"",""c"":2}']"
 
 
 --provided

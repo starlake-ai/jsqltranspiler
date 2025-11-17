@@ -62,6 +62,6 @@ SELECT AS STRUCT 1 a, 2 b;
 SELECT {a:1, b:2} AS value_table;
 
 -- result
-"value_table"
-"{a=1, b=2}"
+"VALUE_TABLE"
+"{'a': 1, 'b': 2}"
 

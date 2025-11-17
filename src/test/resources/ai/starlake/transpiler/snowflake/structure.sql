@@ -19,6 +19,6 @@ SELECT { 'a' : 1, 'b' : 'BBBB', 'c' : NULL} o;
 
 -- result
 "o"
-"{a=1, b=BBBB, c=null}"
+"{'a': 1, 'b': BBBB, 'c': NULL}"
 
 

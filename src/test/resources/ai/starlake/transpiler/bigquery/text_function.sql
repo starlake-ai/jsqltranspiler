@@ -479,7 +479,7 @@ FROM code_markdown;
 
 -- result
 "example"
-"[`function(x)`, `function(y)`]"
+"['`function(x)`', '`function(y)`']"
 
 
 -- provided
@@ -714,7 +714,7 @@ FROM letters;
 
 -- result
 "example"
-"[]"
+"['']"
 "[a]"
 "[b, c, d]"
 
