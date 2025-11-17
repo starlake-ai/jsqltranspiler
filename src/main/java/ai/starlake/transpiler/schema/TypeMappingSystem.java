@@ -126,11 +126,8 @@ public class TypeMappingSystem {
     putReverseCaseInsensitive("DATE", "date");
     putReverseCaseInsensitive("HUGEINT", "long");
 
-    // DuckDB reverse mappings (similar to H2 but some differences)
-    DUCKDB_DDL_TO_TYPE.putAll(H2_DDL_TO_TYPE);
-
     // PostgreSQL reverse mappings
-    putPostgresReverseCaseInsensitive("varchar(8000)", "string");
+    putPostgresReverseCaseInsensitive("VARCHAR(8000)", "string");
     putPostgresReverseCaseInsensitive("VARCHAR", "string");
     putPostgresReverseCaseInsensitive("JSONB", "variant");
     putPostgresReverseCaseInsensitive("INT", "integer");
