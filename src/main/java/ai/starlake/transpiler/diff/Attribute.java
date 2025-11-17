@@ -75,6 +75,13 @@ public class Attribute {
     this.status = status;
   }
 
+  // Should not be called. Required by Jackson serialization/deserialization
+  public Attribute() {
+    this.name = null;
+    this.type = null;
+    this.isArray = false;
+  }
+
   public String getName() {
     return name;
   }
