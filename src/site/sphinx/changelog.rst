@@ -4,10 +4,117 @@ Changelog
 ************************
 
 
-Latest Changes since |JSQLTRANSPILER_VERSION|
+Version 1.4
 =============================================================
 
 
+  * **feat: DuckDB 1.4.2 compatibility**
+    
+    Andreas Reichel, 2025-11-17
+  * **test: increase timeout**
+    
+    Andreas Reichel, 2025-11-16
+  * **test: increase timeout**
+    
+    Andreas Reichel, 2025-11-16
+  * **test: increase timeout**
+    
+    Andreas Reichel, 2025-11-16
+  * **test: add a difficult BigQuery test w/ formatting**
+    
+    Andreas Reichel, 2025-11-16
+  * **fix: Column resolution around `DateUnits` like `MONTH` (which are not columns and thus can't get resolved)**
+    
+    Andreas Reichel, 2025-11-16
+  * **fix: properly resolve `WithItem` in `OperationSets`**
+    
+    Andreas Reichel, 2025-11-02
+  * **fix: gradle dependencies**
+    
+    Andreas Reichel, 2025-10-22
+  * **fix: gradle dependencies**
+    
+    Andreas Reichel, 2025-10-22
+  * **fix: gradle dependencies**
+    
+    Andreas Reichel, 2025-10-22
+  * **fix: gradle dependencies**
+    
+    Andreas Reichel, 2025-10-22
+  * **fix: gradle dependencies**
+    
+    Andreas Reichel, 2025-10-22
+  * **fix: gradle dependencies**
+    
+    Andreas Reichel, 2025-10-22
+  * **feat: record all exceptions into a list**
+    
+    Andreas Reichel, 2025-10-22
+  * **doc: add Json example for revers dependencies**
+    
+    Andreas Reichel, 2025-10-22
+  * **fix: re-use the statement instead creating a statement for each command**
+    
+    Andreas Reichel, 2025-10-22
+  * **build: write Scala `BuildInfo.scala` file**
+    
+    Andreas Reichel, 2025-10-22
+  * **zero columns table fails on DuckDB**
+    
+    Hayssam Saleh, 2025-10-19
+  * **Handle statement failure (#131)**
+    
+    manticore-projects, 2025-10-16
+  * **Previously if the first statement fails all subsequent statements will fail because the statement is already closed.**
+    
+    Hayssam Saleh, 2025-10-16
+
+Version 1.2
+=============================================================
+
+
+  * **fix: improve the attribute status handling**
+    
+    Andreas Reichel, 2025-10-14
+  * **fix: `JSON_OBJECT` after recent changes in JSQLParser**
+    
+    Andreas Reichel, 2025-10-13
+  * **test: Boun's `STRUCT` and `ARRAY` Schema Diff tests**
+    
+    Andreas Reichel, 2025-10-13
+  * **style: fix the license**
+    
+    Andreas Reichel, 2025-10-13
+  * **fix: don't parse the DDL w/ STRUCT**
+    
+    Andreas Reichel, 2025-10-13
+  * **test: data type map based test correction**
+    
+    Andreas Reichel, 2025-10-12
+  * **Map DuckDB HUGEINT to Spark long type (#128)**
+    
+    manticore-projects, 2025-10-12
+  * **Map DuckDB HUGEINT to Spark long type**
+    
+    Hayssam Saleh, 2025-10-12
+  * **feat: normalised backtick quotes**
+    
+    Andreas Reichel, 2025-10-09
+  * **Fix link in readme**
+    
+    Hayssam Saleh, 2025-10-03
+  * **feat: read column information from INFORMATION_SCHEMA**
+    
+    Andreas Reichel, 2025-10-03
+  * **style: apply license**
+    
+    Andreas Reichel, 2025-09-15
+  * **feat: drop synonyms**
+    
+    Andreas Reichel, 2025-09-15
+  * **feat: Support dropping tables from meta data**
+    
+    Andreas Reichel, 2025-09-15
   * **test: add more tests to `STRUCT` and `ARRAY` (currently disabled)**
     
     Andreas Reichel, 2025-09-09

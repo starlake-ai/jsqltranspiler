@@ -477,19 +477,6 @@ public final class JdbcMetaData implements DatabaseMetaData {
     DatabaseMetaData metaData = conn.getMetaData();
     this.databaseType = JdbcUtils.DatabaseSpecific.getType(metaData.getDatabaseProductName());
 
-    try (Statement statement = conn.createStatement();
-        ResultSet rs = statement.executeQuery(this.databaseType.getCurrentSchemaQuery())) {
-      if (rs.next()) {
-        currentCatalogName = JdbcUtils.getStringSafe(rs, 1, "");
-        currentSchemaName = JdbcUtils.getStringSafe(rs, 2, "");
-      } else {
-        throw new SQLException();
-      }
-    } catch (SQLException ex) {
-      currentCatalogName = "";
-      currentSchemaName = "";
-    }
-
     String catalogName = t.getUnquotedCatalogName();
     if (catalogName == null || catalogName.isEmpty()) {
       catalogName = currentCatalogName;

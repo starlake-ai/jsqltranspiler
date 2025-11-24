@@ -12,10 +12,27 @@
 
 
 #######################################################################
-API 1.1-SNAPSHOT
+API 1.4
 #######################################################################
 
 Base Package: ai.starlake.jsqltranspiler
+
+
+..  _ai.starlake.jsqltranspiler:
+***********************************************************************
+Base
+***********************************************************************
+
+..  _ai.starlake.jsqltranspiler.BuildInfo:
+
+=======================================================================
+BuildInfo
+=======================================================================
+
+*extends:* :ref:`Object<java.lang.Object>` 
+
+| **BuildInfo** ()
+
 
 
 ..  _ai.starlake.transpiler:
@@ -1459,6 +1476,14 @@ JSQLResolver
 
 
 
+| *@Override*
+| **visit** (setOperationList, context) → :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
+|          :ref:`SetOperationList<net.sf.jsqlparser.statement.select.SetOperationList>` setOperationList
+|          S context
+|          returns :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>`
+
+
+
 | **getWhereColumns** () → :ref:`JdbcColumn><java.util.List<ai.starlake.transpiler.schema.JdbcColumn>>`
 |          returns :ref:`JdbcColumn><java.util.List<ai.starlake.transpiler.schema.JdbcColumn>>`
 
@@ -1571,6 +1596,11 @@ JSQLSchemaDiff
 
 *extends:* :ref:`Object<java.lang.Object>` 
 
+| **JSQLSchemaDiff** (schemas, exceptions)
+|          :ref:`DBSchema><java.util.Collection<ai.starlake.transpiler.diff.DBSchema>>` schemas
+|          :ref:`Exception><java.util.List<java.lang.Exception>>` exceptions
+
+
 | **JSQLSchemaDiff** (schemas)
 |          :ref:`DBSchema><java.util.Collection<ai.starlake.transpiler.diff.DBSchema>>` schemas
 
@@ -1618,6 +1648,11 @@ JSQLSchemaDiff
 |          :ref:`String<java.lang.String>` sqlStr
 |          int columIndex
 |          returns :ref:`String<java.lang.String>`
+
+
+
+| **getExceptions** () → :ref:`Exception><java.util.List<java.lang.Exception>>`
+|          returns :ref:`Exception><java.util.List<java.lang.Exception>>`
 
 
 
@@ -2612,6 +2647,12 @@ JdbcCatalog
 | **JdbcCatalog** ()
 
 
+| **getCatalogsFromInformationSchema** (conn) → :ref:`JdbcCatalog><java.util.Collection<ai.starlake.transpiler.schema.JdbcCatalog>>`
+|          :ref:`Connection<java.sql.Connection>` conn
+|          returns :ref:`JdbcCatalog><java.util.Collection<ai.starlake.transpiler.schema.JdbcCatalog>>`
+
+
+
 | **getCatalogs** (metaData) → :ref:`JdbcCatalog><java.util.Collection<ai.starlake.transpiler.schema.JdbcCatalog>>`
 |          :ref:`DatabaseMetaData<java.sql.DatabaseMetaData>` metaData
 |          returns :ref:`JdbcCatalog><java.util.Collection<ai.starlake.transpiler.schema.JdbcCatalog>>`
@@ -3202,6 +3243,10 @@ JdbcMetaData
 
 | **updateTable** (conn, t)
 |          :ref:`Connection<java.sql.Connection>` conn
+|          :ref:`Table<net.sf.jsqlparser.schema.Table>` t
+
+
+| **dropTable** (t)
 |          :ref:`Table<net.sf.jsqlparser.schema.Table>` t
 
 
@@ -4799,6 +4844,11 @@ JdbcMetaData
 |          :ref:`String<java.lang.String>` toTableName
 
 
+| **dropSynonym** (fromTableName, toTableName)
+|          :ref:`String<java.lang.String>` fromTableName
+|          :ref:`String<java.lang.String>` toTableName
+
+
 
 ..  _ai.starlake.transpiler.schema.JdbcPrimaryKey:
 
@@ -5093,6 +5143,12 @@ JdbcSchema
 | **JdbcSchema** ()
 
 
+| **getSchemasFromInformationSchema** (conn) → :ref:`JdbcSchema><java.util.Collection<ai.starlake.transpiler.schema.JdbcSchema>>`
+|          :ref:`Connection<java.sql.Connection>` conn
+|          returns :ref:`JdbcSchema><java.util.Collection<ai.starlake.transpiler.schema.JdbcSchema>>`
+
+
+
 | **getSchemas** (metaData) → :ref:`JdbcSchema><java.util.Collection<ai.starlake.transpiler.schema.JdbcSchema>>`
 |          :ref:`DatabaseMetaData<java.sql.DatabaseMetaData>` metaData
 |          returns :ref:`JdbcSchema><java.util.Collection<ai.starlake.transpiler.schema.JdbcSchema>>`
@@ -5329,6 +5385,15 @@ JdbcTable
 
 
 
+| **getTablesFromInformationSchema** (metaData, currentCatalog, currentSchema, tableNamePattern) → :ref:`JdbcTable><java.util.ArrayList<ai.starlake.transpiler.schema.JdbcTable>>`
+|          :ref:`DatabaseMetaData<java.sql.DatabaseMetaData>` metaData
+|          :ref:`String<java.lang.String>` currentCatalog
+|          :ref:`String<java.lang.String>` currentSchema
+|          :ref:`String<java.lang.String>` tableNamePattern
+|          returns :ref:`JdbcTable><java.util.ArrayList<ai.starlake.transpiler.schema.JdbcTable>>`
+
+
+
 | **getTables** (metaData, currentCatalog, currentSchema, tableNamePattern) → :ref:`JdbcTable><java.util.Collection<ai.starlake.transpiler.schema.JdbcTable>>`
 |          :ref:`DatabaseMetaData<java.sql.DatabaseMetaData>` metaData
 |          :ref:`String<java.lang.String>` currentCatalog
@@ -5338,8 +5403,40 @@ JdbcTable
 
 
 
-| **getColumns** (metaData)
+| **getColumns** (metaData) → :ref:`JdbcColumn><java.util.Collection<ai.starlake.transpiler.schema.JdbcColumn>>`
 |          :ref:`DatabaseMetaData<java.sql.DatabaseMetaData>` metaData
+|          returns :ref:`JdbcColumn><java.util.Collection<ai.starlake.transpiler.schema.JdbcColumn>>`
+
+
+
+| **getColumnsFromSchemaInformation** (connection, catalog, schemaPattern, tableNamePattern) → :ref:`JdbcColumn><java.util.Collection<ai.starlake.transpiler.schema.JdbcColumn>>`
+|          :ref:`Connection<java.sql.Connection>` connection
+|          :ref:`String<java.lang.String>` catalog
+|          :ref:`String<java.lang.String>` schemaPattern
+|          :ref:`String<java.lang.String>` tableNamePattern
+|          returns :ref:`JdbcColumn><java.util.Collection<ai.starlake.transpiler.schema.JdbcColumn>>`
+
+
+
+
+                |          :ref:`String<java.lang.String>` snowflakeType
+
+                |          returns :ref:`Integer<java.lang.Integer>`
+
+
+            
+                |          int jdbcType
+
+                |          returns boolean
+
+
+            | **getColumns** (metaData, catalog, schemaPattern, tableNamePattern) → :ref:`JdbcColumn><java.util.Collection<ai.starlake.transpiler.schema.JdbcColumn>>`
+|          :ref:`DatabaseMetaData<java.sql.DatabaseMetaData>` metaData
+|          :ref:`String<java.lang.String>` catalog
+|          :ref:`String<java.lang.String>` schemaPattern
+|          :ref:`String<java.lang.String>` tableNamePattern
+|          returns :ref:`JdbcColumn><java.util.Collection<ai.starlake.transpiler.schema.JdbcColumn>>`
+
 
 
 | **getIndices** (metaData, approximate)
@@ -5796,16 +5893,15 @@ TypeMappingSystem
 
 
 
-
-                Maps DDL type name back to our type system
-                |          :ref:`String<java.lang.String>` ddlTypeName
-
-                |          :ref:`String<java.lang.String>` database
-
-                |          returns :ref:`String<java.lang.String>`
+| **mapDDLToTypeName** (ddlTypeName, database) → :ref:`String<java.lang.String>`
+| Maps DDL type name back to our type system
+|          :ref:`String<java.lang.String>` ddlTypeName
+|          :ref:`String<java.lang.String>` database
+|          returns :ref:`String<java.lang.String>`
 
 
-            | **generateColumnDefinition** (column, database) → :ref:`String<java.lang.String>`
+
+| **generateColumnDefinition** (column, database) → :ref:`String<java.lang.String>`
 | Enhanced column definition generator using the type mapping system
 |          :ref:`JdbcColumn<ai.starlake.transpiler.schema.JdbcColumn>` column
 |          :ref:`String<java.lang.String>` database
