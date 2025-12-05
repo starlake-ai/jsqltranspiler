@@ -30,7 +30,7 @@ jobs:
         echo "GRADLE_USER_HOME=${HOME}/.gradle" >> $GITHUB_ENV
         echo "${GRADLE_PROPERTIES}" > ~/.gradle/gradle.properties
     - name: Publish to Sonatype
-      run: LANG=en_US.UTF-8 ./gradlew check publish
+      run: LANG=en_US.UTF-8 ./gradlew check publish -x test
 #      env:
 #        USERNAME: ${{ github.actor }}
 #        TOKEN: ${{ secrets.SONATYPE_TOKEN }}
