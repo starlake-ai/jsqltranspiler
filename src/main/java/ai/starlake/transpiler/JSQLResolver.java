@@ -56,6 +56,7 @@ import net.sf.jsqlparser.statement.alter.sequence.AlterSequence;
 import net.sf.jsqlparser.statement.analyze.Analyze;
 import net.sf.jsqlparser.statement.comment.Comment;
 import net.sf.jsqlparser.statement.create.index.CreateIndex;
+import net.sf.jsqlparser.statement.create.policy.CreatePolicy;
 import net.sf.jsqlparser.statement.create.schema.CreateSchema;
 import net.sf.jsqlparser.statement.create.sequence.CreateSequence;
 import net.sf.jsqlparser.statement.create.synonym.CreateSynonym;
@@ -809,28 +810,7 @@ public class JSQLResolver extends JSQLColumResolver {
       JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
 
 
-      {
-        Table t = update.getTable();
-        Alias alias = t.getAlias();
-
-        Table fullyQualifiedTable = new Table(t.getFullyQualifiedName()).setUnsetCatalogAndSchema(
-            metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName());
-
-        JdbcTable jdbcTable = metaData.getTable(fullyQualifiedTable);
-        if (jdbcTable != null) {
-          if (!jdbcTable.tableType.equals("VIRTUAL TABLE")) {
-            t.setResolvedTable(fullyQualifiedTable.withAlias(alias));
-          }
-        } else {
-          throw new TableNotFoundException(t.getFullyQualifiedName(), List.of());
-        }
-
-        if (alias != null) {
-          metaData.getFromTables().put(alias.getName(), t);
-        } else {
-          metaData.getFromTables().put(t.getName(), t);
-        }
-      }
+      updateMetaData(update.getTable());
 
       FromItem fromItem = update.getFromItem();
       List<Join> joins = update.getJoins();
@@ -1169,28 +1149,7 @@ public class JSQLResolver extends JSQLColumResolver {
         }
       }
 
-      {
-        Table t = merge.getTable();
-        Alias alias = t.getAlias();
-
-        Table fullyQualifiedTable = new Table(t.getFullyQualifiedName()).setUnsetCatalogAndSchema(
-            metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName());
-
-        JdbcTable jdbcTable = metaData.getTable(fullyQualifiedTable);
-        if (jdbcTable != null) {
-          if (!jdbcTable.tableType.equals("VIRTUAL TABLE")) {
-            t.setResolvedTable(fullyQualifiedTable.withAlias(alias));
-          }
-        } else {
-          throw new TableNotFoundException(t.getFullyQualifiedName(), List.of());
-        }
-
-        if (alias != null) {
-          metaData.getFromTables().put(alias.getName(), t);
-        } else {
-          metaData.getFromTables().put(t.getName(), t);
-        }
-      }
+      updateMetaData(merge.getTable());
 
       FromItem fromItem = merge.getFromItem();
       if (fromItem instanceof Table) {
@@ -1314,6 +1273,29 @@ public class JSQLResolver extends JSQLColumResolver {
       }
 
       return resultSetMetaData;
+    }
+
+    private void updateMetaData(Table table) {
+      Table t = table;
+      Alias alias = t.getAlias();
+
+      Table fullyQualifiedTable = new Table(t.getFullyQualifiedName()).setUnsetCatalogAndSchema(
+          metaData.getCurrentCatalogName(), metaData.getCurrentSchemaName());
+
+      JdbcTable jdbcTable = metaData.getTable(fullyQualifiedTable);
+      if (jdbcTable != null) {
+        if (!jdbcTable.tableType.equals("VIRTUAL TABLE")) {
+          t.setResolvedTable(fullyQualifiedTable.withAlias(alias));
+        }
+      } else {
+        throw new TableNotFoundException(t.getFullyQualifiedName(), List.of());
+      }
+
+      if (alias != null) {
+        metaData.getFromTables().put(alias.getName(), t);
+      } else {
+        metaData.getFromTables().put(t.getName(), t);
+      }
     }
 
     @Override
@@ -1460,6 +1442,11 @@ public class JSQLResolver extends JSQLColumResolver {
 
     @Override
     public <S> JdbcResultSetMetaData visit(LockStatement lock, S context) {
+      return null;
+    }
+
+    @Override
+    public <S> JdbcResultSetMetaData visit(CreatePolicy policy, S context) {
       return null;
     }
   }
