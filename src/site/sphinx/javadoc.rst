@@ -12,7 +12,7 @@
 
 
 #######################################################################
-API 1.4
+API 1.5.7-SNAPSHOT
 #######################################################################
 
 Base Package: ai.starlake.jsqltranspiler
@@ -2241,6 +2241,9 @@ Attribute
 |          :ref:`String<java.lang.String>` name
 |          :ref:`Class<?><java.lang.Class<?>>` type
 |          :ref:`AttributeStatus<ai.starlake.transpiler.diff.AttributeStatus>` status
+
+
+| **Attribute** ()
 
 
 | **isNestedField** () → boolean
