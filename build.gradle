@@ -48,7 +48,7 @@ dependencies {
 
     implementation 'com.h2database:h2:+'
 
-    testImplementation 'org.duckdb:duckdb_jdbc:1.4.2.0'
+    testImplementation 'org.duckdb:duckdb_jdbc:1.4.3.0'
     testImplementation 'net.snowflake:snowflake-jdbc:+'
 
     testImplementation 'org.apache.commons:commons-compress:+'
