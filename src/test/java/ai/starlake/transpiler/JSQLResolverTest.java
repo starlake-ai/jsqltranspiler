@@ -584,4 +584,185 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     resolver.resolve(sqlStr);
 
   }
+
+  // ========== Set Operations Column Resolution Tests ==========
+  // These tests verify that JSQLResolver correctly validates columns/tables in all parts
+  // of set operations (UNION, INTERSECT, EXCEPT, MINUS).
+  // NOTE: JSQLResolver.resolve() DOES correctly validate these - it throws exceptions.
+  // However, JSQLColumResolver.getResultSetMetaData() does NOT validate the second query
+  // in set operations - this is a separate issue.
+
+  @Test
+  void testGuardFailingOnUnionWrongColumn() {
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
+    //@formatter:on
+
+    // Second SELECT has wrong column "wrongCol" which doesn't exist in fooFact
+    // Expected: Should throw ColumnNotFoundException
+    // Actual: Query passes through without error, wrongCol is not validated
+    String sqlStr = "SELECT foo.id FROM foo UNION SELECT fooFact.wrongCol FROM fooFact";
+
+    Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+      guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
+    }).withCauseInstanceOf(ColumnNotFoundException.class);
+  }
+
+  @Test
+  void testGuardFailingOnUnionWrongTable() {
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
+    //@formatter:on
+
+    // Second SELECT references "wrongTable" which doesn't exist in schema
+    // Expected: Should throw TableNotFoundException
+    // Actual: Query passes through without error, wrongTable is not validated
+    String sqlStr = "SELECT foo.id FROM foo UNION SELECT wrongTable.id FROM wrongTable";
+
+    Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+      guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
+    }).withCauseInstanceOf(TableNotFoundException.class);
+  }
+
+  @Test
+  void testGuardFailingOnUnionAllWrongColumn() {
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
+    //@formatter:on
+
+    String sqlStr = "SELECT foo.id FROM foo UNION ALL SELECT fooFact.wrongCol FROM fooFact";
+
+    Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+      guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
+    }).withCauseInstanceOf(ColumnNotFoundException.class);
+  }
+
+  @Test
+  void testGuardFailingOnIntersectWrongColumn() {
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
+    //@formatter:on
+
+    String sqlStr = "SELECT foo.id FROM foo INTERSECT SELECT fooFact.wrongCol FROM fooFact";
+
+    Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+      guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
+    }).withCauseInstanceOf(ColumnNotFoundException.class);
+  }
+
+  @Test
+  void testGuardFailingOnExceptWrongColumn() {
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
+    //@formatter:on
+
+    String sqlStr = "SELECT foo.id FROM foo EXCEPT SELECT fooFact.wrongCol FROM fooFact";
+
+    Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+      guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
+    }).withCauseInstanceOf(ColumnNotFoundException.class);
+  }
+
+  @Test
+  void testGuardFailingOnMinusWrongColumn() {
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
+    //@formatter:on
+
+    String sqlStr = "SELECT foo.id FROM foo MINUS SELECT fooFact.wrongCol FROM fooFact";
+
+    Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+      guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
+    }).withCauseInstanceOf(ColumnNotFoundException.class);
+  }
+
+  @Test
+  void testGuardFailingOnMinusWrongTable() {
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
+    //@formatter:on
+
+    String sqlStr = "SELECT foo.id FROM foo MINUS SELECT wrongTable.id FROM wrongTable";
+
+    Assertions.assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+      guard(sqlStr, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
+    }).withCauseInstanceOf(TableNotFoundException.class);
+  }
+
+  /**
+   * Debug test to show what the guard actually returns for set operations with invalid references.
+   * This test verifies that JSQLResolver correctly rejects all invalid queries.
+   */
+  @Test
+  void debugSetOperationsActualOutput() throws JSQLParserException {
+    //@formatter:off
+    String[][] schemaDefinition = {
+            {"foo", "id", "name"},
+            {"fooFact", "id", "value"}
+    };
+    final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
+    //@formatter:on
+
+    String[] testQueries = {
+        "SELECT foo.id FROM foo UNION SELECT fooFact.wrongCol FROM fooFact",
+        "SELECT foo.id FROM foo UNION SELECT wrongTable.id FROM wrongTable",
+        "SELECT foo.id FROM foo UNION ALL SELECT fooFact.wrongCol FROM fooFact",
+        "SELECT foo.id FROM foo INTERSECT SELECT fooFact.wrongCol FROM fooFact",
+        "SELECT foo.id FROM foo EXCEPT SELECT fooFact.wrongCol FROM fooFact",
+        "SELECT foo.id FROM foo MINUS SELECT fooFact.wrongCol FROM fooFact",
+        "SELECT foo.id FROM foo MINUS SELECT wrongTable.id FROM wrongTable"
+    };
+
+    int rejectedCount = 0;
+    System.out.println("=== Set Operations Guard Output ===\n");
+    for (String sql : testQueries) {
+      System.out.println("Input:  " + sql);
+      try {
+        Statement result = guard(sql, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
+        System.out.println("Output: " + result.toString());
+        System.out.println("Status: PASSED (unexpected - should have been rejected!)\n");
+      } catch (Exception e) {
+        System.out.println("Exception: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+        if (e.getCause() != null) {
+          System.out.println("Cause: " + e.getCause().getClass().getSimpleName() + " - " + e.getCause().getMessage());
+        }
+        System.out.println("Status: CORRECTLY REJECTED\n");
+        rejectedCount++;
+      }
+    }
+    System.out.println("=== END ===");
+
+    // All queries should be rejected
+    Assertions.assertThat(rejectedCount)
+        .as("All %d invalid queries should be rejected by JSQLResolver", testQueries.length)
+        .isEqualTo(testQueries.length);
+  }
 }
