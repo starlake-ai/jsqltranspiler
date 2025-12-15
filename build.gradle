@@ -439,6 +439,9 @@ tasks.withType(Checkstyle).configureEach {
 }
 
 mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+
     coordinates(group, "jsqltranspiler", version)
 
     pom {
