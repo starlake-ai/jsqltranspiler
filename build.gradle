@@ -229,7 +229,7 @@ jar {
             "Created-By": System.properties.get('user.name'),
             "Main-Class": "ai.starlake.transpiler.JSQLTranspiler",
             "Bundle-SymbolicName": "ai.starlake.transpiler",
-            "Import-Package": "*",
+            "Import-Package": "org.duckdb.*;resolution:=optional,org.h2.*;resolution:=optional,org.json.*;resolution:=optional,*",
             "Export-Package": "ai.starlake.transpiler.*",
             "Automatic-Module-Name": "ai.starlake.transpiler"
         )
