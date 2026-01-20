@@ -17,6 +17,7 @@ import ai.starlake.transpiler.schema.JdbcColumn;
 import ai.starlake.transpiler.schema.JdbcMetaData;
 import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import ai.starlake.transpiler.schema.JdbcTable;
+import ai.starlake.transpiler.schema.treebuilder.FlattenedColumnBuilder;
 import ai.starlake.transpiler.schema.treebuilder.TreeBuilder;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Alias;
@@ -54,6 +55,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -294,6 +296,15 @@ public class JSQLColumResolver
     JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr);
     TreeBuilder<T> builder =
         treeBuilderClass.getConstructor(JdbcResultSetMetaData.class).newInstance(resultSetMetaData);
+    return builder.getConvertedTree(this);
+  }
+
+  public Map<String, Set<String>> getLineage(String sqlStr)
+      throws JSQLParserException, SQLException {
+    JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr);
+
+    // Create the flattened dependency tree builder
+    FlattenedColumnBuilder builder = new FlattenedColumnBuilder(resultSetMetaData);
     return builder.getConvertedTree(this);
   }
 
