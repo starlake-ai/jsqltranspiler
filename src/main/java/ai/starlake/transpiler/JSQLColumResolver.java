@@ -302,8 +302,6 @@ public class JSQLColumResolver
   public Map<String, Set<String>> getLineage(String sqlStr)
       throws JSQLParserException, SQLException {
     JdbcResultSetMetaData resultSetMetaData = getResultSetMetaData(sqlStr);
-
-    // Create the flattened dependency tree builder
     FlattenedColumnBuilder builder = new FlattenedColumnBuilder(resultSetMetaData);
     return builder.getConvertedTree(this);
   }
