@@ -56,7 +56,6 @@ def getVersion = { boolean considerSnapshot ->
 
     return "${major}.${minor}" +
             (patch != null ? ".${patch}" : "") +
-            (build != null ? ".${build}" : "") +
             snapshot
 }
 
