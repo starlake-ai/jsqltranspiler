@@ -22,13 +22,58 @@ plugins {
     id 'biz.aQute.bnd.builder' version "latest.release"
 }
 
+def getVersion = { boolean considerSnapshot ->
+    Integer major = 0
+    Integer minor = 0
+    Integer patch = null
+    Integer build = null
+    String commit = null
+    String snapshot = ""
+
+    def versionStr = providers.exec {
+        commandLine "git", "--no-pager", "-C", project.projectDir,  "describe", "--tags", "--always", "--dirty=-SNAPSHOT"
+    }.standardOutput.asText.get().trim()
+
+    def pattern = /(?<major>\d*)\.(?<minor>\d*)(\.(?<patch>\d*))?(-(?<build>\d*)-(?<commit>[a-zA-Z\d]*))?/
+    def matcher = versionStr =~ pattern
+
+    if (matcher.find()) {
+        major = matcher.group('major') as Integer ?: 0
+        minor = matcher.group('minor') as Integer ?: 0
+        patch = matcher.group('patch') as Integer ?: null
+        build = matcher.group('build') as Integer ?: null
+        commit = matcher.group('commit') ?: null
+    }
+
+    if (!considerSnapshot && (versionStr.endsWith('SNAPSHOT') || build != null)) {
+        minor++
+        if (patch != null) patch = 0
+    }
+
+    if (considerSnapshot) {
+        snapshot = "-SNAPSHOT"
+    }
+
+    return "${major}.${minor}" +
+            (patch != null ? ".${patch}" : "") +
+            (build != null ? ".${build}" : "") +
+            snapshot
+}
+
+
+// for publishing a release, call Gradle with Environment Variable RELEASE:
+// RELEASE=true gradle JSQLTranspiler:publish
+version = getVersion( !System.getenv("RELEASE") )
+
 repositories {
     gradlePluginPortal()
     mavenCentral()
 
     // Snapshots
-    maven {
-        url = uri('https://central.sonatype.com/repository/maven-snapshots/')
+    if (version.endsWith('SNAPSHOT')) {
+        maven {
+            url = uri('https://central.sonatype.com/repository/maven-snapshots/')
+        }
     }
 }
 
@@ -84,45 +129,7 @@ configurations.configureEach {
     }
 }
 
-def getVersion = { boolean considerSnapshot ->
-    Integer major = 0
-    Integer minor = 0
-    Integer patch = null
-    Integer build = null
-    String commit = null
-    String snapshot = ""
 
-    def versionStr = providers.exec {
-        commandLine "git", "--no-pager", "-C", project.projectDir,  "describe", "--tags", "--always", "--dirty=-SNAPSHOT"
-    }.standardOutput.asText.get().trim()
-
-    def pattern = /(?<major>\d*)\.(?<minor>\d*)(\.(?<patch>\d*))?(-(?<build>\d*)-(?<commit>[a-zA-Z\d]*))?/
-    def matcher = versionStr =~ pattern
-
-    if (matcher.find()) {
-        major = matcher.group('major') as Integer ?: 0
-        minor = matcher.group('minor') as Integer ?: 0
-        patch = matcher.group('patch') as Integer ?: null
-        build = matcher.group('build') as Integer ?: null
-        commit = matcher.group('commit') ?: null
-    }
-
-    if (considerSnapshot && (versionStr.endsWith('SNAPSHOT') || build != null)) {
-        minor++
-        if (patch != null) patch = 0
-        snapshot = "-SNAPSHOT"
-    }
-
-    return "${major}.${minor}" +
-            (patch != null ? ".${patch}" : "") +
-            (build != null ? ".${build}" : "") +
-            snapshot
-}
-
-
-// for publishing a release, call Gradle with Environment Variable RELEASE:
-// RELEASE=true gradle JSQLTranspiler:publish
-version = getVersion( !System.getenv("RELEASE") )
 group = 'ai.starlake.jsqltranspiler'
 description = 'JSQLTranspiler'
 
