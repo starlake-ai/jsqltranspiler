@@ -4,8 +4,8 @@ set -e
 if [[ "$RELEASE" == "1" ]]; then
   echo "Release mode detected."
 
-  # Ensure the workspace is clean
-  if [[ -n $(git status --porcelain) ]]; then
+  # Ensure the workspace is clean (ignoring untracked files)
+  if [[ -n $(git status --porcelain -uno) ]]; then
     echo "Error: Workspace is not clean. Please commit or stash changes before releasing."
     exit 1
   fi
