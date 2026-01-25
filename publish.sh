@@ -52,3 +52,6 @@ else
   ./gradlew --info clean publish --no-build-cache --refresh-dependencies
   echo "Snapshot published successfully."
 fi
+
+echo "Publishing completed."
+echo "check your release at https://central.sonatype.com/publishing/deployments"
