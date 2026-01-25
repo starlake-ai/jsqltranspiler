@@ -45,7 +45,7 @@ def getVersion = { boolean considerSnapshot ->
         commit = matcher.group('commit') ?: null
     }
 
-    if (!considerSnapshot && (versionStr.endsWith('SNAPSHOT') || build != null)) {
+    if (versionStr.endsWith('SNAPSHOT') || build != null) {
         minor++
         if (patch != null) patch = 0
     }
