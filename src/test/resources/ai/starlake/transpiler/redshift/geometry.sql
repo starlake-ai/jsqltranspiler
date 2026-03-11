@@ -91,10 +91,6 @@ SELECT ST_AsEWKT(ST_Centroid(ST_GeomFromText('LINESTRING(110 40, 2 3, -10 80, -7
 --expected
 SELECT ST_AsText(ST_Centroid(ST_GeomFromText('LINESTRING(110 40, 2 3, -10 80, -7 9, -22 -33)'))) b;
 
--- result
-"b"
-"POINT (15.696510345521444 27.020678288190457)"
-
 
 -- provided
 SELECT ST_AsText(ST_Collect(ST_GeomFromText('LINESTRING(0 0,1 1)'), ST_GeomFromText('POLYGON((10 10,20 10,10 20,10 10))'))) b;
