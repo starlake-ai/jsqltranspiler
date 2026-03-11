@@ -24,7 +24,7 @@ SELECT Cast(JSON '9.8' AS Double) AS velocity;
 SELECT FLOAT64(JSON_QUERY(JSON '{"vo2_max": 39.1, "age": 18}', "$.vo2_max")) AS vo2_max;
 
 -- expected
-SELECT Cast(JSon_Extract(JSON '{"vo2_max": 39.1, "age": 18}', '$.vo2_max') AS Double) AS vo2_max;
+SELECT Cast(JSON_EXTRACT(JSON '{"vo2_max": 39.1, "age": 18}', '$.vo2_max') AS Double) AS vo2_max;
 
 -- result
 "vo2_max"
@@ -46,7 +46,7 @@ SELECT Cast(JSON '2005' AS HugeInt) AS flight_number;
 SELECT INT64(JSON_QUERY(JSON '{"gate": "A4", "flight_number": 2005}', "$.flight_number")) AS flight_number;
 
 -- expected
-SELECT Cast(JSon_Extract(JSON '{"gate": "A4", "flight_number": 2005}', '$.flight_number') AS HugeInt) AS flight_number;
+SELECT Cast(JSON_EXTRACT(JSON '{"gate": "A4", "flight_number": 2005}', '$.flight_number') AS HugeInt) AS flight_number;
 
 -- result
 "flight_number"
@@ -140,12 +140,7 @@ SELECT CASE
 SELECT JSON_VALUE(JSON '{"name": "Jakob", "age": "6" }', '$.age') AS scalar_age;
 
 -- expected
-SELECT CASE
-        WHEN Json_Type( Json_Extract( JSON '{"name":"Jakob","age":"6"}', '$.age' ) ) IN (   'VARCHAR', 'DOUBLE', 'BOOLEAN'
-                                                                                            , 'UBIGINT', 'BIGINT' )
-            THEN Json_Extract_String( JSON '{"name":"Jakob","age":"6"}', '$.age' )
-        ELSE Json_Value( JSON '{"name":"Jakob","age":"6"}', '$.age' )
-        END AS scalar_age
+SELECT JSON_EXTRACT_STRING( JSON '{"name":"Jakob","age":"6"}', '$.age' ) AS scalar_age
 ;
 
 -- result
@@ -160,20 +155,10 @@ SELECT JSON_QUERY('{"name": "Jakob", "age": "6"}', '$.name') AS json_name,
   JSON_VALUE('{"name": "Jakob", "age": "6"}', '$.age') AS scalar_age;
 
 -- expected
-SELECT  Json_Extract( '{"name":"Jakob","age":"6"}', '$.name' ) AS json_name
-        , CASE
-            WHEN Json_Type( Json_Extract( '{"name":"Jakob","age":"6"}', '$.name' ) ) IN (   'VARCHAR', 'DOUBLE', 'BOOLEAN'
-                                                                                            , 'UBIGINT', 'BIGINT' )
-                THEN Json_Extract_String( '{"name":"Jakob","age":"6"}', '$.name' )
-            ELSE Json_Value( '{"name":"Jakob","age":"6"}', '$.name' )
-            END AS scalar_name
-        , Json_Extract( '{"name":"Jakob","age":"6"}', '$.age' ) AS json_age
-        , CASE
-            WHEN Json_Type( Json_Extract( '{"name":"Jakob","age":"6"}', '$.age' ) ) IN (    'VARCHAR', 'DOUBLE', 'BOOLEAN'
-                                                                                            , 'UBIGINT', 'BIGINT' )
-                THEN Json_Extract_String( '{"name":"Jakob","age":"6"}', '$.age' )
-            ELSE Json_Value( '{"name":"Jakob","age":"6"}', '$.age' )
-            END AS scalar_age
+SELECT  JSON_EXTRACT( '{"name":"Jakob","age":"6"}', '$.name' ) AS json_name
+        , JSON_EXTRACT_STRING( '{"name":"Jakob","age":"6"}', '$.name' ) AS scalar_name
+        , JSON_EXTRACT( '{"name":"Jakob","age":"6"}', '$.age' ) AS json_age
+        , JSON_EXTRACT_STRING( '{"name":"Jakob","age":"6"}', '$.age' ) AS scalar_age
 ;
 
 -- result

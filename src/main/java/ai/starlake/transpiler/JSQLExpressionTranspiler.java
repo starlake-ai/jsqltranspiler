@@ -2511,6 +2511,46 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
         builder.append(") ");
         break;
 
+      case VALUE:
+        // JSON_VALUE → JSON_EXTRACT_STRING for DuckDB (strips JSON quoting)
+        builder.append("JSON_EXTRACT_STRING(");
+        if (jsonFunction.getInputExpression() != null) {
+          jsonFunction.getInputExpression().getExpression().accept(this, context);
+        }
+        builder.append(", ");
+        if (jsonFunction.getJsonPathExpression() != null) {
+          Expression pathExpr = jsonFunction.getJsonPathExpression();
+          if (pathExpr instanceof StringValue) {
+            String jsonPath = ((StringValue) pathExpr).getValue();
+            jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+            jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"]", "\"$1\"");
+            new StringValue(jsonPath).accept(this, context);
+          } else {
+            pathExpr.accept(this, context);
+          }
+        }
+        builder.append(")");
+        break;
+      case QUERY:
+        // JSON_QUERY → JSON_EXTRACT for DuckDB
+        builder.append("JSON_EXTRACT(");
+        if (jsonFunction.getInputExpression() != null) {
+          jsonFunction.getInputExpression().getExpression().accept(this, context);
+        }
+        builder.append(", ");
+        if (jsonFunction.getJsonPathExpression() != null) {
+          Expression pathExpr = jsonFunction.getJsonPathExpression();
+          if (pathExpr instanceof StringValue) {
+            String jsonPath = ((StringValue) pathExpr).getValue();
+            jsonPath = jsonPath.replaceAll("\\$\\[([^]]+)]", "\\$.$1");
+            jsonPath = jsonPath.replaceAll("\\[\"(.*?)\"]", "\"$1\"");
+            new StringValue(jsonPath).accept(this, context);
+          } else {
+            pathExpr.accept(this, context);
+          }
+        }
+        builder.append(")");
+        break;
       default:
         jsonFunction.appendTo(builder);
     }

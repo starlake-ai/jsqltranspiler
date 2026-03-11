@@ -8,7 +8,7 @@ SELECT DATE_TRUNC('MONTH', DATE '2008-12-25') AS month
 
 -- result
 "month"
-"2008-12-01"
+"2008-12-01 00:00:00.0"
 
 
 -- provided
@@ -26,7 +26,7 @@ FROM (  SELECT  cast( '2017-11-05' AS DATE ) AS date  )
 
 -- result
 "original","truncated"
-"2017-11-05","2017-10-30"
+"2017-11-05","2017-10-30 00:00:00.0"
 
 
 -- provided
@@ -41,7 +41,7 @@ SELECT
 
 -- result
 "original","truncated"
-"2008-12-25 15:30:00.0","2008-12-25"
+"2008-12-25 15:30:00.0","2008-12-25 00:00:00.0"
 
 
 -- provided

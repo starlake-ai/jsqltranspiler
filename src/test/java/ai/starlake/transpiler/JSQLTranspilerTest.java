@@ -285,6 +285,10 @@ public class JSQLTranspilerTest {
     info.put("default_null_order", "NULLS FIRST");
     info.put("default_order", "ASC");
     info.put("memory_limit", "250M");
+    // DuckDB 1.5+ JDBC driver uses JVM timezone for TIMESTAMPTZ formatting
+    // instead of the DuckDB session timezone. Set JVM timezone to match.
+    TimeZone.setDefault(TimeZone.getTimeZone("Asia/Bangkok"));
+
     connDuck = DriverManager.getConnection("jdbc:duckdb:" + fileDuckDB.getAbsolutePath(), info);
 
     if (!isInitialised) {
@@ -419,12 +423,42 @@ public class JSQLTranspilerTest {
 
           // @todo: find a better way to map the file names to the actual table names
           String tableName = FilenameUtils.getBaseName(url1.getFile());
-          String copyCommand = "COPY " + tableName + " FROM '" + outputFile.getAbsolutePath()
-              + "' (FORMAT CSV, AUTO_DETECT true, TIMESTAMPFORMAT '%m/%d/%Y %I:%M:%S', IGNORE_ERRORS true);";
+
+          // Find GEOMETRY columns in the target table
+          List<String> geomCols = new ArrayList<>();
+          try (Statement st = connDuck.createStatement();
+              ResultSet cols = st.executeQuery(
+                  "SELECT column_name FROM information_schema.columns WHERE table_name = '"
+                      + tableName + "' AND data_type = 'GEOMETRY'")) {
+            while (cols.next()) {
+              geomCols.add(cols.getString(1));
+            }
+          }
 
           try (Statement st = connDuck.createStatement()) {
-            LOGGER.fine("execute: " + copyCommand);
-            st.execute(copyCommand);
+            if (geomCols.isEmpty()) {
+              String copyCommand =
+                  "COPY " + tableName + " FROM '" + outputFile.getAbsolutePath()
+                      + "' (FORMAT CSV, AUTO_DETECT true, TIMESTAMPFORMAT '%m/%d/%Y %I:%M:%S', IGNORE_ERRORS true);";
+              LOGGER.fine("execute: " + copyCommand);
+              st.execute(copyCommand);
+            } else {
+              // DuckDB 1.5+ built-in GEOMETRY type does not support implicit
+              // VARCHAR-to-GEOMETRY cast from hex WKB/EWKB strings during COPY.
+              // Read geometry columns as VARCHAR and convert via ST_GeomFromHEXEWKB.
+              String types = geomCols.stream()
+                  .map(c -> "'" + c + "': 'VARCHAR'")
+                  .collect(Collectors.joining(", "));
+              String replace = geomCols.stream()
+                  .map(c -> "ST_GeomFromHEXEWKB(\"" + c + "\") AS \"" + c + "\"")
+                  .collect(Collectors.joining(", "));
+              String insertCommand =
+                  "INSERT INTO " + tableName + " BY NAME SELECT * REPLACE (" + replace
+                      + ") FROM read_csv('" + outputFile.getAbsolutePath()
+                      + "', auto_detect=true, types={" + types + "}, ignore_errors=true)";
+              LOGGER.fine("execute: " + insertCommand);
+              st.execute(insertCommand);
+            }
           }
         } catch (IOException | URISyntaxException e) {
           throw new RuntimeException(e);

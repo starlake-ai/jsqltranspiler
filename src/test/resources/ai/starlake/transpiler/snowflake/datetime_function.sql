@@ -312,7 +312,7 @@ select date_trunc('MONTH', '2013-05-08'::DATE) AS month;
 
 -- result
 "month"
-"2013-05-01"
+"2013-05-01 00:00:00.0"
 
 
 -- provided
