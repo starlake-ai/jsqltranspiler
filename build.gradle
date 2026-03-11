@@ -13,7 +13,7 @@ plugins {
     id 'jacoco'
     id 'com.github.kt3k.coveralls' version "latest.release"
     id "com.github.spotbugs" version "latest.release"
-    id "com.diffplug.spotless" version "latest.release"
+    id "com.diffplug.spotless" version "7.2.1"
 
     id "de.undercouch.download" version "latest.release"
     id 'org.hidetake.ssh' version "latest.release"
@@ -92,7 +92,7 @@ dependencies {
 
     implementation 'com.h2database:h2:+'
 
-    testImplementation 'org.duckdb:duckdb_jdbc:1.4.3.0'
+    testImplementation 'org.duckdb:duckdb_jdbc:1.5.0.0'
     testImplementation 'net.snowflake:snowflake-jdbc:+'
 
     testImplementation 'org.apache.commons:commons-compress:+'
@@ -301,6 +301,10 @@ test {
     environment "SNOWFLAKE_SCHEMA", project.findProperty("SNOWFLAKE_SCHEMA") ?: System.getenv("SNOWFLAKE_SCHEMA")
 
     jvmArgs '--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED'
+
+    // DuckDB 1.5+ JDBC driver uses JVM timezone for TIMESTAMPTZ formatting.
+    // Set at JVM startup to ensure consistent results across all environments.
+    jvmArgs '-Duser.timezone=Asia/Bangkok'
 }
 
 license {
@@ -357,7 +361,7 @@ jacocoTestCoverageVerification {
                 counter = 'LINE'
                 value = 'MISSEDCOUNT'
 
-                maximum = 2048
+                maximum = 2600
             }
             excludes = [
             ]

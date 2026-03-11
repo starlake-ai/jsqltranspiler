@@ -1029,7 +1029,19 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
           if (paramCount > 1) {
             warning("SRID and ALLOW_INVALID are not supported.");
           }
-          rewrittenExpression = new CastExpression("Cast", parameters.get(0), "GEOMETRY");
+          function.setName("ST_GEOMFROMTEXT$$");
+          if (parameters.get(0) instanceof StringValue) {
+            String regex = "(?i)SRID=\\d+;";
+            String s = ((StringValue) parameters.get(0)).getValue();
+            if (s.toUpperCase().contains("SRID")) {
+              warning("SRID is not supported");
+              function.setParameters(new StringValue(s.replaceAll(regex, "")));
+            } else {
+              function.setParameters(parameters.get(0));
+            }
+          } else {
+            function.setParameters(parameters.get(0));
+          }
           break;
         case TRY_TO_GEOMETRY:
           if (paramCount > 1) {

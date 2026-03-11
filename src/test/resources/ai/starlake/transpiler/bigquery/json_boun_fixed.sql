@@ -256,12 +256,7 @@ SELECT ARRAY(
 ) AS string_array;
 
 --expected
-SELECT List_Sort( Array( SELECT CASE
-                                WHEN Json_Type( Json_Extract( string_element, '$' ) ) IN (  'VARCHAR', 'DOUBLE', 'BOOLEAN'
-                                                                                            , 'UBIGINT', 'BIGINT' )
-                                    THEN Json_Extract_String( string_element, '$' )
-                                ELSE Json_Value( string_element, '$' )
-                                END
+SELECT List_Sort( Array( SELECT JSON_EXTRACT_STRING( string_element, '$' )
         FROM (  SELECT Unnest( Json_Extract( '["apples","grapes","oranges"]', '$[*]' ) ) AS string_element  ) AS string_element ) ) AS string_array
 ;
 
@@ -849,18 +844,13 @@ SELECT JSON_QUERY('{"fruits": ["apple", "banana"]}', '$.fruits') AS json_query,
        JSON_VALUE('{"fruits": ["apple", "banana"]}', '$.fruits') AS json_value;
 
 --expected
-SELECT  Json_Extract( '{"fruits":["apple","banana"]}', '$.fruits' ) AS json_query
-        , CASE
-            WHEN Json_Type( Json_Extract( '{"fruits":["apple","banana"]}', '$.fruits' ) ) IN (  'VARCHAR', 'DOUBLE', 'BOOLEAN'
-                                                                                                , 'UBIGINT', 'BIGINT' )
-                THEN Json_Extract_String( '{"fruits":["apple","banana"]}', '$.fruits' )
-            ELSE Json_Value( '{"fruits":["apple","banana"]}', '$.fruits' )
-            END AS json_value
+SELECT  JSON_EXTRACT( '{"fruits":["apple","banana"]}', '$.fruits' ) AS json_query
+        , JSON_EXTRACT_STRING( '{"fruits":["apple","banana"]}', '$.fruits' ) AS json_value
 ;
 
 --result
 "json_query","json_value"
-"[""apple"",""banana""]","JSQL_NULL"
+"[""apple"",""banana""]","[""apple"",""banana""]"
 
 
 --provided

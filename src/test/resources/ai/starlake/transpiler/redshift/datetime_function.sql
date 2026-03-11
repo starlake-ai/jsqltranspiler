@@ -237,7 +237,7 @@ select date_trunc('week', TIMESTAMP '2022-04-30T04:05:06.789') AS truncated;
 
 -- result
 "truncated"
-"2022-04-25"
+"2022-04-25 00:00:00.0"
 
 
 -- provided
