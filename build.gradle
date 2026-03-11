@@ -301,6 +301,10 @@ test {
     environment "SNOWFLAKE_SCHEMA", project.findProperty("SNOWFLAKE_SCHEMA") ?: System.getenv("SNOWFLAKE_SCHEMA")
 
     jvmArgs '--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED'
+
+    // DuckDB 1.5+ JDBC driver uses JVM timezone for TIMESTAMPTZ formatting.
+    // Set at JVM startup to ensure consistent results across all environments.
+    jvmArgs '-Duser.timezone=Asia/Bangkok'
 }
 
 license {
