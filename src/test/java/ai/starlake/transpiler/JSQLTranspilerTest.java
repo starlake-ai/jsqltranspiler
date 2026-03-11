@@ -437,25 +437,22 @@ public class JSQLTranspilerTest {
 
           try (Statement st = connDuck.createStatement()) {
             if (geomCols.isEmpty()) {
-              String copyCommand =
-                  "COPY " + tableName + " FROM '" + outputFile.getAbsolutePath()
-                      + "' (FORMAT CSV, AUTO_DETECT true, TIMESTAMPFORMAT '%m/%d/%Y %I:%M:%S', IGNORE_ERRORS true);";
+              String copyCommand = "COPY " + tableName + " FROM '" + outputFile.getAbsolutePath()
+                  + "' (FORMAT CSV, AUTO_DETECT true, TIMESTAMPFORMAT '%m/%d/%Y %I:%M:%S', IGNORE_ERRORS true);";
               LOGGER.fine("execute: " + copyCommand);
               st.execute(copyCommand);
             } else {
               // DuckDB 1.5+ built-in GEOMETRY type does not support implicit
               // VARCHAR-to-GEOMETRY cast from hex WKB/EWKB strings during COPY.
               // Read geometry columns as VARCHAR and convert via ST_GeomFromHEXEWKB.
-              String types = geomCols.stream()
-                  .map(c -> "'" + c + "': 'VARCHAR'")
+              String types = geomCols.stream().map(c -> "'" + c + "': 'VARCHAR'")
                   .collect(Collectors.joining(", "));
-              String replace = geomCols.stream()
-                  .map(c -> "ST_GeomFromHEXEWKB(\"" + c + "\") AS \"" + c + "\"")
-                  .collect(Collectors.joining(", "));
-              String insertCommand =
-                  "INSERT INTO " + tableName + " BY NAME SELECT * REPLACE (" + replace
-                      + ") FROM read_csv('" + outputFile.getAbsolutePath()
-                      + "', auto_detect=true, types={" + types + "}, ignore_errors=true)";
+              String replace =
+                  geomCols.stream().map(c -> "ST_GeomFromHEXEWKB(\"" + c + "\") AS \"" + c + "\"")
+                      .collect(Collectors.joining(", "));
+              String insertCommand = "INSERT INTO " + tableName + " BY NAME SELECT * REPLACE ("
+                  + replace + ") FROM read_csv('" + outputFile.getAbsolutePath()
+                  + "', auto_detect=true, types={" + types + "}, ignore_errors=true)";
               LOGGER.fine("execute: " + insertCommand);
               st.execute(insertCommand);
             }
