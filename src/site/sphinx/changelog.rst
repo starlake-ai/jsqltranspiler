@@ -4,6 +4,105 @@ Changelog
 ************************
 
 
+Latest Changes since |JSQLTRANSPILER_VERSION|
+=============================================================
+
+
+  * **feat: upgrade DuckDB JDBC from 1.4.3.0 to 1.5.0.0 (#144)**
+    
+    Hayssam Saleh, 2026-03-11
+
+Version v1.8
+=============================================================
+
+
+  * **fix: raise JaCoCo missed lines threshold to 2600**
+    
+    Hayssam Saleh, 2026-03-11
+  * **fix: remove platform-dependent ST_Centroid result assertion**
+    
+    Hayssam Saleh, 2026-03-11
+  * **fix: pin Spotless plugin to 7.2.1 for Gradle 8.14 compatibility**
+    
+    Hayssam Saleh, 2026-03-11
+  * **fix: set JVM timezone via Gradle jvmArgs for CI compatibility**
+    
+    Hayssam Saleh, 2026-03-11
+  * **fix formatting**
+    
+    Hayssam Saleh, 2026-03-11
+  * **feat: upgrade DuckDB JDBC from 1.4.3.0 to 1.5.0.0**
+    
+    Hayssam Saleh, 2026-03-11
+  * **Snapshot is always ahead of release**
+    
+    Hayssam Saleh, 2026-01-25
+  * **do not add commit count**
+    
+    Hayssam Saleh, 2026-01-25
+  * **Update publishing comment**
+    
+    Hayssam Saleh, 2026-01-25
+  * **ignore not added files**
+    
+    Hayssam Saleh, 2026-01-25
+  * **Update publishing strategy**
+    
+    Hayssam Saleh, 2026-01-25
+  * **fix: package name**
+    
+    Andreas Reichel, 2026-01-21
+  * **feat: flat column lineage**
+    
+    Andreas Reichel, 2026-01-21
+
+Version 1.6
+=============================================================
+
+
+  * **feat: flat column lineage**
+    
+    Andreas Reichel, 2026-01-20
+  * **add (osgi)optional imports for duckdb h2 json (#139)**
+    
+    manticore-projects, 2025-12-16
+  * **add tests for union operations (#137)**
+    
+    manticore-projects, 2025-12-16
+  * **add (osgi)optional imports for duckdb h2 json**
+    
+    Stefan Bischof, 2025-12-16
+  * **add tests for unuin operations**
+    
+    Stefan Bischof, 2025-12-15
+  * **Update publishing properties**
+    
+    Hayssam Saleh, 2025-12-15
+  * **build(deps): bump org.duckdb:duckdb_jdbc from 1.4.2.0 to 1.4.3.0**
+    
+    dependabot[bot], 2025-12-15
+  * **build: update publishing task**
+    
+    Andreas Reichel, 2025-12-09
+  * **build: force publish**
+    
+    Andreas Reichel, 2025-12-05
+  * **style: refactor nested block**
+    
+    Andreas Reichel, 2025-12-05
+  * **fix: Don't update/overwrite `CURRENT_CATALOG` or `CURRENT_SCHEMA` when updating table schema information**
+    
+    Andreas Reichel, 2025-11-24
+  * **Rollbakc changes**
+    
+    Hayssam Saleh, 2025-11-19
+  * **required by clients (aka starlake-api) using Jackson serialization**
+    
+    Hayssam Saleh, 2025-11-17
+  * **H2 already part of DuckDB map**
+    
+    Hayssam Saleh, 2025-11-17
+
 Version 1.4
 =============================================================
 

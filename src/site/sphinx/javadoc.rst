@@ -12,27 +12,10 @@
 
 
 #######################################################################
-API 1.5.7-SNAPSHOT
+API 1.9-SNAPSHOT
 #######################################################################
 
 Base Package: ai.starlake.jsqltranspiler
-
-
-..  _ai.starlake.jsqltranspiler:
-***********************************************************************
-Base
-***********************************************************************
-
-..  _ai.starlake.jsqltranspiler.BuildInfo:
-
-=======================================================================
-BuildInfo
-=======================================================================
-
-*extends:* :ref:`Object<java.lang.Object>` 
-
-| **BuildInfo** ()
-
 
 
 ..  _ai.starlake.transpiler:
@@ -49,6 +32,18 @@ Dialect
 [GOOGLE_BIG_QUERY, DATABRICKS, SNOWFLAKE, AMAZON_REDSHIFT, ANY, DUCK_DB]
 
 | The enum Dialect.
+
+
+..  _ai.starlake.transpiler.BuildInfo:
+
+=======================================================================
+BuildInfo
+=======================================================================
+
+*extends:* :ref:`Object<java.lang.Object>` 
+
+| **BuildInfo** ()
+
 
 
 ..  _ai.starlake.transpiler.CatalogNotFoundException:
@@ -214,6 +209,12 @@ JSQLColumResolver
 |          :ref:`TreeBuilder<T>><java.lang.Class<? extends ai.starlake.transpiler.schema.treebuilder.TreeBuilder<T>>>` treeBuilderClass
 |          :ref:`String<java.lang.String>` sqlStr
 |          returns T
+
+
+
+| **getLineage** (sqlStr) → :ref:`String>><java.util.Map<java.lang.String,java.util.Set<java.lang.String>>>`
+|          :ref:`String<java.lang.String>` sqlStr
+|          returns :ref:`String>><java.util.Map<java.lang.String,java.util.Set<java.lang.String>>>`
 
 
 
@@ -5970,6 +5971,43 @@ ParsedType
 ***********************************************************************
 ma.treebuilder
 ***********************************************************************
+
+..  _ai.starlake.transpiler.schema.treebuilder.FlattenedColumnBuilder:
+
+=======================================================================
+FlattenedColumnBuilder
+=======================================================================
+
+*extends:* :ref:`String>>><ai.starlake.transpiler.schema.treebuilder.TreeBuilder<java.util.Map<java.lang.String,java.util.Set<java.lang.String>>>>` 
+
+| **FlattenedColumnBuilder** (resultSetMetaData)
+|          :ref:`JdbcResultSetMetaData<ai.starlake.transpiler.schema.JdbcResultSetMetaData>` resultSetMetaData
+
+
+
+                Recursively collects all leaf node column names from the dependency tree. A leaf node is a
+ column from a physical table (base table).
+                
+                
+                |          :ref:`JdbcColumn<ai.starlake.transpiler.schema.JdbcColumn>` column
+
+                |          :ref:`String><java.util.LinkedHashSet<java.lang.String>>` dependencies
+
+                |          returns void
+
+
+                
+                
+                
+                
+                
+            | *@Override*
+| **getConvertedTree** (resolver) → :ref:`String>><java.util.Map<java.lang.String,java.util.Set<java.lang.String>>>`
+|          :ref:`JSQLColumResolver<ai.starlake.transpiler.JSQLColumResolver>` resolver
+|          returns :ref:`String>><java.util.Map<java.lang.String,java.util.Set<java.lang.String>>>`
+
+
+
 
 ..  _ai.starlake.transpiler.schema.treebuilder.JsonTreeBuilder:
 
