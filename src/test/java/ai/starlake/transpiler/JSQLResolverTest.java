@@ -63,6 +63,25 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   }
 
   @Test
+  void testOrderByColumns() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}};
+
+    String sqlStr = "SELECT a.col1 FROM a WHERE a.col2 = 'x' ORDER BY a.col3;";
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    Set<JdbcColumn> actualColumns = resolver.resolve(sqlStr);
+
+    // ORDER BY columns are recorded (previously the result of resolving the
+    // ORDER BY expressions was discarded, leaving getOrderByColumns() empty).
+    Assertions.assertThat(resolver.flatten(resolver.getOrderByColumns()))
+        .containsExactlyInAnyOrder(new JdbcColumn("a", "col3"));
+
+    // ... and therefore included in the overall resolved set.
+    assertThatTableAndColumnsMatch(actualColumns,
+        new String[][] {{"a", "col1"}, {"a", "col2"}, {"a", "col3"}});
+  }
+
+  @Test
   void testWithShadowing() throws JSQLParserException {
     String[][] schemaDefinition = {{"a", "col1", "col2", "col3"}};
 
@@ -731,28 +750,28 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     final JdbcMetaData jdbcMetaData = new JdbcMetaData(schemaDefinition);
     //@formatter:on
 
-    String[] testQueries = {
-        "SELECT foo.id FROM foo UNION SELECT fooFact.wrongCol FROM fooFact",
+    String[] testQueries = {"SELECT foo.id FROM foo UNION SELECT fooFact.wrongCol FROM fooFact",
         "SELECT foo.id FROM foo UNION SELECT wrongTable.id FROM wrongTable",
         "SELECT foo.id FROM foo UNION ALL SELECT fooFact.wrongCol FROM fooFact",
         "SELECT foo.id FROM foo INTERSECT SELECT fooFact.wrongCol FROM fooFact",
         "SELECT foo.id FROM foo EXCEPT SELECT fooFact.wrongCol FROM fooFact",
         "SELECT foo.id FROM foo MINUS SELECT fooFact.wrongCol FROM fooFact",
-        "SELECT foo.id FROM foo MINUS SELECT wrongTable.id FROM wrongTable"
-    };
+        "SELECT foo.id FROM foo MINUS SELECT wrongTable.id FROM wrongTable"};
 
     int rejectedCount = 0;
     System.out.println("=== Set Operations Guard Output ===\n");
     for (String sql : testQueries) {
       System.out.println("Input:  " + sql);
       try {
-        Statement result = guard(sql, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
+        Statement result =
+            guard(sql, jdbcMetaData, new HashSet<>(), new HashSet<>(), new HashSet<>());
         System.out.println("Output: " + result.toString());
         System.out.println("Status: PASSED (unexpected - should have been rejected!)\n");
       } catch (Exception e) {
         System.out.println("Exception: " + e.getClass().getSimpleName() + " - " + e.getMessage());
         if (e.getCause() != null) {
-          System.out.println("Cause: " + e.getCause().getClass().getSimpleName() + " - " + e.getCause().getMessage());
+          System.out.println("Cause: " + e.getCause().getClass().getSimpleName() + " - "
+              + e.getCause().getMessage());
         }
         System.out.println("Status: CORRECTLY REJECTED\n");
         rejectedCount++;

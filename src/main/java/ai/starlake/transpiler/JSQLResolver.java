@@ -407,7 +407,8 @@ public class JSQLResolver extends JSQLColumResolver {
     List<OrderByElement> orderByElements = select.getOrderByElements();
     if (orderByElements != null) {
       for (OrderByElement orderByElement : orderByElements) {
-        orderByElement.getExpression().accept(expressionColumnResolver, metaData);
+        orderByColumns
+            .addAll(orderByElement.getExpression().accept(expressionColumnResolver, metaData));
       }
     }
 
