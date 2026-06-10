@@ -1,4 +1,4 @@
-# jsqlformatter changelog
+# jsqltranspiler changelog
 
-Changelog of jsqlformatter.
+Changelog of jsqltranspiler
 
