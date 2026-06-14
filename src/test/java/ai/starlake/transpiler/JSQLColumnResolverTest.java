@@ -269,8 +269,7 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     resolver.setErrorMode(JdbcMetaData.ErrorMode.STRICT);
 
     // Each of these used to throw NPE
-    for (String sql : new String[] {
-        "SELECT row_number() OVER (PARTITION BY c_email) FROM customer",
+    for (String sql : new String[] {"SELECT row_number() OVER (PARTITION BY c_email) FROM customer",
         "SELECT row_number() OVER (ORDER BY c_email) FROM customer",
         "SELECT row_number() OVER (PARTITION BY c_id ORDER BY c_email) FROM customer",
         "SELECT rank() OVER (PARTITION BY c_email) FROM customer",
