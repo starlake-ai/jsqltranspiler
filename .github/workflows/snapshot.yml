@@ -20,17 +20,14 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-    - id: install-gradle-properties
-      name: Install Gradle Properties from Secret
-      env:
-        GRADLE_PROPERTIES: ${{ secrets.GRADLE_PROPERTIES }}
-        shell: bash
-      run: |
-        mkdir -p ~/.gradle/
-        echo "GRADLE_USER_HOME=${HOME}/.gradle" >> $GITHUB_ENV
-        echo "${GRADLE_PROPERTIES}" > ~/.gradle/gradle.properties
     - name: Publish to Sonatype
       run: LANG=en_US.UTF-8 ./gradlew check publish -x test
-#      env:
-#        USERNAME: ${{ github.actor }}
-#        TOKEN: ${{ secrets.SONATYPE_TOKEN }}
+      env:
+        # Maven Central credentials (Sonatype Central Portal user token).
+        ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+        ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        # In-memory PGP signing — no keyring file needed on the runner.
+        # SIGNING_KEY must be the ASCII-armored private key with literal \n separators.
+        ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+        ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+        ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
