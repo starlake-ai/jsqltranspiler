@@ -259,6 +259,29 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   }
 
 
+  // https://github.com/starlake-ai/jsqltranspiler/issues/146
+  // Argless analytic functions like row_number() used to NPE in the resolver because
+  // AnalyticExpression.getExpression() returns null for them.
+  @Test
+  void testArglessAnalyticFunctions() throws JSQLParserException, SQLException {
+    String[][] schemaDef = {{"customer", "c_id", "c_email"}};
+    JSQLColumResolver resolver = new JSQLColumResolver("mycat", "myschema", schemaDef);
+    resolver.setErrorMode(JdbcMetaData.ErrorMode.STRICT);
+
+    // Each of these used to throw NPE
+    for (String sql : new String[] {
+        "SELECT row_number() OVER (PARTITION BY c_email) FROM customer",
+        "SELECT row_number() OVER (ORDER BY c_email) FROM customer",
+        "SELECT row_number() OVER (PARTITION BY c_id ORDER BY c_email) FROM customer",
+        "SELECT rank() OVER (PARTITION BY c_email) FROM customer",
+        "SELECT dense_rank() OVER (PARTITION BY c_email) FROM customer",
+        "SELECT percent_rank() OVER (PARTITION BY c_email) FROM customer",
+        "SELECT cume_dist() OVER (PARTITION BY c_email) FROM customer"}) {
+      Assertions.assertThat(resolver.getResolvedStatementText(sql)).isNotNull();
+      Assertions.assertThat(resolver.getResultSetMetaData(sql)).isNotNull();
+    }
+  }
+
   @Test
   void testFunction() throws JSQLParserException, SQLException, InvocationTargetException,
       NoSuchMethodException, InstantiationException, IllegalAccessException {

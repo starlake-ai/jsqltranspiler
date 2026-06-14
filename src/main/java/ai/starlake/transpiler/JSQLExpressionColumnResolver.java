@@ -33,6 +33,7 @@ import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.LateralSubSelect;
+import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
@@ -200,7 +201,31 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   @Override
   public <S> List<JdbcColumn> visit(AnalyticExpression function, S context) {
     functions.add(function);
-    return function.getExpression().accept(this, context);
+    JdbcColumn col = new JdbcColumn(function.getName(), function);
+
+    // Argless analytics (row_number(), rank(), dense_rank(), percent_rank(), cume_dist())
+    // have a null inner expression; only argful ones (sum(x) OVER ..., lag(x) OVER ...) carry one.
+    if (function.getExpression() != null) {
+      col.add(function.getExpression().accept(this, context));
+    }
+
+    ExpressionList<?> partitionExpressions = function.getPartitionExpressionList();
+    if (partitionExpressions != null) {
+      for (Expression e : partitionExpressions) {
+        col.add(e.accept(this, context));
+      }
+    }
+
+    List<OrderByElement> orderByElements = function.getOrderByElements();
+    if (orderByElements != null) {
+      for (OrderByElement e : orderByElements) {
+        if (e.getExpression() != null) {
+          col.add(e.getExpression().accept(this, context));
+        }
+      }
+    }
+
+    return List.of(col);
   }
 
 
