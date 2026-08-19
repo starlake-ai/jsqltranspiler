@@ -83,3 +83,22 @@ SELECT ID, Try_Cast(v AS JSON) j
 
 -- epilog
 DROP TABLE IF EXISTS vartab;
+
+
+-- prolog
+DROP TABLE IF EXISTS jpath_tab;
+CREATE TABLE jpath_tab (id INTEGER, j VARCHAR);
+INSERT INTO jpath_tab VALUES (1, '{"a":{"b":"x"},"arr":[10,20,30]}');
+
+-- provided
+SELECT j:a.b AS b, j:a.b::string AS s, j:arr[0]::int AS n FROM jpath_tab;
+
+-- expected
+SELECT j->'a'->'b' AS b, (j->'a'->>'b')::string AS s, (j->'arr'->0)::int AS n FROM jpath_tab;
+
+-- result
+"b","s","n"
+"""x""","x","10"
+
+-- epilog
+DROP TABLE IF EXISTS jpath_tab;
