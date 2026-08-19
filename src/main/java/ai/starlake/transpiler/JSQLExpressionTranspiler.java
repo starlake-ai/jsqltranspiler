@@ -133,7 +133,8 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   /**
    * Controls how Snowflake VARIANT path expressions like {@code v:a.b} are transpiled: against a
    * DuckDB {@code JSON} column (arrow operators) or against a DuckDB 1.4+ {@code VARIANT} column
-   * (bracket access, which preserves the stored types).
+   * (bracket access, which preserves the stored types). Defaults to {@code VARIANT}; pass
+   * {@code VARIANT_MODE=JSON} as parameter or system property to target JSON columns instead.
    */
   public enum VariantMode {
     JSON, VARIANT;
@@ -2936,11 +2937,13 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   }
 
   public VariantMode getVariantMode() {
-    if ("VARIANT".equalsIgnoreCase(String.valueOf(parameterMap.get("VARIANT_MODE")))
-        || "VARIANT".equalsIgnoreCase(String.valueOf(System.getProperties().get("VARIANT_MODE")))) {
-      return VariantMode.VARIANT;
+    String configured =
+        parameterMap.containsKey("VARIANT_MODE") ? String.valueOf(parameterMap.get("VARIANT_MODE"))
+            : System.getProperty("VARIANT_MODE");
+    if ("JSON".equalsIgnoreCase(configured)) {
+      return VariantMode.JSON;
     }
-    return VariantMode.JSON;
+    return VariantMode.VARIANT;
   }
 
   @Override
