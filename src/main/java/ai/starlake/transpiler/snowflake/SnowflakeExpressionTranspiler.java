@@ -1188,7 +1188,8 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
     } else if (colDataType.getDataType().equalsIgnoreCase("NUMBER")) {
       colDataType.setDataType("NUMERIC");
     } else if (colDataType.getDataType().equalsIgnoreCase("VARIANT")) {
-      colDataType.setDataType("VARCHAR");
+      // DuckDB 1.4+ has a native VARIANT type
+      colDataType.setDataType(getVariantMode() == VariantMode.VARIANT ? "VARIANT" : "VARCHAR");
     }
     return super.rewriteType(colDataType);
   }

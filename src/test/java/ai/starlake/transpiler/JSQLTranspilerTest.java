@@ -176,7 +176,13 @@ public class JSQLTranspilerTest {
                 ? JSQLExpressionTranspiler.GeoMode.GEOGRAPHY
                 : JSQLExpressionTranspiler.GeoMode.GEOMETRY;
 
-        SQLTest test = new SQLTest(inputDialect, outputDialect, Map.of("GEO_MODE", geoMode));
+        JSQLExpressionTranspiler.VariantMode variantMode =
+            file.getName().toLowerCase().contains("variant")
+                ? JSQLExpressionTranspiler.VariantMode.VARIANT
+                : JSQLExpressionTranspiler.VariantMode.JSON;
+
+        SQLTest test = new SQLTest(inputDialect, outputDialect,
+            Map.of("GEO_MODE", geoMode, "VARIANT_MODE", variantMode));
         int r = 0;
         while ((line = bufferedReader.readLine()) != null) {
           r++;
@@ -223,7 +229,12 @@ public class JSQLTranspilerTest {
                     ? JSQLExpressionTranspiler.GeoMode.GEOGRAPHY
                     : JSQLExpressionTranspiler.GeoMode.GEOMETRY;
 
-                test = new SQLTest(inputDialect, outputDialect, Map.of("GEO_MODE", geoMode));
+                variantMode = file.getName().toLowerCase().contains("variant")
+                    ? JSQLExpressionTranspiler.VariantMode.VARIANT
+                    : JSQLExpressionTranspiler.VariantMode.JSON;
+
+                test = new SQLTest(inputDialect, outputDialect,
+                    Map.of("GEO_MODE", geoMode, "VARIANT_MODE", variantMode));
                 test.line = r;
               }
 
@@ -285,6 +296,8 @@ public class JSQLTranspilerTest {
     info.put("default_null_order", "NULLS FIRST");
     info.put("default_order", "ASC");
     info.put("memory_limit", "250M");
+    // VARIANT columns need storage version v1.5.0, new databases default to v1.0.0
+    info.put("storage_compatibility_version", "v1.5.0");
     // DuckDB 1.5+ JDBC driver uses JVM timezone for TIMESTAMPTZ formatting
     // instead of the DuckDB session timezone. Set JVM timezone to match.
     TimeZone.setDefault(TimeZone.getTimeZone("Asia/Bangkok"));

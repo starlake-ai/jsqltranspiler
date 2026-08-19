@@ -71,6 +71,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -127,6 +128,16 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
 
   enum GeoMode {
     GEOGRAPHY, GEOMETRY;
+  }
+
+  /**
+   * Controls how Snowflake VARIANT path expressions like {@code v:a.b} are transpiled: against a
+   * DuckDB {@code JSON} column (arrow operators) or against a DuckDB 1.4+ {@code VARIANT} column
+   * (bracket access, which preserves the stored types). Defaults to {@code VARIANT}; pass
+   * {@code VARIANT_MODE=JSON} as parameter or system property to target JSON columns instead.
+   */
+  public enum VariantMode {
+    JSON, VARIANT;
   }
 
   enum TranspiledFunction {
@@ -2925,20 +2936,47 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return builder;
   }
 
+  public VariantMode getVariantMode() {
+    String configured =
+        parameterMap.containsKey("VARIANT_MODE") ? String.valueOf(parameterMap.get("VARIANT_MODE"))
+            : System.getProperty("VARIANT_MODE");
+    if ("JSON".equalsIgnoreCase(configured)) {
+      return VariantMode.JSON;
+    }
+    return VariantMode.VARIANT;
+  }
+
   @Override
   public <S> StringBuilder visit(JsonExpression e, S context) {
-    // new CastExpression(e.getExpression(), "JSON").accept(this, context);
+    final int startPosition = builder.length();
     e.getExpression().accept(this, context);
 
     for (Map.Entry<Expression, String> ident : e.getIdentList()) {
       String operatorStr = ident.getValue();
+      Expression expr = ident.getKey();
+
       if (operatorStr.equalsIgnoreCase(":")) {
+        // Snowflake VARIANT path access, e. g. v:a.b or v:arr[0]::string
+        // the cast binds inside the ident: v:a.b::string parses as JsonExpression(v, [a.b::string])
+        CastExpression castExpression = null;
+        if (expr instanceof CastExpression) {
+          castExpression = (CastExpression) expr;
+          expr = castExpression.getLeftExpression();
+        }
+
+        if (expr instanceof Column) {
+          appendVariantPath(startPosition, (Column) expr, castExpression);
+          continue;
+        }
+
         builder.append("->");
+        if (castExpression != null) {
+          expr = castExpression;
+        }
       } else {
         builder.append(operatorStr);
       }
 
-      Expression expr = ident.getKey();
       if (expr instanceof Column) {
         new StringValue(expr.toString()).accept(this, context);
       } else if (expr instanceof ArrayConstructor) {
@@ -2954,6 +2992,85 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
       }
     }
     return builder;
+  }
+
+  /**
+   * Appends a Snowflake {@code :} path held in a (possibly dotted) Column, with an optional
+   * trailing array subscript and an optional cast, e. g. {@code v:a.b::string} or {@code v:arr[0]}.
+   *
+   * <p>
+   * In {@link VariantMode#VARIANT} the path is written as DuckDB bracket access {@code v['a']['b']}
+   * which preserves the types stored in a VARIANT column; numeric array subscripts are shifted from
+   * Snowflake's 0-based to DuckDB's 1-based indexing. In {@link VariantMode#JSON} the path is
+   * written with one arrow per step {@code v->'a'->'b'}, using {@code ->>} on the final step when
+   * the path is cast to a text type so the result is the unquoted string, matching Snowflake.
+   * </p>
+   */
+  private void appendVariantPath(int startPosition, Column column, CastExpression castExpression) {
+    final boolean variantMode = getVariantMode() == VariantMode.VARIANT;
+    final boolean textCast =
+        castExpression != null && CastExpression.isText(castExpression.getColDataType());
+
+    ArrayList<String> keys = new ArrayList<>();
+    Table table = column.getTable();
+    if (table != null && table.getFullyQualifiedName() != null
+        && !table.getFullyQualifiedName().isEmpty()) {
+      for (String part : table.getFullyQualifiedName().split("\\.")) {
+        keys.add(unquoteIdentifier(part));
+      }
+    }
+    keys.add(unquoteIdentifier(column.getColumnName()));
+
+    ArrayConstructor arrayConstructor = column.getArrayConstructor();
+    List<? extends Expression> subscripts =
+        arrayConstructor != null ? arrayConstructor.getExpressions() : Collections.emptyList();
+
+    for (int i = 0; i < keys.size(); i++) {
+      boolean last = i == keys.size() - 1 && subscripts.isEmpty();
+      String key = keys.get(i).replace("'", "''");
+      if (variantMode) {
+        builder.append("['").append(key).append("']");
+      } else {
+        builder.append(textCast && last ? "->>" : "->").append("'").append(key).append("'");
+      }
+    }
+
+    for (int i = 0; i < subscripts.size(); i++) {
+      boolean last = i == subscripts.size() - 1;
+      Expression subscript = subscripts.get(i);
+      if (variantMode) {
+        builder.append("[");
+        if (subscript instanceof LongValue) {
+          // DuckDB bracket access on VARIANT arrays is 1-based while Snowflake is 0-based
+          builder.append(((LongValue) subscript).getValue() + 1);
+        } else if (subscript instanceof StringValue) {
+          subscript.accept(this, null);
+        } else {
+          subscript.accept(this, null);
+          builder.append(" + 1");
+        }
+        builder.append("]");
+      } else {
+        builder.append(textCast && last ? "->>" : "->");
+        subscript.accept(this, null);
+      }
+    }
+
+    if (castExpression != null) {
+      if (!variantMode) {
+        // arrow operators bind weaker than "::", so the path needs parentheses
+        builder.insert(startPosition, "(");
+        builder.append(")");
+      }
+      builder.append("::").append(rewriteType(castExpression.getColDataType()));
+    }
+  }
+
+  private static String unquoteIdentifier(String identifier) {
+    if (identifier.length() > 1 && identifier.startsWith("\"") && identifier.endsWith("\"")) {
+      return identifier.substring(1, identifier.length() - 1);
+    }
+    return identifier;
   }
 
   public <S> StringBuilder visit(ArrayConstructor arrayConstructor, S context) {
