@@ -504,9 +504,32 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     }
   }
 
+  /**
+   * Replaces quoted {@code TYPE 'literal'} function arguments parsed as DateTimeLiteralExpression
+   * with the equivalent implicit CastExpression, which is what older jsqlparser versions produced
+   * and what the DateTime function rewrites operate on.
+   */
+  @SuppressWarnings({"unchecked"})
+  protected static void rewriteDateTimeLiteralParameters(Function function) {
+    if (hasParameters(function)) {
+      ExpressionList<Expression> parameters = (ExpressionList<Expression>) function.getParameters();
+      parameters.replaceAll(e -> {
+        if (e instanceof DateTimeLiteralExpression) {
+          String value = ((DateTimeLiteralExpression) e).getValue();
+          if (value != null && value.length() > 1 && value.startsWith("'") && value.endsWith("'")) {
+            return toImplicitCast((DateTimeLiteralExpression) e);
+          }
+        }
+        return e;
+      });
+    }
+  }
+
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   @Override
   public <S> StringBuilder visit(Function function, S params) {
+    rewriteDateTimeLiteralParameters(function);
+
     String functionName = function.getName();
     boolean hasParameters = hasParameters(function);
     boolean hasSafePrefix = false;
@@ -2640,8 +2663,34 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
   private final static String[] TIME_SEPARATORS = {"", "'T'", " "};
   private final static String[] ZONE_FORMATS = {"z", "zz", "zzzz", "Z", "X", "XXX"};
 
+  /**
+   * Turns a {@code TYPE 'literal'} parsed as DateTimeLiteralExpression into the equivalent implicit
+   * CastExpression. Older jsqlparser versions produced that implicit cast directly and all the
+   * DateTime rewrites (format normalisation, TIMESTAMPTZ promotion) operate on it, but newer
+   * parsers return a DateTimeLiteralExpression holding the still-quoted literal image.
+   */
+  public static CastExpression toImplicitCast(DateTimeLiteralExpression expression) {
+    return new CastExpression(new ColDataType(expression.getType().name()), expression.getValue());
+  }
+
+  @Override
+  public <S> StringBuilder visit(DateTimeLiteralExpression expression, S context) {
+    String value = expression.getValue();
+    if (value != null && value.length() > 1 && value.startsWith("'") && value.endsWith("'")) {
+      toImplicitCast(expression).accept(this, context);
+      return builder;
+    }
+    return super.visit(expression, context);
+  }
+
   @SuppressWarnings({"PMD.EmptyCatchBlock"})
   public static Expression castDateTime(DateTimeLiteralExpression expression) {
+    String quotedValue = expression.getValue();
+    if (quotedValue != null && quotedValue.length() > 1 && quotedValue.startsWith("'")
+        && quotedValue.endsWith("'")) {
+      return castDateTime(toImplicitCast(expression));
+    }
+
     SimpleDateFormat f = new SimpleDateFormat();
     f.setTimeZone(TimeZone.getTimeZone("UTC"));
     f.setLenient(false);

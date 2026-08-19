@@ -98,7 +98,13 @@ public class JSQLSelectTranspiler extends SelectDeParser {
           new ParenthesedSelect().withSelect(select).withAlias(tableFunction.getAlias());
       parenthesedSelect.accept((FromItemVisitor<StringBuilder>) this, params);
     } else {
-      super.visit(tableFunction, params);
+      // run the function through the expression transpiler instead of appending it verbatim,
+      // so rewritten table functions (e. g. ST_MaxDistance$$) get their re-transpiling guard
+      // stripped and their arguments transpiled
+      tableFunction.getFunction().accept(getExpressionVisitor(), params);
+      if (tableFunction.getAlias() != null) {
+        builder.append(tableFunction.getAlias());
+      }
     }
     return builder;
   }

@@ -116,6 +116,8 @@ public class DatabricksExpressionTranspiler extends RedshiftExpressionTranspiler
   @Override
   @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.ExcessiveMethodLength"})
   public <S> StringBuilder visit(Function function, S params) {
+    rewriteDateTimeLiteralParameters(function);
+
     String functionName = function.getName();
     boolean hasParameters = hasParameters(function);
     int paramCount = hasParameters ? function.getParameters().size() : 0;
