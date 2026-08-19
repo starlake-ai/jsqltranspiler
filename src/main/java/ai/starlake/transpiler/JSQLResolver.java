@@ -44,7 +44,7 @@ import net.sf.jsqlparser.statement.SetStatement;
 import net.sf.jsqlparser.statement.ShowColumnsStatement;
 import net.sf.jsqlparser.statement.ShowStatement;
 import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.StatementVisitor;
+import net.sf.jsqlparser.statement.StatementVisitorAdapter;
 import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.UnsupportedStatement;
 import net.sf.jsqlparser.statement.UseStatement;
@@ -632,16 +632,14 @@ public class JSQLResolver extends JSQLColumResolver {
     return st;
   }
 
-  class StatementResolver implements StatementVisitor<JdbcResultSetMetaData> {
+  // extends the adapter instead of implementing StatementVisitor directly, so statement types
+  // added to the interface (e. g. CreateDatabase, whose package the jsqlparser module does not
+  // export) don't break the build
+  class StatementResolver extends StatementVisitorAdapter<JdbcResultSetMetaData> {
 
     @Override
     public <S> JdbcResultSetMetaData visit(Analyze analyze, S s) {
       return null;
-    }
-
-    @Override
-    public void visit(Analyze analyze) {
-      StatementVisitor.super.visit(analyze);
     }
 
     @Override
@@ -650,18 +648,8 @@ public class JSQLResolver extends JSQLColumResolver {
     }
 
     @Override
-    public void visit(SavepointStatement savepointStatement) {
-      StatementVisitor.super.visit(savepointStatement);
-    }
-
-    @Override
     public <S> JdbcResultSetMetaData visit(RollbackStatement rollbackStatement, S s) {
       return null;
-    }
-
-    @Override
-    public void visit(RollbackStatement rollbackStatement) {
-      StatementVisitor.super.visit(rollbackStatement);
     }
 
     @Override
@@ -670,18 +658,8 @@ public class JSQLResolver extends JSQLColumResolver {
     }
 
     @Override
-    public void visit(Comment comment) {
-      StatementVisitor.super.visit(comment);
-    }
-
-    @Override
     public <S> JdbcResultSetMetaData visit(Commit commit, S s) {
       return null;
-    }
-
-    @Override
-    public void visit(Commit commit) {
-      StatementVisitor.super.visit(commit);
     }
 
     @Override

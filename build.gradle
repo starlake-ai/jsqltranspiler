@@ -68,11 +68,12 @@ repositories {
     gradlePluginPortal()
     mavenCentral()
 
-    // Snapshots
-    if (version.endsWith('SNAPSHOT')) {
-        maven {
-            url = uri('https://central.sonatype.com/repository/maven-snapshots/')
-        }
+    // locally built jsqlparser snapshots take precedence over the published ones
+    mavenLocal()
+
+    // Snapshots: always needed since jsqlparser is consumed as a snapshot of its manticore branch
+    maven {
+        url = uri('https://central.sonatype.com/repository/maven-snapshots/')
     }
 }
 
