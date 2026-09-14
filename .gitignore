@@ -45,3 +45,12 @@ bin/
 **/javadoc.rst
 **/.~lock.JSQLTranspiler.ods#
 /.idea
+
+### Build Server Protocol (Metals/BSP) ###
+.bsp/
+
+### Claude Code ###
+.claude/
+
+### Test fixtures downloaded on demand by the test suite ###
+src/test/resources/ai/starlake/transpiler/tickitdb.zip
