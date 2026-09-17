@@ -66,10 +66,9 @@ public final class JdbcMetaData implements DatabaseMetaData {
   /**
    * The tables of the queries enclosing this one, for a correlated sub query.
    * <p>
-   * Separate from {@link #fromTables} on purpose: a qualified reference falls back
-   * to this scope when the name is not one of this query's own tables, while an
-   * unqualified column is looked up in {@link #fromTables} alone, so the inner
-   * query keeps deciding what a bare column name means.
+   * Separate from {@link #fromTables} on purpose: a qualified reference falls back to this scope
+   * when the name is not one of this query's own tables, while an unqualified column is looked up
+   * in {@link #fromTables} alone, so the inner query keeps deciding what a bare column name means.
    */
   private final CaseInsensitiveLinkedHashMap<Table> outerFromTables =
       new CaseInsensitiveLinkedHashMap<>();
@@ -1937,10 +1936,9 @@ public final class JdbcMetaData implements DatabaseMetaData {
   }
 
   /**
-   * The scope for a sub query that appears in an expression - {@code EXISTS},
-   * {@code IN}, a scalar select, {@code HAVING}. Its own FROM clause starts empty,
-   * and the tables of the enclosing query become the outer scope that a correlated
-   * reference resolves against.
+   * The scope for a sub query that appears in an expression - {@code EXISTS}, {@code IN}, a scalar
+   * select, {@code HAVING}. Its own FROM clause starts empty, and the tables of the enclosing query
+   * become the outer scope that a correlated reference resolves against.
    */
   public static JdbcMetaData copyOfNested(JdbcMetaData outer) {
     JdbcMetaData nested = copyOf(outer);

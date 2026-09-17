@@ -793,7 +793,8 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   void testCorrelatedExists() throws JSQLParserException {
     String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
 
-    String sqlStr = "SELECT a.col1 FROM a WHERE EXISTS (SELECT b.col1 FROM b WHERE b.col2 = a.col2)";
+    String sqlStr =
+        "SELECT a.col1 FROM a WHERE EXISTS (SELECT b.col1 FROM b WHERE b.col2 = a.col2)";
 
     // a.col2 is the correlated reference: the outer table is in scope inside the sub query
     String[][] expectedColumns = {{"a", "col1"}, {"b", "col2"}, {"a", "col2"}};
@@ -806,7 +807,8 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   void testCorrelatedIn() throws JSQLParserException {
     String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
 
-    String sqlStr = "SELECT a.col1 FROM a WHERE a.col1 IN (SELECT b.col1 FROM b WHERE b.col2 = a.col2)";
+    String sqlStr =
+        "SELECT a.col1 FROM a WHERE a.col1 IN (SELECT b.col1 FROM b WHERE b.col2 = a.col2)";
 
     String[][] expectedColumns = {{"a", "col1"}, {"b", "col2"}, {"a", "col2"}};
 
@@ -830,7 +832,8 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
   void testCorrelatedWithAliases() throws JSQLParserException {
     String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
 
-    String sqlStr = "SELECT x.col1 FROM a x WHERE EXISTS (SELECT y.col1 FROM b y WHERE y.col2 = x.col2)";
+    String sqlStr =
+        "SELECT x.col1 FROM a x WHERE EXISTS (SELECT y.col1 FROM b y WHERE y.col2 = x.col2)";
 
     // reported against the real table names, not the aliases
     String[][] expectedColumns = {{"a", "col1"}, {"b", "col2"}, {"a", "col2"}};
@@ -857,7 +860,8 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
     String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
 
     // b.col2 is the inner b, a.col2 the outer a: each name resolves in its own scope
-    String sqlStr = "SELECT a.col1 FROM a WHERE EXISTS (SELECT b.col1 FROM b WHERE b.col2 = a.col2)";
+    String sqlStr =
+        "SELECT a.col1 FROM a WHERE EXISTS (SELECT b.col1 FROM b WHERE b.col2 = a.col2)";
 
     JSQLResolver resolver = new JSQLResolver(schemaDefinition);
     Assertions.assertThat(resolver.flatten(resolver.resolve(sqlStr)))
