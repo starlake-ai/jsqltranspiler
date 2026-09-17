@@ -784,4 +784,111 @@ class JSQLResolverTest extends AbstractColumnResolverTest {
         .as("All %d invalid queries should be rejected by JSQLResolver", testQueries.length)
         .isEqualTo(testQueries.length);
   }
+
+  // --- correlated sub queries: a sub query in an expression may reference the
+  // tables of the query that encloses it. Only the sub query's own FROM clause was
+  // in scope, so every such reference was rejected as an undeclared table.
+
+  @Test
+  void testCorrelatedExists() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
+
+    String sqlStr =
+        "SELECT a.col1 FROM a WHERE EXISTS (SELECT b.col1 FROM b WHERE b.col2 = a.col2)";
+
+    // a.col2 is the correlated reference: the outer table is in scope inside the sub query
+    String[][] expectedColumns = {{"a", "col1"}, {"b", "col2"}, {"a", "col2"}};
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    assertThatTableAndColumnsMatch(resolver.resolve(sqlStr), expectedColumns);
+  }
+
+  @Test
+  void testCorrelatedIn() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
+
+    String sqlStr =
+        "SELECT a.col1 FROM a WHERE a.col1 IN (SELECT b.col1 FROM b WHERE b.col2 = a.col2)";
+
+    String[][] expectedColumns = {{"a", "col1"}, {"b", "col2"}, {"a", "col2"}};
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    assertThatTableAndColumnsMatch(resolver.resolve(sqlStr), expectedColumns);
+  }
+
+  @Test
+  void testCorrelatedScalarSubSelectInSelectList() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
+
+    String sqlStr = "SELECT a.col1, (SELECT max(b.col1) FROM b WHERE b.col2 = a.col2) FROM a";
+
+    String[][] expectedColumns = {{"a", "col1"}, {"b", "col1"}, {"b", "col2"}, {"a", "col2"}};
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    assertThatTableAndColumnsMatch(resolver.resolve(sqlStr), expectedColumns);
+  }
+
+  @Test
+  void testCorrelatedWithAliases() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
+
+    String sqlStr =
+        "SELECT x.col1 FROM a x WHERE EXISTS (SELECT y.col1 FROM b y WHERE y.col2 = x.col2)";
+
+    // reported against the real table names, not the aliases
+    String[][] expectedColumns = {{"a", "col1"}, {"b", "col2"}, {"a", "col2"}};
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    assertThatTableAndColumnsMatch(resolver.resolve(sqlStr), expectedColumns);
+  }
+
+  @Test
+  void testCorrelatedInHaving() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
+
+    String sqlStr = "SELECT a.col1 FROM a GROUP BY a.col1"
+        + " HAVING count(a.col1) > (SELECT count(b.col1) FROM b WHERE b.col2 = a.col2)";
+
+    String[][] expectedColumns = {{"a", "col1"}, {"b", "col1"}, {"b", "col2"}, {"a", "col2"}};
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    assertThatTableAndColumnsMatch(resolver.resolve(sqlStr), expectedColumns);
+  }
+
+  @Test
+  void testInnerTableShadowsOuterTableOfTheSameName() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
+
+    // b.col2 is the inner b, a.col2 the outer a: each name resolves in its own scope
+    String sqlStr =
+        "SELECT a.col1 FROM a WHERE EXISTS (SELECT b.col1 FROM b WHERE b.col2 = a.col2)";
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    Assertions.assertThat(resolver.flatten(resolver.resolve(sqlStr)))
+        .contains(new JdbcColumn("b", "col2"), new JdbcColumn("a", "col2"));
+  }
+
+  @Test
+  void testUncorrelatedSubSelectStillResolves() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
+
+    String sqlStr = "SELECT a.col1 FROM a WHERE a.col1 IN (SELECT b.col1 FROM b WHERE b.col2 = 1)";
+
+    String[][] expectedColumns = {{"a", "col1"}, {"b", "col2"}};
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    assertThatTableAndColumnsMatch(resolver.resolve(sqlStr), expectedColumns);
+  }
+
+  @Test
+  void testDerivedTableInFromDoesNotSeeTheOuterQuery() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
+
+    // a derived table in FROM is not correlated: a.col2 is not in scope there
+    String sqlStr = "SELECT t.col1 FROM a, (SELECT b.col1 FROM b WHERE b.col2 = a.col2) t";
+
+    JSQLResolver resolver = new JSQLResolver(schemaDefinition);
+    Assertions.assertThatThrownBy(() -> resolver.resolve(sqlStr))
+        .isInstanceOf(TableNotDeclaredException.class);
+  }
 }

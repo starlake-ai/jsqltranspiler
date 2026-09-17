@@ -63,6 +63,16 @@ public final class JdbcMetaData implements DatabaseMetaData {
   private final CaseInsensitiveLinkedHashMap<Table> fromTables =
       new CaseInsensitiveLinkedHashMap<>() {};
 
+  /**
+   * The tables of the queries enclosing this one, for a correlated sub query.
+   * <p>
+   * Separate from {@link #fromTables} on purpose: a qualified reference falls back to this scope
+   * when the name is not one of this query's own tables, while an unqualified column is looked up
+   * in {@link #fromTables} alone, so the inner query keeps deciding what a bare column name means.
+   */
+  private final CaseInsensitiveLinkedHashMap<Table> outerFromTables =
+      new CaseInsensitiveLinkedHashMap<>();
+
   private final CaseInsensitiveLinkedHashMap<Table> naturalJoinedTables =
       new CaseInsensitiveLinkedHashMap<>();
   private final CaseInsensitiveLinkedHashMap<Column> leftUsingJoinedColumns =
@@ -1840,6 +1850,11 @@ public final class JdbcMetaData implements DatabaseMetaData {
     return fromTables;
   }
 
+  /** The tables of the enclosing queries; empty unless this is a correlated sub query. */
+  public CaseInsensitiveLinkedHashMap<Table> getOuterFromTables() {
+    return outerFromTables;
+  }
+
   public JdbcMetaData addFromTables(Collection<Table> fromTables) {
     for (Table t : fromTables) {
       this.fromTables.put(t.getName(), t);
@@ -1890,6 +1905,9 @@ public final class JdbcMetaData implements DatabaseMetaData {
     JdbcMetaData metaData1 =
         new JdbcMetaData(metaData.currentCatalogName, metaData.currentSchemaName);
     metaData1.getFromTables().putAll(fromTables);
+    // The enclosing scope travels with the copy; only the query's own tables are
+    // decided per copy.
+    metaData1.outerFromTables.putAll(metaData.outerFromTables);
 
     for (JdbcCatalog catalog : metaData.catalogs.values()) {
       JdbcCatalog catalog1 = new JdbcCatalog(catalog.tableCatalog, metaData.catalogSeparator);
@@ -1915,6 +1933,17 @@ public final class JdbcMetaData implements DatabaseMetaData {
 
   public static JdbcMetaData copyOf(JdbcMetaData metaData) {
     return copyOf(metaData, new CaseInsensitiveLinkedHashMap<Table>());
+  }
+
+  /**
+   * The scope for a sub query that appears in an expression - {@code EXISTS}, {@code IN}, a scalar
+   * select, {@code HAVING}. Its own FROM clause starts empty, and the tables of the enclosing query
+   * become the outer scope that a correlated reference resolves against.
+   */
+  public static JdbcMetaData copyOfNested(JdbcMetaData outer) {
+    JdbcMetaData nested = copyOf(outer);
+    nested.outerFromTables.putAll(outer.fromTables);
+    return nested;
   }
 
   public JdbcMetaData copyOf() {

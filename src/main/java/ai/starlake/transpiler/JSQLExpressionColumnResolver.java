@@ -90,6 +90,13 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       // column has a table name prefix, which could be the actual table name or the table's
       // alias
       String actualColumnTableName = null;
+      if (!fromTables.containsKey(columnTableName)
+          && metaData.getOuterFromTables().containsKey(columnTableName)) {
+        // A correlated reference: the name is not one of this query's tables but is
+        // one of the enclosing query's. Unqualified columns never reach here, so the
+        // inner query keeps deciding what a bare column name means.
+        fromTables = metaData.getOuterFromTables();
+      }
       if (!fromTables.containsKey(columnTableName)) {
         switch (metaData.getErrorMode()) {
           case STRICT:
@@ -538,29 +545,41 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   @Override
   public <S> List<JdbcColumn> visit(ParenthesedSelect select, S context) {
     ArrayList<JdbcColumn> columns = new ArrayList<>();
+    Object scope = nestedScope(context);
     if (select.getWithItemsList() != null) {
       for (WithItem<?> item : select.getWithItemsList()) {
-        columns.addAll(item.accept(columResolver, context).getColumns());
+        columns.addAll(item.accept(columResolver, scope).getColumns());
       }
     }
     columns.addAll(
-        select.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context).getColumns());
+        select.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, scope).getColumns());
     return columns;
+  }
+
+  /**
+   * The scope a sub query in an expression is resolved in: its own FROM clause, plus the tables of
+   * the enclosing query as an outer scope a correlated reference may name. A context that is not
+   * metadata is handed on unchanged.
+   */
+  private static Object nestedScope(Object context) {
+    return context instanceof JdbcMetaData ? JdbcMetaData.copyOfNested((JdbcMetaData) context)
+        : context;
   }
 
   @Override
   public <S> List<JdbcColumn> visit(Select select, S context) {
     ArrayList<JdbcColumn> columns = new ArrayList<>();
+    Object scope = nestedScope(context);
     if (select.getWithItemsList() != null) {
       for (WithItem<?> item : select.getWithItemsList()) {
-        for (JdbcColumn col : item.accept(columResolver, context).getColumns()) {
+        for (JdbcColumn col : item.accept(columResolver, scope).getColumns()) {
           columns.add(col.setExpression(select));
         }
       }
     }
 
-    for (JdbcColumn col : select
-        .accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, context).getColumns()) {
+    for (JdbcColumn col : select.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, scope)
+        .getColumns()) {
       columns.add(col.setExpression(select));
     }
 
@@ -571,9 +590,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   public <S> List<JdbcColumn> visit(PlainSelect plainSelect, S context) {
     ArrayList<JdbcColumn> columns = new ArrayList<>();
     if (context instanceof JdbcMetaData) {
-      JdbcResultSetMetaData resultSetMetaData =
-          plainSelect.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver,
-              JdbcMetaData.copyOf((JdbcMetaData) context));
+      JdbcResultSetMetaData resultSetMetaData = plainSelect
+          .accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, nestedScope(context));
       columns.addAll(resultSetMetaData.getColumns());
     }
     return columns;
@@ -583,9 +601,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   public <S> List<JdbcColumn> visit(SetOperationList setOperationList, S context) {
     ArrayList<JdbcColumn> columns = new ArrayList<>();
     if (context instanceof JdbcMetaData) {
-      JdbcResultSetMetaData resultSetMetaData =
-          setOperationList.accept((SelectVisitor<JdbcResultSetMetaData>) columResolver,
-              JdbcMetaData.copyOf((JdbcMetaData) context));
+      JdbcResultSetMetaData resultSetMetaData = setOperationList
+          .accept((SelectVisitor<JdbcResultSetMetaData>) columResolver, nestedScope(context));
       columns.addAll(resultSetMetaData.getColumns());
     }
     return columns;
