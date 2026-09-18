@@ -2,6 +2,27 @@
 
 Changelog of jsqltranspiler
 
+## 1.13
+
+Released 2026-09-18.
+
+### Dependencies
+
+* **jsqlparser 5.4.15** (was 5.4.2 in 1.12). Notable upstream changes: BigQuery
+  `JSON 'literal'` string literals parse again (upstreamed from the starlake-ai
+  fork, JSQLParser#2488), plus grammar fixes for `MERGE ... WHEN NOT MATCHED BY
+  TARGET / BY SOURCE`, `XMLTABLE`, PostgreSQL `GROUPS` window frames, structured
+  interval qualifiers and nested parametric `CAST` targets. The full test suite
+  (1050 tests) is green against 5.4.15.
+
+### Fixed
+
+* Resolve correlated sub queries against the enclosing query (#152).
+* Override the `UnPivotQuery` visit methods in `JSQLColumResolver`: jsqlparser
+  5.4.15 adds `UnPivotQuery` with default `visit()` in both `SelectVisitor` and
+  `FromItemVisitor`, which broke compilation (same pattern as `PivotQuery` in
+  1.12).
+
 ## 1.12
 
 Released 2026-09-14.
