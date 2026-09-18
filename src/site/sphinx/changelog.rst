@@ -4,18 +4,90 @@ Changelog
 ************************
 
 
-Latest Changes since |JSQLTRANSPILER_VERSION|
+Version v1.12
+=============================================================
+
+
+  * **chore: ignore .bsp, .claude and the downloaded tickitdb fixture**
+    
+    Hayssam Saleh, 2026-09-14
+  * **docs: align PUBLISHING.md with actual publish.sh flow**
+    
+    Hayssam Saleh, 2026-09-06
+
+Version v1.11
+=============================================================
+
+
+  * **build: pin jsqlparser to latest.release for release builds**
+    
+    Hayssam Saleh, 2026-09-06
+  * **fix: override PivotQuery visit methods to compile against jsqlparser 5.4.338 snapshots**
+    
+    Hayssam Saleh, 2026-09-06
+  * **fix: restore green test suite on current jsqlparser manticore snapshots (#151)**
+    
+    Hayssam Saleh, 2026-08-19
+  * **feat: emit DuckDB VARIANT bracket access for Snowflake variant paths (#149)**
+    
+    Hayssam Saleh, 2026-08-19
+  * **fix: restore green test suite on current jsqlparser manticore snapshots**
+    
+    Hayssam Saleh, 2026-08-19
+  * **feat: default VARIANT_MODE to VARIANT for DuckDB 1.4+ (#148)**
+    
+    Hayssam Saleh, 2026-08-19
+  * **feat: emit DuckDB VARIANT bracket access for Snowflake variant paths (#148)**
+    
+    Hayssam Saleh, 2026-08-19
+  * **ci: switch snapshot publish to in-memory PGP signing**
+    
+    Hayssam Saleh, 2026-06-14
+
+Version v1.10
+=============================================================
+
+
+  * **ci: stub mavenCentral credentials for verify workflow**
+    
+    Hayssam Saleh, 2026-06-14
+  * **fix: null-guard argless analytic functions in JSQLColumResolver (#146) (#147)**
+    
+    Hayssam Saleh, 2026-06-14
+  * **fix formatting**
+    
+    Hayssam Saleh, 2026-06-14
+  * **fix: null-guard argless analytic functions in JSQLColumResolver (#146)**
+    
+    Hayssam Saleh, 2026-06-14
+
+Version v1.9
+=============================================================
+
+
+  * **update change log**
+    
+    Hayssam Saleh, 2026-06-10
+  * **fix: record ORDER BY columns in JSQLResolver (#145)**
+    
+    manticore-projects, 2026-06-07
+  * **fix: record ORDER BY columns in JSQLResolver**
+    
+    Stefan Bischof, 2026-06-06
+  * **feat: upgrade DuckDB JDBC from 1.5.0.0 to 1.5.2.0**
+    
+    Hayssam Saleh, 2026-04-20
+  * **doc: fix java doc**
+    
+    manticore-projects, 2026-03-28
+
+Version v1.8
 =============================================================
 
 
   * **feat: upgrade DuckDB JDBC from 1.4.3.0 to 1.5.0.0 (#144)**
     
     Hayssam Saleh, 2026-03-11
-
-Version v1.8
-=============================================================
-
-
   * **fix: raise JaCoCo missed lines threshold to 2600**
     
     Hayssam Saleh, 2026-03-11
@@ -43,26 +115,36 @@ Version v1.8
   * **Update publishing comment**
     
     Hayssam Saleh, 2026-01-25
+
+Version 1.7
+=============================================================
+
+
   * **ignore not added files**
     
     Hayssam Saleh, 2026-01-25
   * **Update publishing strategy**
     
     Hayssam Saleh, 2026-01-25
+
+Version 1.6
+=============================================================
+
+
   * **fix: package name**
     
     Andreas Reichel, 2026-01-21
   * **feat: flat column lineage**
     
     Andreas Reichel, 2026-01-21
-
-Version 1.6
-=============================================================
-
-
   * **feat: flat column lineage**
     
     Andreas Reichel, 2026-01-20
+
+Version 1.5
+=============================================================
+
+
   * **add (osgi)optional imports for duckdb h2 json (#139)**
     
     manticore-projects, 2025-12-16
