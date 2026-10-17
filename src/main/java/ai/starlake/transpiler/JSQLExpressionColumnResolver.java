@@ -20,6 +20,7 @@ import ai.starlake.transpiler.schema.JdbcResultSetMetaData;
 import ai.starlake.transpiler.schema.JdbcTable;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.AnalyticExpression;
+import net.sf.jsqlparser.expression.ColumnsTransformer;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.Function;
@@ -28,6 +29,7 @@ import net.sf.jsqlparser.expression.JsonFunction;
 import net.sf.jsqlparser.expression.JsonFunctionExpression;
 import net.sf.jsqlparser.expression.TranscodingFunction;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.AllColumns;
@@ -52,6 +54,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 @SuppressWarnings({"PMD.CyclomaticComplexity"})
 public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<JdbcColumn>>
@@ -236,6 +240,7 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
   }
 
 
+
   @SuppressWarnings({"PMD.CyclomaticComplexity"})
   @Override
   public <S> List<JdbcColumn> visit(AllTableColumns allTableColumns, S context) {
@@ -245,74 +250,79 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       Table table = allTableColumns.getTable();
 
       HashSet<JdbcColumn> excepts = new HashSet<>();
-      ExpressionList<Column> exceptColumns = allTableColumns.getExceptColumns();
-      if (exceptColumns != null) {
-        for (Column c : exceptColumns) {
-          JdbcColumn jdbcColumn =
-              getJdbcColumn(metaData, c.getTable() == null ? c.withTable(table) : c);
-          if (jdbcColumn != null) {
-            excepts.add(jdbcColumn);
-          } else {
-            LOGGER.warning("Could not resolve EXCEPT Column " + c.getFullyQualifiedName());
-          }
-        }
-      }
-
+      ArrayList<Pattern> exceptPatterns = new ArrayList<>();
       HashMap<JdbcColumn, Alias> replaceMap = new HashMap<>();
-      List<SelectItem<?>> replaceExpressions = allTableColumns.getReplaceExpressions();
-      if (replaceExpressions != null) {
-        for (SelectItem<?> c : replaceExpressions) {
-          if (c.getExpression() instanceof Column) {
-            Column column = (Column) c.getExpression();
 
-            JdbcColumn jdbcColumn = getJdbcColumn(metaData,
-                column.getTable() == null ? column.withTable(table) : column);
-            if (jdbcColumn != null) {
-              replaceMap.put(jdbcColumn, c.getAlias());
-            } else {
-              LOGGER.warning("Could not resolve REPLACE Column " + column.getFullyQualifiedName());
+      for (ColumnsTransformer transformer : allTableColumns.getTransformers()) {
+        switch (transformer.getType()) {
+          case EXCEPT:
+          case EXCLUDE:
+            ParenthesedExpressionList<Column> exceptColumns = transformer.getExceptColumns();
+            if (exceptColumns != null) {
+              for (Column c : exceptColumns) {
+                JdbcColumn jdbcColumn =
+                    getJdbcColumn(metaData, c.getTable() == null ? c.withTable(table) : c);
+                if (jdbcColumn != null) {
+                  excepts.add(jdbcColumn);
+                } else {
+                  LOGGER.warning("Could not resolve EXCEPT Column " + c.getFullyQualifiedName());
+                }
+              }
+            } else if (transformer.getExceptPattern() != null) {
+              // ClickHouse `EXCEPT 'pattern'` (re2); best-effort match with Java regex
+              try {
+                exceptPatterns.add(Pattern.compile(transformer.getExceptPattern().getValue()));
+              } catch (PatternSyntaxException ex) {
+                LOGGER
+                    .warning("Could not compile EXCEPT pattern " + transformer.getExceptPattern());
+              }
             }
+            break;
 
-          } else {
-            c.getExpression().accept(this, null);
-          }
-          //
-          //
-          // JdbcColumn jdbcColumn = c getJdbcColumn(metaData,
-          // c.getExpression().getTable() == null ? c.getExpression().withTable(table)
-          // : c.getExpression());
-          // if (jdbcColumn != null) {
-          // replaceMap.put(jdbcColumn, c.getAlias());
-          // } else {
-          // LOGGER.warning(
-          // "Could not resolve REPLACE Column " + c.getExpression().getFullyQualifiedName());
-          // }
+          case REPLACE:
+          case RENAME:
+            List<SelectItem<?>> items =
+                transformer.getType() == ColumnsTransformer.ColumnsTransformerType.REPLACE
+                    ? transformer.getReplaceItems()
+                    : transformer.getRenameItems();
+            if (items != null) {
+              for (SelectItem<?> c : items) {
+                if (c.getExpression() instanceof Column) {
+                  Column column = (Column) c.getExpression();
+                  JdbcColumn jdbcColumn = getJdbcColumn(metaData,
+                      column.getTable() == null ? column.withTable(table) : column);
+                  if (jdbcColumn != null) {
+                    replaceMap.put(jdbcColumn, c.getAlias());
+                  } else {
+                    LOGGER.warning("Could not resolve " + transformer.getType() + " Column "
+                        + column.getFullyQualifiedName());
+                  }
+                } else {
+                  c.getExpression().accept(this, null);
+                }
+              }
+            }
+            break;
+
+          case APPLY:
+          default:
+            // APPLY transforms values, not the column set — irrelevant for resolution
+            break;
         }
       }
 
       /*
       -- invalid:
-      select JSQLTranspilerTest.main.listing.*
-      from  JSQLTranspilerTest.main.listing
-      
-      select main.listing.*
-      from  main.listing
-      
+      select JSQLTranspilerTest.main.listing.* from JSQLTranspilerTest.main.listing
+      select main.listing.* from main.listing
       -- valid:
-      select listing.*
-      from  JSQLTranspilerTest.main.listing
+      select listing.* from JSQLTranspilerTest.main.listing
        */
 
-
-      String columnTablename = null;
-      if (table != null) {
-        columnTablename = table.getName();
-      }
+      String columnTablename = table != null ? table.getName() : null;
 
       if (columnTablename != null) {
-        // column has a table name prefix, which could be the actual table name or the table's
-        // alias
-
+        // table name prefix: actual table name or the table's alias
         Table actualTable = metaData.getFromTables().get(columnTablename);
         if (actualTable == null) {
           switch (columResolver.getErrorMode()) {
@@ -329,12 +339,17 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
               actualTable.getDatabase() != null ? actualTable.getDatabase().getDatabaseName()
                   : null;
 
-          for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
-              actualTable.getName(), null)) {
-
-            if (!excepts.contains(jdbcColumn)) {
-              columns.add(jdbcColumn);
+          nextColumn: for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName,
+              tableSchemaName, actualTable.getName(), null)) {
+            if (excepts.contains(jdbcColumn)) {
+              continue;
             }
+            for (Pattern pattern : exceptPatterns) {
+              if (pattern.matcher(jdbcColumn.columnName).matches()) {
+                continue nextColumn;
+              }
+            }
+            columns.add(jdbcColumn);
           }
         }
       }
@@ -351,58 +366,86 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       JdbcMetaData metaData = (JdbcMetaData) context;
 
       HashSet<JdbcColumn> excepts = new HashSet<>();
-      ExpressionList<Column> exceptColumns = allColumns.getExceptColumns();
-      if (exceptColumns != null) {
-        for (Column c : exceptColumns) {
-          if (c.getTable() != null) {
-            JdbcColumn jdbcColumn = getJdbcColumn(metaData, c);
-            if (jdbcColumn != null) {
-              excepts.add(jdbcColumn);
-            } else {
-              LOGGER.warning("Could not resolve EXCEPT Column " + c.getFullyQualifiedName());
-            }
-          } else {
-            for (Table t : metaData.getFromTables().values()) {
-              JdbcColumn jdbcColumn = getJdbcColumn(metaData, c.withTable(t));
-              if (jdbcColumn != null) {
-                excepts.add(jdbcColumn);
-              } else {
-                LOGGER.fine("Could not resolve EXCEPT Column " + c.getFullyQualifiedName());
-              }
-            }
-          }
-        }
-      }
-
+      ArrayList<Pattern> exceptPatterns = new ArrayList<>();
       HashMap<JdbcColumn, Alias> replaceMap = new HashMap<>();
-      List<SelectItem<?>> replaceExpressions = allColumns.getReplaceExpressions();
-      if (replaceExpressions != null) {
-        for (SelectItem<?> c : replaceExpressions) {
-          if (c.getExpression() instanceof Column) {
-            Column column = (Column) c.getExpression();
 
-            if (column.getTable() != null) {
-              JdbcColumn jdbcColumn = getJdbcColumn(metaData, column);
-              if (jdbcColumn != null) {
-                replaceMap.put(jdbcColumn, c.getAlias());
-              } else {
-                LOGGER
-                    .warning("Could not resolve REPLACE Column " + column.getFullyQualifiedName());
-              }
-            } else {
-              for (Table t : metaData.getFromTables().values()) {
-                JdbcColumn jdbcColumn = getJdbcColumn(metaData, column.withTable(t));
-                if (jdbcColumn != null) {
-                  replaceMap.put(jdbcColumn, c.getAlias());
+      for (ColumnsTransformer transformer : allColumns.getTransformers()) {
+        switch (transformer.getType()) {
+          case EXCEPT:
+          case EXCLUDE:
+            ParenthesedExpressionList<Column> exceptColumns = transformer.getExceptColumns();
+            if (exceptColumns != null) {
+              for (Column c : exceptColumns) {
+                if (c.getTable() != null) {
+                  JdbcColumn jdbcColumn = getJdbcColumn(metaData, c);
+                  if (jdbcColumn != null) {
+                    excepts.add(jdbcColumn);
+                  } else {
+                    LOGGER.warning("Could not resolve EXCEPT Column " + c.getFullyQualifiedName());
+                  }
                 } else {
-                  LOGGER.warning(
-                      "Could not resolve REPLACE Column " + column.getFullyQualifiedName());
+                  for (Table t : metaData.getFromTables().values()) {
+                    JdbcColumn jdbcColumn = getJdbcColumn(metaData, c.withTable(t));
+                    if (jdbcColumn != null) {
+                      excepts.add(jdbcColumn);
+                    } else {
+                      LOGGER.fine("Could not resolve EXCEPT Column " + c.getFullyQualifiedName());
+                    }
+                  }
+                }
+              }
+            } else if (transformer.getExceptPattern() != null) {
+              // ClickHouse `EXCEPT 'pattern'` (re2); best-effort match with Java regex
+              try {
+                exceptPatterns.add(Pattern.compile(transformer.getExceptPattern().getValue()));
+              } catch (PatternSyntaxException ex) {
+                LOGGER
+                    .warning("Could not compile EXCEPT pattern " + transformer.getExceptPattern());
+              }
+            }
+            break;
+
+          case REPLACE:
+          case RENAME:
+            List<SelectItem<?>> items =
+                transformer.getType() == ColumnsTransformer.ColumnsTransformerType.REPLACE
+                    ? transformer.getReplaceItems()
+                    : transformer.getRenameItems();
+            if (items != null) {
+              for (SelectItem<?> c : items) {
+                if (c.getExpression() instanceof Column) {
+                  Column column = (Column) c.getExpression();
+
+                  if (column.getTable() != null) {
+                    JdbcColumn jdbcColumn = getJdbcColumn(metaData, column);
+                    if (jdbcColumn != null) {
+                      replaceMap.put(jdbcColumn, c.getAlias());
+                    } else {
+                      LOGGER.warning("Could not resolve " + transformer.getType() + " Column "
+                          + column.getFullyQualifiedName());
+                    }
+                  } else {
+                    for (Table t : metaData.getFromTables().values()) {
+                      JdbcColumn jdbcColumn = getJdbcColumn(metaData, column.withTable(t));
+                      if (jdbcColumn != null) {
+                        replaceMap.put(jdbcColumn, c.getAlias());
+                      } else {
+                        LOGGER.warning("Could not resolve " + transformer.getType() + " Column "
+                            + column.getFullyQualifiedName());
+                      }
+                    }
+                  }
+                } else {
+                  c.getExpression().accept(this, null);
                 }
               }
             }
-          } else {
-            c.getExpression().accept(this, null);
-          }
+            break;
+
+          case APPLY:
+          default:
+            // APPLY transforms values, not the column set — irrelevant for resolution
+            break;
         }
       }
 
@@ -410,8 +453,8 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
         String tableSchemaName = t.getUnquotedSchemaName();
         String tableCatalogName = t.getUnquotedDatabaseName();
 
-        for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName, tableSchemaName,
-            t.getUnquotedName(), null)) {
+        nextColumn: for (JdbcColumn jdbcColumn : metaData.getTableColumns(tableCatalogName,
+            tableSchemaName, t.getUnquotedName(), null)) {
           boolean inserted = false;
           jdbcColumn.tableSchema = null;
           jdbcColumn.tableCatalog = null;
@@ -424,6 +467,11 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
           }
 
           if (!excepts.contains(jdbcColumn)) {
+            for (Pattern pattern : exceptPatterns) {
+              if (pattern.matcher(jdbcColumn.columnName).matches()) {
+                continue nextColumn;
+              }
+            }
 
             if (metaData.getNaturalJoinedTables().containsValue(t)) {
               for (JdbcColumn column : columns) {
@@ -457,7 +505,6 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
             if (!inserted) {
               columns.add(jdbcColumn);
             }
-
           }
         }
       }

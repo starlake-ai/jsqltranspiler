@@ -19,6 +19,7 @@ import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
+import net.sf.jsqlparser.expression.ColumnsTransformer;
 import net.sf.jsqlparser.expression.DateTimeLiteralExpression;
 import net.sf.jsqlparser.expression.DateUnitExpression;
 import net.sf.jsqlparser.expression.DoubleValue;
@@ -75,6 +76,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -1558,17 +1560,45 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return builder;
   }
 
+
   @Override
   public <S> StringBuilder visit(AllColumns allColumns, S context) {
-    // if (allColumns.getReplaceExpressions() != null) {
-    // warning("DuckDB replaces Column's content instead Column's label, so unsupported.");
-    // allColumns.setReplaceExpressions(null);
-    // }
+    for (Iterator<ColumnsTransformer> it = allColumns.getTransformers().iterator(); it.hasNext();) {
+      ColumnsTransformer transformer = it.next();
+      switch (transformer.getType()) {
+        case EXCEPT:
+          if (transformer.getExceptColumns() != null) {
+            // DuckDB uses "EXCLUDE" instead "EXCEPT", because why not?!
+            transformer.setType(ColumnsTransformer.ColumnsTransformerType.EXCLUDE);
+          } else {
+            // ClickHouse regex form `EXCEPT 'pattern'` has no DuckDB equivalent
+            warning("DuckDB does not support EXCEPT with a column pattern, so dropped.");
+            it.remove();
+            continue;
+          }
+          break;
 
-    // DuckDB uses "EXCLUDE" instead "EXCEPT", because why not?!
-    super.visit(
-        allColumns.getExceptColumns() != null ? allColumns.setExceptKeyword("EXCLUDE") : allColumns,
-        null);
+        case APPLY:
+          // ClickHouse-only `APPLY(x -> f(x))`
+          warning("DuckDB does not support the APPLY transformer, so dropped.");
+          it.remove();
+          continue;
+
+        case EXCLUDE: // already DuckDB spelling
+        case REPLACE: // DuckDB supports `* REPLACE (expr AS col)` natively
+        case RENAME: // DuckDB native `* RENAME (col AS name)`
+        default:
+          break;
+      }
+
+      if (transformer.isStrict()) {
+        // ClickHouse-only modifier on EXCEPT/REPLACE
+        warning("DuckDB does not support the STRICT modifier, so dropped.");
+        transformer.setStrict(false);
+      }
+    }
+
+    super.visit(allColumns, context);
     return builder;
   }
 
