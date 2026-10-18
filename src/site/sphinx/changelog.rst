@@ -4,6 +4,46 @@ Changelog
 ************************
 
 
+Version v1.14
+=============================================================
+
+
+  * **docs: changelog for 1.14**
+    
+    Hayssam Saleh, 2026-10-18
+  * **fix: keep snapshot repos out of release builds so the POM pins a jsqlparser release**
+    
+    Hayssam Saleh, 2026-10-18
+  * **make executable**
+    
+    Hayssam Saleh, 2026-10-18
+  * **`feat: migrate AllColumns handling to ColumnsTransformer model of JSqlParser 5.4`**
+    
+    Andreas Reichel, 2026-10-17
+
+Version v1.13
+=============================================================
+
+
+  * **docs: changelog for 1.13**
+    
+    Hayssam Saleh, 2026-09-18
+  * **docs: record the 1.12 release in the changelogs**
+    
+    Hayssam Saleh, 2026-09-18
+  * **fix: override UnPivotQuery visit methods to compile against jsqlparser 5.4.15**
+    
+    Hayssam Saleh, 2026-09-18
+  * **fix: resolve correlated sub queries against the enclosing query (#152)**
+    
+    manticore-projects, 2026-09-17
+  * **style: apply spotless formatting**
+    
+    Stefan Bischof, 2026-09-17
+  * **fix: resolve correlated sub queries against the enclosing query**
+    
+    Stefan Bischof, 2026-09-11
+
 Version v1.12
 =============================================================
 
