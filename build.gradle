@@ -68,12 +68,16 @@ repositories {
     gradlePluginPortal()
     mavenCentral()
 
-    // locally built jsqlparser snapshots take precedence over the published ones
-    mavenLocal()
+    // release builds must only see Maven Central: a snapshot repo lets the jsqlparser range
+    // resolve to a -SNAPSHOT, which Central rejects (and the snapshots repo prunes)
+    if (!System.getenv("RELEASE")) {
+        // locally built jsqlparser snapshots take precedence over the published ones
+        mavenLocal()
 
-    // Snapshots: always needed since jsqlparser is consumed as a snapshot of its manticore branch
-    maven {
-        url = uri('https://central.sonatype.com/repository/maven-snapshots/')
+        // jsqlparser snapshots of the manticore branch
+        maven {
+            url = uri('https://central.sonatype.com/repository/maven-snapshots/')
+        }
     }
 }
 
@@ -514,6 +518,9 @@ publishing {
                         }
 
                         if (resolved != null) {
+                            if (System.getenv("RELEASE") && resolved.moduleVersion.endsWith("SNAPSHOT")) {
+                                throw new GradleException("Release POM would pin snapshot dependency ${groupId}:${artifactId}:${resolved.moduleVersion}")
+                            }
                             // Replace dynamic version (+, latest.release, etc.) with resolved version
                             depNode.version[0].value = resolved.moduleVersion
                         }

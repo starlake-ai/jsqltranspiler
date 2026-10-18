@@ -37,10 +37,12 @@ The version is derived from `git describe`: on a tag `vX.Y` the version is `X.Y`
 
 The project consumes JSQLParser snapshots of the manticore branch (`com.manticore-projects.jsqlformatter:jsqlparser`):
 
-- **Snapshot builds** resolve the dynamic `+` version, i.e. the newest snapshot from the central snapshots repository.
-- **Release builds** (`RELEASE=1`) resolve `latest.release`, i.e. the newest non-snapshot release on Maven Central. Release POMs must not pin a snapshot: the snapshots repository prunes artifacts and consumers do not have it configured.
+The dependency is declared as a version range (e.g. `[5.4.162,)`).
 
-In both cases the published POM pins the concrete resolved version instead of the dynamic notation.
+- **Snapshot builds** also register `mavenLocal()` and the central snapshots repository, so the range resolves to the newest snapshot.
+- **Release builds** (`RELEASE=1`) register neither, so the range resolves to the newest release on Maven Central. Release POMs must not pin a snapshot: Central rejects them ("Dependencies to SNAPSHOT versions not allowed"), the snapshots repository prunes artifacts, and consumers do not have it configured. As a safety net, the POM generation fails a release build if a snapshot still resolves.
+
+In both cases the published POM pins the concrete resolved version instead of the range.
 
 ## Publishing a Snapshot
 
