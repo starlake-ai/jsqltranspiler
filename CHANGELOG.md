@@ -2,6 +2,36 @@
 
 Changelog of jsqltranspiler
 
+## 1.14
+
+Released 2026-10-18.
+
+### Dependencies
+
+* **jsqlparser 5.4.162** (was 5.4.15 in 1.13). jsqlparser 5.4 replaces the
+  `EXCEPT`/`REPLACE` lists on `AllColumns` with a list of `ColumnsTransformer`s.
+  The full test suite (1065 tests) is green against 5.4.162.
+
+### Changed
+
+* Migrate `*` and `t.*` handling to the `ColumnsTransformer` model:
+  * The transpiler rewrites `EXCEPT` to DuckDB's `EXCLUDE`, and passes
+    `EXCLUDE`, `REPLACE` and `RENAME` through unchanged.
+  * It drops ClickHouse-only constructs that DuckDB cannot express, each with a
+    warning: `EXCEPT 'pattern'`, `APPLY(...)` and the `STRICT` modifier.
+  * The column resolver applies `EXCEPT`, `REPLACE` and `RENAME` when it expands
+    star columns, and matches ClickHouse `EXCEPT 'pattern'` on a best-effort
+    basis with a Java regex.
+
+### Build
+
+* Release builds no longer register `mavenLocal()` or the central snapshots
+  repository, so the jsqlparser range resolves only to Maven Central releases.
+  POM generation now fails a release that would still pin a snapshot
+  dependency. The first 1.14 upload pinned `jsqlparser:5.5.173-SNAPSHOT` and
+  Maven Central rejected it, so this is the build that ships as 1.14.
+* Make `publish.sh` executable.
+
 ## 1.13
 
 Released 2026-09-18.
