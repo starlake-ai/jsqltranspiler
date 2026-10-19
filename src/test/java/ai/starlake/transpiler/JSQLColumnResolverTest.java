@@ -907,6 +907,34 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   }
 
   /**
+   * Test lenient mode when a column belongs to a table qualified with a catalog or a schema that
+   * does not exist in the metadata: the column stays unresolved instead of failing with an NPE.
+   *
+   * @throws JSQLParserException then exception when the SQL can't be parsed
+   */
+  @Test
+  void testLenientUnknownCatalogAndSchema() throws JSQLParserException, SQLException {
+    JdbcMetaData jdbcMetadata = new JdbcMetaData("", "");
+    jdbcMetadata.addTable("", "tpch1", "orders", new JdbcColumn("o_orderdate"));
+
+    //@formatter:off
+    String unknownCatalog =
+        "WITH ref AS (\n" +
+        "    SELECT max(o_orderdate) AS as_of FROM acme_tpch.tpch1.orders\n" +
+        ")\n" +
+        "SELECT as_of FROM ref";
+    //@formatter:on
+    JdbcResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(unknownCatalog,
+        JdbcMetaData.copyOf(jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.LENIENT)));
+    assertThatResolvesInto(res, new String[][] {{"ref", "as_of"}});
+
+    String unknownSchema = "SELECT max(o_orderdate) AS as_of FROM unknown_schema.orders";
+    res = JSQLColumResolver.getResultSetMetaData(unknownSchema,
+        JdbcMetaData.copyOf(jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.IGNORE)));
+    assertThatResolvesInto(res, new String[][] {{"", "max"}});
+  }
+
+  /**
    * Test lenient mode for an aliased table and column, when table exists, but no columns found and
    * schema mismatch.
    *

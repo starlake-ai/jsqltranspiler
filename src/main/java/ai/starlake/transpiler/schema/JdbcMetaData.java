@@ -706,6 +706,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
               + Arrays.deepToString(catalogs.keySet().toArray(new String[0])));
           break;
       }
+      return null;
     }
 
     JdbcSchema jdbcSchema =
@@ -724,6 +725,7 @@ public final class JdbcMetaData implements DatabaseMetaData {
               + Arrays.deepToString(jdbcCatalog.schemas.keySet().toArray(new String[0])));
           break;
       }
+      return null;
     }
 
     if (tableName != null && !tableName.isEmpty()) {
