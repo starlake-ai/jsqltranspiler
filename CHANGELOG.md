@@ -2,6 +2,23 @@
 
 Changelog of jsqltranspiler
 
+## 1.15
+
+Released 2026-10-19.
+
+### Dependencies
+
+* **jsqlparser 5.4.162**, unchanged from 1.14.
+
+### Fixed
+
+* Column lineage no longer fails with a `NullPointerException` when a query
+  names a catalog or schema that the metadata does not contain, for example
+  `acme_tpch.tpch1.orders` when only `tpch1.orders` is known. In `LENIENT` and
+  `IGNORE` modes, `JdbcMetaData.getColumn` now returns `null` for an unknown
+  catalog or schema, as it already did for an unknown table, so the column is
+  reported as unresolved. `STRICT` mode still throws.
+
 ## 1.14
 
 Released 2026-10-18.
