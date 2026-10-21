@@ -166,7 +166,11 @@ public class JSQLExpressionColumnResolver extends ExpressionVisitorAdapter<List<
       Collection<Expression> subExpressions) {
     JdbcColumn col = new JdbcColumn(expression.getClass().getSimpleName(), expression);
     for (Expression e : subExpressions) {
-      col.add(e.accept(this, context));
+      // ExpressionVisitorAdapter passes absent optional parts as null, e.g. the characters of
+      // TRIM(x) or the ESCAPE of a LIKE without one
+      if (e != null) {
+        col.add(e.accept(this, context));
+      }
     }
     return List.of(col);
   }

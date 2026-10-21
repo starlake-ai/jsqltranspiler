@@ -301,6 +301,38 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     assertLineage(sqlStr, lineage);
   }
 
+  // ExpressionVisitorAdapter passes the absent optional parts of an expression as null: the
+  // characters of TRIM(x) and the ESCAPE of a LIKE without one used to throw a
+  // NullPointerException in the lineage of the column
+  @Test
+  void testExpressionWithAbsentOptionalPart()
+      throws JSQLParserException, SQLException, InvocationTargetException, NoSuchMethodException,
+      InstantiationException, IllegalAccessException {
+    //@formatter:off
+    assertLineage("SELECT trim(colBA) AS t FROM b",
+            "SELECT\n" +
+            " └─t AS TrimFunction: Trim( colBA )\n" +
+            "    └─b.colBA : Other"
+    );
+    assertLineage("SELECT colBA LIKE 'x%' AS l FROM b",
+            "SELECT\n" +
+            " └─l AS LikeExpression: colBA LIKE 'x%'\n" +
+            "    ├─b.colBA : Other\n" +
+            "    └─StringValue: 'x%'"
+    );
+    assertLineage("SELECT * LIKE 'colB%' FROM b",
+            "SELECT\n" +
+            " └─LikeExpression: * LIKE 'colB%'\n" +
+            "    ├─b.col1 : Other\n" +
+            "    ├─b.col2 : Other\n" +
+            "    ├─b.col3 : Other\n" +
+            "    ├─b.colBA : Other\n" +
+            "    ├─b.colBB : Other\n" +
+            "    └─StringValue: 'colB%'"
+    );
+    //@formatter:on
+  }
+
   @Test
   void testFunctionVerbose() throws JSQLParserException, SQLException {
     String[][] schemaDefinition = {
