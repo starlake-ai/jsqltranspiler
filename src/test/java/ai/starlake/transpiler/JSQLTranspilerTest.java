@@ -23,6 +23,7 @@ import com.opencsv.exceptions.CsvException;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statements;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.io.FilenameUtils;
@@ -277,6 +278,23 @@ public class JSQLTranspilerTest {
     }
 
     return sqlMap;
+  }
+
+  // parse() is the parsing half of transpileQuery(): same dialect pre-processing, but the
+  // caller gets the Statement and can inspect it before transpiling, with one parse only.
+  @Test
+  void testParseAppliesDialectPreprocessing() throws JSQLParserException, InterruptedException {
+    net.sf.jsqlparser.statement.Statement any =
+        JSQLTranspiler.parse("SELECT 1 AS n", JSQLTranspiler.Dialect.ANY);
+    Assertions.assertThat(any).isInstanceOf(PlainSelect.class);
+
+    // BigQuery double quoted string literals are rewritten before parsing, as transpileQuery does
+    net.sf.jsqlparser.statement.Statement bq =
+        JSQLTranspiler.parse("SELECT \"abc\" AS s", JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY);
+    Assertions.assertThat(bq.toString()).isEqualTo("SELECT 'abc' AS s");
+    Assertions.assertThat(JSQLTranspiler.transpile(bq, Collections.emptyMap()))
+        .isEqualTo(JSQLTranspiler.transpileQuery("SELECT \"abc\" AS s",
+            JSQLTranspiler.Dialect.GOOGLE_BIG_QUERY));
   }
 
   @BeforeAll

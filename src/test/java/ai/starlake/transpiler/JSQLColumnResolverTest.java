@@ -25,6 +25,8 @@ import ai.starlake.transpiler.schema.treebuilder.XmlTreeBuilder;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ThrowableAssert;
 import org.junit.jupiter.api.Disabled;
@@ -258,6 +260,22 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
     assertThatResolvesInto(sqlStr, expected);
   }
 
+
+  // getResolvedStatementText(Statement) resolves an already parsed statement in place, so a
+  // caller holding the AST (a guard that validated it first) does not pay for a second parse.
+  @Test
+  void testResolvedStatementTextFromParsedStatement() throws JSQLParserException {
+    String[][] schemaDefinition = {{"a", "col1", "col2"}, {"b", "col1", "col2"}};
+    String sqlStr = "SELECT * FROM a INNER JOIN b ON a.col1 = b.col1";
+    String expected = new JSQLColumResolver(schemaDefinition).getResolvedStatementText(sqlStr);
+
+    Statement st = CCJSqlParserUtil.parse(sqlStr);
+    String actual = new JSQLColumResolver(schemaDefinition).getResolvedStatementText(st);
+
+    Assertions.assertThat(actual).isEqualTo(expected);
+    // the statement handed in is the one that was rewritten
+    Assertions.assertThat(st.toString()).doesNotContain("SELECT *");
+  }
 
   // https://github.com/starlake-ai/jsqltranspiler/issues/146
   // Argless analytic functions like row_number() used to NPE in the resolver because
