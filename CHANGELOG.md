@@ -2,6 +2,22 @@
 
 Changelog of jsqltranspiler
 
+## 1.16
+
+Released 2026-10-21.
+
+### Dependencies
+
+* **jsqlparser 5.4.162**, unchanged from 1.15.
+
+### Fixed
+
+* Column lineage no longer fails with a `NullPointerException` on expressions
+  with absent optional parts, such as `trim(col)`, `col LIKE 'x%'` (no
+  `ESCAPE`) or `* LIKE 'col%'`. jsqlparser 5.4.16x passes those absent parts to
+  the expression visitor as `null`; `JSQLExpressionColumnResolver` now skips
+  them, and the lineage of the present parts is unchanged.
+
 ## 1.15
 
 Released 2026-10-19.
