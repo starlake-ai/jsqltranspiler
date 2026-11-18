@@ -506,7 +506,7 @@ public class JSQLColumResolver
         if (selectItem.getExpression() instanceof AllColumns
             || selectItem.getExpression() instanceof AllTableColumns) {
           Table t = new Table(col.tableCatalog, col.tableSchema, col.tableName);
-          Column column = new Column(t, col.columnName);
+          Column column = expandedColumn(t, col.columnName);
           if (isCommentFlag()) {
             column.setCommentText("Resolved Column");
           }
@@ -520,6 +520,29 @@ public class JSQLColumResolver
     select.setSelectItems(newSelectItems);
 
     return resultSetMetaData;
+  }
+
+  /**
+   * Builds the column a star expands into: the catalog column name as one name part, qualified by
+   * its table. A name that is not a plain identifier, such as {@code a.b}, is quoted.
+   * {@code new Column(table, name)} and {@code setColumnName(name)} would split it on the dots into
+   * column {@code b} of a table {@code a}, which reads another table's column once printed; and
+   * only the qualified form {@code t."a.b"} parses back as one column, a lone {@code "a.b"} does
+   * not.
+   */
+  private static Column expandedColumn(Table table, String columnName) {
+    Column column = new Column();
+    column.setName(quotedIfNeeded(columnName), false);
+    column.setTable(table);
+    return column;
+  }
+
+  private static String quotedIfNeeded(String name) {
+    if (name == null || name.matches("[A-Za-z_][A-Za-z0-9_]*")
+        || name.length() > 1 && name.startsWith("\"") && name.endsWith("\"")) {
+      return name;
+    }
+    return "\"" + name.replace("\"", "\"\"") + "\"";
   }
 
   @Override

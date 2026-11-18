@@ -25,6 +25,10 @@ import ai.starlake.transpiler.schema.treebuilder.XmlTreeBuilder;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
+import net.sf.jsqlparser.statement.select.Select;
+import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ThrowableAssert;
 import org.junit.jupiter.api.Disabled;
@@ -1344,5 +1348,47 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
 
     Assertions.assertThat(dependencies.get("total_amount"))
         .containsExactlyInAnyOrder("starbake.orders.quantity", "starbake.products.price");
+  }
+
+  // Issue #156: a catalog column whose name holds a dot ("a.b", DuckDB allows it) must come out
+  // of the star expansion as one column of its own table, printed so that it parses back as that
+  // column, and not as column b of a table a.
+  @Test
+  void testStarExpansionOfColumnNamesWithDots() throws JSQLParserException, SQLException {
+    JdbcMetaData metaData = new JdbcMetaData("cat", "main").addTable("cat", "main", "dotted",
+        new JdbcColumn("a.b"), new JdbcColumn("x.y.z"), new JdbcColumn("c_email"))
+        .addTable("cat", "main", "a", new JdbcColumn("b"));
+
+    assertThatStarExpandsInto(metaData, "SELECT * FROM \"cat\".\"main\".\"dotted\"",
+        new String[][] {{"dotted", "a.b"}, {"dotted", "x.y.z"}, {"dotted", "c_email"}});
+
+    // the join brings a table `a` with a column `b` into scope: `a.b` would silently read it
+    assertThatStarExpandsInto(metaData, "SELECT * FROM dotted, a",
+        new String[][] {{"dotted", "a.b"}, {"dotted", "x.y.z"}, {"dotted", "c_email"}, {"a", "b"}});
+
+    assertThatStarExpandsInto(metaData, "SELECT dotted.* FROM dotted INNER JOIN a ON true",
+        new String[][] {{"dotted", "a.b"}, {"dotted", "x.y.z"}, {"dotted", "c_email"}});
+
+    assertThatStarExpandsInto(metaData, "SELECT * FROM (SELECT * FROM dotted) d",
+        new String[][] {{"d", "a.b"}, {"d", "x.y.z"}, {"d", "c_email"}});
+
+    String resolved = new JSQLColumResolver(metaData)
+        .getResolvedStatementText("SELECT * FROM \"cat\".\"main\".\"dotted\"");
+    Assertions.assertThat(resolved).contains("dotted.\"a.b\"", "dotted.\"x.y.z\"",
+        "dotted.c_email");
+  }
+
+  private static void assertThatStarExpandsInto(JdbcMetaData metaData, String sqlStr,
+      String[][] expectedColumns) throws JSQLParserException {
+    String resolved = new JSQLColumResolver(metaData).getResolvedStatementText(sqlStr);
+
+    // parse the resolved text back: each column must keep its table and its whole name
+    PlainSelect select = ((Select) CCJSqlParserUtil.parse(resolved)).getPlainSelect();
+    String[][] actualColumns = select.getSelectItems().stream().map(item -> {
+      Column column = (Column) item.getExpression();
+      return new String[] {column.getTable().getUnquotedName(), column.getUnquotedColumnName()};
+    }).toArray(String[][]::new);
+
+    Assertions.assertThat(actualColumns).as(resolved).isDeepEqualTo(expectedColumns);
   }
 }
