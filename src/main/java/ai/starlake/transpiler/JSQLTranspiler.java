@@ -128,59 +128,111 @@ public class JSQLTranspiler extends StatementDeParser {
    * @return the transformed query string
    * @throws JSQLParserException a parser exception when the statement can't be parsed
    */
-  @SuppressWarnings({"PMD.CyclomaticComplexity"})
   public static String transpileQuery(String qryStr, Dialect dialect,
       Map<String, Object> parameters, ExecutorService executorService,
       Consumer<CCJSqlParser> consumer) throws JSQLParserException {
-    Statement st;
+    Statement st = parse(qryStr, dialect, executorService, consumer);
 
     switch (dialect) {
       case GOOGLE_BIG_QUERY:
-        // Replace Double quoted string literals with single quoted string literals
-        StringBuilder sb = new StringBuilder();
-        boolean inSingleQuote = false; // Tracks if we're inside single quotes
-        boolean inDoubleQuote = false; // Tracks if we're inside double quotes
-
-        for (int i = 0; i < qryStr.length(); i++) {
-          char c = qryStr.charAt(i);
-
-          // Toggle state for single quotes
-          if (c == '\'' && !inDoubleQuote) {
-            inSingleQuote = !inSingleQuote;
-            sb.append(c); // Append the single quote as-is
-          } else /* Toggle state for double quotes */ if (c == '\"' && !inSingleQuote) {
-            inDoubleQuote = !inDoubleQuote;
-            sb.append('\''); // Replace outer double quotes with single quotes
-          } else /*Replace inner single quotes with double quotes if inside double-quoted context */ if (c == '\'') {
-            sb.append('"');
-          } else /* Append everything else as-is */ {
-            sb.append(c);
-          }
-        }
-
-        // Replace single quoted identifiers with double-quoted identifiers
-        Matcher matcher = SINGLE_TICKS_PATTERN.matcher(sb.toString());
-        sb = new StringBuilder();
-        while (matcher.find()) {
-          matcher.appendReplacement(sb, matcher.group().replaceAll("^`|`$", "\""));
-        }
-        matcher.appendTail(sb);
-
-        st = CCJSqlParserUtil.parse(sb.toString(), executorService, consumer);
         return transpileBigQuery(st, parameters);
       case DATABRICKS:
-        st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
         return transpileDatabricks(st, parameters);
       case SNOWFLAKE:
-        st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
         return transpileSnowflake(st, parameters);
       case AMAZON_REDSHIFT:
-        st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
         return transpileAmazonRedshift(st, parameters);
       default:
-        st = CCJSqlParserUtil.parse(qryStr, executorService, consumer);
         return transpile(st, parameters);
     }
+  }
+
+  /**
+   * Parse a query string in the defined dialect into a JSQLParser {@link Statement}, applying the
+   * same dialect specific pre-processing as
+   * {@link #transpileQuery(String, Dialect, Map, ExecutorService, Consumer)}. This is the parsing
+   * half of the transpiler: the returned statement can be inspected, resolved or classified and
+   * then handed to {@link #transpile(Statement, Map)} (or the dialect variants), so a caller pays
+   * for one parse only.
+   *
+   * @param qryStr the original query string
+   * @param dialect the dialect of the query string
+   * @param executorService the ExecutorService to use for running and observing JSQLParser
+   * @param consumer the parser configuration to use for the parsing
+   * @return the parsed statement
+   * @throws JSQLParserException a parser exception when the statement can't be parsed
+   */
+  public static Statement parse(String qryStr, Dialect dialect, ExecutorService executorService,
+      Consumer<CCJSqlParser> consumer) throws JSQLParserException {
+    switch (dialect) {
+      case GOOGLE_BIG_QUERY:
+        return CCJSqlParserUtil.parse(rewriteBigQueryStringLiterals(qryStr), executorService,
+            consumer);
+      default:
+        return CCJSqlParserUtil.parse(qryStr, executorService, consumer);
+    }
+  }
+
+  /**
+   * Parse a query string in the defined dialect into a JSQLParser {@link Statement}, applying the
+   * same dialect specific pre-processing as {@link #transpileQuery(String, Dialect)}.
+   *
+   * @param qryStr the original query string
+   * @param dialect the dialect of the query string
+   * @return the parsed statement
+   * @throws JSQLParserException a parser exception when the statement can't be parsed
+   * @throws InterruptedException a time-out exception, when the statement can't be parsed within 6
+   *         seconds (hanging parser)
+   */
+  public static Statement parse(String qryStr, Dialect dialect)
+      throws JSQLParserException, InterruptedException {
+    ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+
+    Statement st = parse(qryStr, dialect, executorService, parser -> {
+    });
+
+    executorService.shutdown();
+    boolean wasTerminated = executorService.awaitTermination(TIMEOUT, TimeUnit.SECONDS);
+    LOGGER.log(Level.FINE, "Exceutor Service terminated: " + wasTerminated);
+
+    return st;
+  }
+
+  /**
+   * BigQuery allows double quoted string literals. Replace them with single quoted string literals
+   * (swapping the quotes inside) and turn the remaining single-tick quoted identifiers into double
+   * quoted identifiers, so that the standard parser can read the query.
+   */
+  private static String rewriteBigQueryStringLiterals(String qryStr) {
+    StringBuilder sb = new StringBuilder();
+    boolean inSingleQuote = false; // Tracks if we're inside single quotes
+    boolean inDoubleQuote = false; // Tracks if we're inside double quotes
+
+    for (int i = 0; i < qryStr.length(); i++) {
+      char c = qryStr.charAt(i);
+
+      // Toggle state for single quotes
+      if (c == '\'' && !inDoubleQuote) {
+        inSingleQuote = !inSingleQuote;
+        sb.append(c); // Append the single quote as-is
+      } else /* Toggle state for double quotes */ if (c == '\"' && !inSingleQuote) {
+        inDoubleQuote = !inDoubleQuote;
+        sb.append('\''); // Replace outer double quotes with single quotes
+      } else /*Replace inner single quotes with double quotes if inside double-quoted context */ if (c == '\'') {
+        sb.append('"');
+      } else /* Append everything else as-is */ {
+        sb.append(c);
+      }
+    }
+
+    // Replace single quoted identifiers with double-quoted identifiers
+    Matcher matcher = SINGLE_TICKS_PATTERN.matcher(sb.toString());
+    sb = new StringBuilder();
+    while (matcher.find()) {
+      matcher.appendReplacement(sb, matcher.group().replaceAll("^`|`$", "\""));
+    }
+    matcher.appendTail(sb);
+    return sb.toString();
   }
 
   /**

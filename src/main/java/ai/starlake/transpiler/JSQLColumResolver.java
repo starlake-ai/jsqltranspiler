@@ -241,10 +241,24 @@ public class JSQLColumResolver
    * @throws JSQLParserException the exception when parsing the query statement fails
    */
   public String getResolvedStatementText(String sqlStr) throws JSQLParserException {
+    return getResolvedStatementText(CCJSqlParserUtil.parse(sqlStr));
+  }
+
+  /**
+   * Gets the rewritten statement text for an already parsed statement, with any AllColumns "*" or
+   * AllTableColumns "t.*" expression resolved into the actual columns. The statement is resolved in
+   * place, so a caller that already holds the AST (e.g. because it validated the statement first)
+   * does not have to parse the text a second time.
+   *
+   * @param st the parsed query statement (using any AllColumns "*" or AllTableColumns "t.*"
+   *        expression)
+   * @return rewritten statement text with any AllColumns "*" or AllTableColumns "t.*" expression
+   *         resolved into the actual columns
+   */
+  public String getResolvedStatementText(Statement st) {
     StringBuilder builder = new StringBuilder();
     StatementDeParser deParser = new StatementDeParser(builder);
 
-    Statement st = CCJSqlParserUtil.parse(sqlStr);
     if (st instanceof Select) {
       Select select = (Select) st;
       select.accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
