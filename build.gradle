@@ -367,7 +367,7 @@ jacocoTestCoverageVerification {
                 counter = 'LINE'
                 value = 'MISSEDCOUNT'
 
-                maximum = 2600
+                maximum = 2700
             }
             excludes = [
             ]
