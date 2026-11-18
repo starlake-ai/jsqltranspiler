@@ -215,7 +215,7 @@ SELECT min_by(x, y) AS min_by FROM VALUES ('a', 10), ('b', 50), ('c', 20) AS tab
 
 
 -- provided
-SELECT mode(col) AS mode FROM VALUES (1), (1), (2), (2), (3) AS tab(col);
+SELECT mode(col) AS mode FROM VALUES (1), (1), (1), (2), (2), (3) AS tab(col);
 
 -- result
 "mode"

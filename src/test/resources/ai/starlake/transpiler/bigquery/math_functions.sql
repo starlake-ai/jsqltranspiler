@@ -235,10 +235,10 @@ select RANGE_BUCKET(20, [0, 10, 20, 30, 40]) a -- 3 is return value
 ;
 
 -- expected
-SELECT  Len( List_Filter( [0, 10, 20, 30, 40], x -> x <= 20 ) ) a
-        , Len( List_Filter( [0, 10, 20, 20, 40, 40], x -> x <= 20 ) ) b
-        , Len( List_Filter( [0, 10, 20, 30, 40], x -> x <= 25 ) ) c
-        , Len( List_Filter( [5, 10, 20, 30, 40], x -> x <= -10 ) ) d
+SELECT  Len( List_Filter( [0, 10, 20, 30, 40], lambda x : x <= 20 ) ) a
+        , Len( List_Filter( [0, 10, 20, 20, 40, 40], lambda x : x <= 20 ) ) b
+        , Len( List_Filter( [0, 10, 20, 30, 40], lambda x : x <= 25 ) ) c
+        , Len( List_Filter( [5, 10, 20, 30, 40], lambda x : x <= -10 ) ) d
 ;
 
 -- result
@@ -272,7 +272,7 @@ WITH students AS
   SELECT 32 AS age UNION ALL
   SELECT 33 AS age
 )
-SELECT  Len( List_Filter( [10, 20, 30], x -> x <= age ) ) AS age_group
+SELECT  Len( List_Filter( [10, 20, 30], lambda x : x <= age ) ) AS age_group
         , Count( * ) AS count
 FROM students
 GROUP BY 1

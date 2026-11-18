@@ -76,7 +76,7 @@ SELECT ARRAY_CAT(ARRAY[1, 2], ARRAY[3, 4]) AS array;
 select ARRAY_COMPACT(ARRAY_CONSTRUCT(10, NULL, 30)) AS array;
 
 -- expected
-select list_filter(ARRAY[10, NULL, 30], x -> x is not null) AS array;
+select list_filter(ARRAY[10, NULL, 30], lambda x : x is not null) AS array;
 
 -- result
 "array"
@@ -87,7 +87,7 @@ select list_filter(ARRAY[10, NULL, 30], x -> x is not null) AS array;
 SELECT ARRAY_CONSTRUCT_COMPACT(null,'hello',3::double,4,5) AS array;
 
 -- expected
-select list_filter(ARRAY[null,'hello',3::double,4,5], x -> x is not null) AS array;
+select list_filter(ARRAY[null,'hello',3::double,4,5], lambda x : x is not null) AS array;
 
 -- result
 "array"
@@ -120,7 +120,7 @@ SELECT LIST_SORT(ARRAY_DISTINCT(['A', 'A', 'B', NULL, NULL])) AS arr;
 SELECT ARRAY_EXCEPT(['A', 'B', 'C'], ['B', 'C']) AS filtered;
 
 -- expected
-SELECT list_filter(['A', 'B', 'C'], x -> not list_contains(['B', 'C'],x) ) AS filtered;
+SELECT list_filter(['A', 'B', 'C'], lambda x : not list_contains(['B', 'C'],x) ) AS filtered;
 
 -- result
 "filtered"
@@ -177,7 +177,7 @@ SELECT list_sort(array_intersect(ARRAY['A', 'B', 'C'],
 SELECT ARRAY_MAX([20, 0, NULL, 10, NULL])  AS max;
 
 -- expected
-SELECT list_reverse_sort(list_filter([20, 0, NULL, 10, NULL], x -> x is not null))[1] AS max;
+SELECT list_reverse_sort(list_filter([20, 0, NULL, 10, NULL], lambda x : x is not null))[1] AS max;
 
 -- result
 "max"
@@ -188,7 +188,7 @@ SELECT list_reverse_sort(list_filter([20, 0, NULL, 10, NULL], x -> x is not null
 SELECT ARRAY_MIN([20, 0, NULL, 10, NULL])  AS max;
 
 -- expected
-SELECT list_sort(list_filter([20, 0, NULL, 10, NULL], x -> x is not null))[1] AS max;
+SELECT list_sort(list_filter([20, 0, NULL, 10, NULL], lambda x : x is not null))[1] AS max;
 
 -- result
 "max"
@@ -224,7 +224,7 @@ SELECT ARRAY_REMOVE(
 
 -- expected
 SELECT list_filter(
-  [1, 5, 5.00, 5.00::DOUBLE, '5', 5, NULL], x -> x<>5) AS arr;
+  [1, 5, 5.00, 5.00::DOUBLE, '5', 5, NULL], lambda x : x<>5) AS arr;
 
 -- result
 "arr"

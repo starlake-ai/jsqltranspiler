@@ -814,7 +814,7 @@ SELECT word, TO_CODE_POINTS(word) AS code_points
 FROM UNNEST(['foo', 'bar', 'baz', 'giraffe', 'llama']) AS word;
 
 -- expected
-SELECT word, list_transform( split(word, ''),  x -> unicode(x) ) as code_points
+SELECT word, list_transform( split(word, ''),  lambda x : unicode(x) ) as code_points
 FROM (select UNNEST(['foo', 'bar', 'baz', 'giraffe', 'llama']) AS word) AS word;
 
 -- result

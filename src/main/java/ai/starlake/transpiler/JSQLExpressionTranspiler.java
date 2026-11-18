@@ -738,7 +738,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("EPOCH_US");
           break;
         case UNIX_MILLIS:
-          function.setName("EPOCH_MS");
+          // BigQuery rounds down to the millisecond. EPOCH_MS does not: DuckDB 1.x truncates
+          // towards zero (wrong before 1970) and DuckDB 2.0 rounds to the nearest.
+          // CAST(FDIV(EPOCH_US(ts), 1000) AS BIGINT)
+          rewrittenExpression = new CastExpression("Cast", new Function("FDIV",
+              new Function("EPOCH_US", parameters.get(0)), new LongValue(1000)), "BIGINT");
           break;
         case UNIX_SECONDS:
           function.setName("EPOCH");
@@ -1361,8 +1365,11 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
           function.setName("ST_POINT");
           break;
         case ST_GEOGFROMTEXT:
+          // DuckDB's second parameter is `ignore_invalid`, unrelated to BigQuery's `oriented`,
+          // and DuckDB 2.0 rejects the named `oriented => ...` argument: keep the WKT only.
           if (paramCount > 1) {
             warning("ORIENTED, PLANAR, MAKE_VALID parameters unsupported.");
+            function.setParameters(parameters.get(0));
           }
           function.setName("ST_GEOMFROMTEXT");
           break;
@@ -1566,6 +1573,16 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     return builder;
   }
 
+  /**
+   * DuckDB 2.0 rejects the arrow lambda {@code x -> x + 1} by default, while the Python style
+   * {@code lambda x : x + 1} works since DuckDB 1.3. Applies to the lambdas built by the transpiler
+   * as well as to those of the input query.
+   */
+  @Override
+  public <S> StringBuilder visit(LambdaExpression lambdaExpression, S context) {
+    lambdaExpression.setLambdaKeyword(true);
+    return super.visit(lambdaExpression, context);
+  }
 
   @Override
   public <S> StringBuilder visit(AllColumns allColumns, S context) {
