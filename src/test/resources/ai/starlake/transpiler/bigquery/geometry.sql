@@ -10,8 +10,8 @@ FROM polygon;
 WITH polygon AS (SELECT 'POLYGON((0 0, 0 2, 2 2, 2 0, 0 0))' AS p)
 SELECT
   ST_CONTAINS(ST_GEOMFROMTEXT(p), ST_POINT(1, 1)) AS fromtext_default,
-  /*Warning: ORIENTED, PLANAR, MAKE_VALID parameters unsupported.*/ ST_CONTAINS(ST_GEOmFROMTEXT(p, oriented => FALSE), ST_POINT(1, 1)) AS non_oriented,
-  /*Warning: ORIENTED, PLANAR, MAKE_VALID parameters unsupported.*/ ST_CONTAINS(ST_GEOmFROMTEXT(p, oriented => TRUE),  ST_POINT(1, 1)) AS oriented
+  /*Warning: ORIENTED, PLANAR, MAKE_VALID parameters unsupported.*/ ST_CONTAINS(ST_GEOmFROMTEXT(p), ST_POINT(1, 1)) AS non_oriented,
+  /*Warning: ORIENTED, PLANAR, MAKE_VALID parameters unsupported.*/ ST_CONTAINS(ST_GEOmFROMTEXT(p),  ST_POINT(1, 1)) AS oriented
 FROM polygon;
 
 -- result
@@ -205,7 +205,7 @@ WITH data AS (
   UNION ALL
   SELECT 3 id, ST_GEOMFROMTEXT('POINT EMPTY') g
   UNION ALL
-  SELECT 4 id, ST_GEOMFROMTEXT('POLYGON((172 53, -141 70, -130 55, 172 53))', oriented => TRUE)
+  SELECT 4 id, /*Warning: ORIENTED, PLANAR, MAKE_VALID parameters unsupported.*/ ST_GEOMFROMTEXT('POLYGON((172 53, -141 70, -130 55, 172 53))')
 )
 SELECT id, ST_EXTENT(g) AS box
 FROM data;

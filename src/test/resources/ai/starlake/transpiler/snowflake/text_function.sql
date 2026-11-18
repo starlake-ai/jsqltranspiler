@@ -417,7 +417,7 @@ FROM (  (   SELECT Unnest(  [
                             ], RECURSIVE => TRUE ) ) ) AS t1
     , LATERAL ( SELECT  0 AS seq
                 , 0 AS index
-                , Regexp_Split_To_Table( t1.column1, List_Aggregate( List_Transform( Str_Split_Regex( '|', '' ), X -> REGEXP_ESCAPE(X) ), 'string_agg', '|' ) ) AS value  )
+                , Regexp_Split_To_Table( t1.column1, List_Aggregate( List_Transform( Str_Split_Regex( '|', '' ), lambda X : REGEXP_ESCAPE(X) ), 'string_agg', '|' ) ) AS value  )
 ORDER BY    seq
             , index
             , value
@@ -439,9 +439,9 @@ SELECT STRTOK('user@snowflake.com', '@.', 1) AS tk1
        , STRTOK('user@snowflake.com', '@.', 3) AS tk3;
 
 -- expected
-SELECT Str_Split_Regex('user@snowflake.com', List_Aggregate( List_Transform( Str_Split_Regex( '@.', '' ), X -> REGEXP_ESCAPE(X) ), 'string_agg', '|' ))[1] AS tk1
-       , Str_Split_Regex('user@snowflake.com', List_Aggregate( List_Transform( Str_Split_Regex( '@.', '' ), X -> REGEXP_ESCAPE(X) ), 'string_agg', '|' ))[2] AS tk2
-       , Str_Split_Regex('user@snowflake.com', List_Aggregate( List_Transform( Str_Split_Regex( '@.', '' ), X -> REGEXP_ESCAPE(X) ), 'string_agg', '|' ))[3] AS tk3
+SELECT Str_Split_Regex('user@snowflake.com', List_Aggregate( List_Transform( Str_Split_Regex( '@.', '' ), lambda X : REGEXP_ESCAPE(X) ), 'string_agg', '|' ))[1] AS tk1
+       , Str_Split_Regex('user@snowflake.com', List_Aggregate( List_Transform( Str_Split_Regex( '@.', '' ), lambda X : REGEXP_ESCAPE(X) ), 'string_agg', '|' ))[2] AS tk2
+       , Str_Split_Regex('user@snowflake.com', List_Aggregate( List_Transform( Str_Split_Regex( '@.', '' ), lambda X : REGEXP_ESCAPE(X) ), 'string_agg', '|' ))[3] AS tk3
 ;
 
 -- result
@@ -454,7 +454,7 @@ SELECT STRTOK_TO_ARRAY('user@snowflake.com', '.@') AS tokens;
 
 
 -- expected
-SELECT Str_Split_Regex('user@snowflake.com', List_Aggregate( List_Transform( Str_Split_Regex( '.@', '' ), X -> REGEXP_ESCAPE(X) ), 'string_agg', '|' )) AS tokens
+SELECT Str_Split_Regex('user@snowflake.com', List_Aggregate( List_Transform( Str_Split_Regex( '.@', '' ), lambda X : REGEXP_ESCAPE(X) ), 'string_agg', '|' )) AS tokens
 ;
 
 -- result

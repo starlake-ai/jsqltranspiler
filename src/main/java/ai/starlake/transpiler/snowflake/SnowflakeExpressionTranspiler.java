@@ -29,6 +29,7 @@ import net.sf.jsqlparser.expression.HexValue;
 import net.sf.jsqlparser.expression.LambdaExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.NotExpression;
+import net.sf.jsqlparser.expression.NullValue;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.TimezoneExpression;
 import net.sf.jsqlparser.expression.WhenClause;
@@ -948,10 +949,20 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
           break;
         case DIV0:
         case DIV0NULL:
+          // DIV0(a, b) is a / b, but 0 when b is 0 (DIV0NULL: when b is 0 or NULL).
+          // CASE WHEN b = 0 THEN 0 ELSE a / b END
+          // Not Coalesce(Divide(a, b), 0): DIVIDE is an integer division, and DuckDB 2.0 raises
+          // an error on a zero divisor instead of returning NULL.
           if (paramCount == 2) {
-            function.setName("Coalesce");
-            function.setParameters(new Function("Divide", parameters.get(0), parameters.get(1)),
-                new LongValue(0));
+            Expression divisor = parameters.get(1);
+            Expression zeroDivisor =
+                function.getName().equalsIgnoreCase("DIV0NULL")
+                    ? new EqualsTo(new Function("Coalesce", divisor, new LongValue(0)),
+                        new LongValue(0))
+                    : new EqualsTo(divisor, new LongValue(0));
+            rewrittenExpression = new CaseExpression(
+                BinaryExpression.divide(parenthesed(parameters.get(0)), parenthesed(divisor)),
+                new WhenClause(zeroDivisor, new LongValue(0)));
           }
           break;
         case ROUND:
@@ -1194,5 +1205,19 @@ public class SnowflakeExpressionTranspiler extends RedshiftExpressionTranspiler 
       colDataType.setDataType(getVariantMode() == VariantMode.VARIANT ? "VARIANT" : "VARCHAR");
     }
     return super.rewriteType(colDataType);
+  }
+
+  /**
+   * Wraps an operand in parentheses unless it is atomic, so that it keeps its meaning inside a
+   * binary expression: {@code DIV0(a + b, c)} must become {@code (a + b) / c}.
+   */
+  private static Expression parenthesed(Expression expression) {
+    if (expression instanceof Column || expression instanceof LongValue
+        || expression instanceof DoubleValue || expression instanceof Function
+        || expression instanceof NullValue || expression instanceof StringValue
+        || expression instanceof ParenthesedExpressionList) {
+      return expression;
+    }
+    return new ParenthesedExpressionList<>(expression);
   }
 }

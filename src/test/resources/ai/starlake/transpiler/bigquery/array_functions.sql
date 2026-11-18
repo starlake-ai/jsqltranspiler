@@ -41,7 +41,7 @@ WITH items AS
   (SELECT ['coffee', NULL, 'milk' ] as list
   UNION ALL
   SELECT ['cake', 'pie'] as list)
-SELECT Array_To_String( list_transform(list, x -> Coalesce( x, 'MISSING' )), '++' ) AS text
+SELECT Array_To_String( list_transform(list, lambda x : Coalesce( x, 'MISSING' )), '++' ) AS text
     , ARRAY_LENGTH(list) AS size
 FROM items
 ORDER BY size DESC;

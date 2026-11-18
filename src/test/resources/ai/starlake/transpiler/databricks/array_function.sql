@@ -35,7 +35,7 @@ SELECT [1, 2, 3] || [0] AS arr;
 SELECT array_compact(array(1, 2, NULL, 3, NULL, 3)) AS arr;
 
 -- expected
-SELECT list_filter([1, 2, NULL, 3, NULL, 3], x -> x IS NOT NULL) AS arr;
+SELECT list_filter([1, 2, NULL, 3, NULL, 3], lambda x : x IS NOT NULL) AS arr;
 
 -- result
 "arr"
@@ -65,7 +65,7 @@ SELECT LIST_SORT(ARRAY_DISTINCT([1,2,3,NULL,3]))AS ARR;
 SELECT array_except([1, 2, 2, 3], [1, 1, 3, 5]) AS arr;
 
 -- expected
-SELECT list_distinct(list_filter([1, 2, 2, 3], x -> NOT array_contains(list_intersect([1, 2, 2, 3], [1, 1, 3, 5]), x) )) AS arr;
+SELECT list_distinct(list_filter([1, 2, 2, 3], lambda x : NOT array_contains(list_intersect([1, 2, 2, 3], [1, 1, 3, 5]), x) )) AS arr;
 
 -- result
 "arr"

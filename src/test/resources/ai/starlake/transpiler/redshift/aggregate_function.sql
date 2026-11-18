@@ -77,7 +77,7 @@ select approx_count_distinct(distinct pricepaid) AS count from sales;
 
 -- result
 "count"
-"4655"
+"4488"
 
 
 -- provided

@@ -44,6 +44,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -424,6 +425,20 @@ public class JSQLTranspiler extends StatementDeParser {
 
     LOGGER.info("Create the DuckDB Macros");
     try (java.sql.Statement st = conn.createStatement()) {
+      // DuckDB 2.0 refuses axis order sensitive spatial functions (ST_Distance_Sphere, ...) until
+      // `geometry_always_xy` is set. The macros flip BigQuery's [lon, lat] points to the
+      // [lat, lon] order DuckDB 1.x assumed, so keep that. The setting is looked up first: it
+      // does not exist before DuckDB 2.0 nor without the spatial extension, and a failing SET
+      // would abort the caller's transaction. GLOBAL, like the macros: a plain SET only holds for
+      // this connection, while other connections to the database share the macros.
+      boolean hasAxisOrderSetting;
+      try (ResultSet rs =
+          st.executeQuery("SELECT 1 FROM duckdb_settings() WHERE name = 'geometry_always_xy'")) {
+        hasAxisOrderSetting = rs.next();
+      }
+      if (hasAxisOrderSetting) {
+        st.execute("SET GLOBAL geometry_always_xy = false");
+      }
       for (String sqlStr : getMacros()) {
         LOGGER.fine("execute: " + sqlStr);
         st.execute(sqlStr);
