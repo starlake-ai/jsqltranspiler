@@ -2,6 +2,47 @@
 
 Changelog of jsqltranspiler
 
+## 1.17
+
+Released 2026-11-18.
+
+### Dependencies
+
+* **jsqlparser 5.4.272** (was 5.4.162 in 1.16).
+* Tested against **DuckDB 2.0** (`duckdb_jdbc` 2.0.0.0, was 1.5.2.0). The
+  transpiled SQL now needs DuckDB 1.3 or later, for the `lambda` syntax.
+
+### Fixed
+
+* Column resolver: expanding `*` or `t.*` over a catalog column whose name
+  holds a dot, such as `"a.b"`, no longer produces a reference to another
+  table. The column used to come out as `a.b` (column `b` of a table `a`),
+  which fails to bind or silently reads another table's column. It now comes
+  out quoted and qualified by its own table, `dotted."a.b"` (#156).
+* Date units are printed upper case whatever the jsqlparser version. Since
+  5.4.272 jsqlparser keeps a date unit as written (`hour`), so the transpiled
+  literals changed from `DATEDIFF('HOUR', ...)` to `DATEDIFF('hour', ...)`.
+* DuckDB 2.0 compatibility:
+  * Lambdas are written as `lambda x : ...`; DuckDB 2.0 rejects the arrow form
+    `x -> ...` by default.
+  * `createMacros` sets `geometry_always_xy = false` (globally, when the
+    spatial extension provides it), which DuckDB 2.0 requires before running
+    axis order sensitive functions such as `ST_Distance_Sphere`.
+  * Snowflake `DIV0` and `DIV0NULL` become `CASE WHEN b = 0 THEN 0 ELSE a / b
+    END`. The previous `COALESCE(DIVIDE(a, b), 0)` raises an error on DuckDB 2.0
+    and was an integer division: `DIV0(1, 2)` returned 0 instead of 0.5.
+  * BigQuery `UNIX_MILLIS` becomes `CAST(FDIV(EPOCH_US(ts), 1000) AS BIGINT)`
+    and rounds down, as BigQuery does. `EPOCH_MS` rounds on DuckDB 2.0 and
+    truncated towards zero on 1.x, which was wrong before 1970.
+  * BigQuery `ST_GEOGFROMTEXT` keeps the WKT argument only, with a warning.
+    DuckDB 2.0 rejects the named `oriented => ...` argument, and DuckDB 1.x had
+    bound it to its unrelated `ignore_invalid` parameter.
+
+### Build
+
+* JaCoCo coverage gate raised to 2700 missed lines (was 2600, which `main`
+  already exceeded).
+
 ## 1.16
 
 Released 2026-10-21.
