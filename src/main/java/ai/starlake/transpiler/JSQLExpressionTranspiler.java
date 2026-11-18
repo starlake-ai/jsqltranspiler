@@ -527,6 +527,12 @@ public class JSQLExpressionTranspiler extends ExpressionDeParser {
     if (hasParameters(function)) {
       ExpressionList<Expression> parameters = (ExpressionList<Expression>) function.getParameters();
       parameters.replaceAll(e -> {
+        // jsqlparser up to 5.4 prints a date unit upper case (HOUR), later versions as written
+        // (hour); rebuild it from its type so that the transpiled literals ('HOUR') do not
+        // depend on the parser version
+        if (e instanceof DateUnitExpression && ((DateUnitExpression) e).getType() != null) {
+          return new DateUnitExpression(((DateUnitExpression) e).getType());
+        }
         if (e instanceof DateTimeLiteralExpression) {
           String value = ((DateTimeLiteralExpression) e).getValue();
           if (value != null && value.length() > 1 && value.startsWith("'") && value.endsWith("'")) {
