@@ -431,10 +431,12 @@ public class JSQLTranspiler extends StatementDeParser {
       // does not exist before DuckDB 2.0 nor without the spatial extension, and a failing SET
       // would abort the caller's transaction. GLOBAL, like the macros: a plain SET only holds for
       // this connection, while other connections to the database share the macros.
-      boolean hasAxisOrderSetting;
+      boolean hasAxisOrderSetting = false;
       try (ResultSet rs =
           st.executeQuery("SELECT 1 FROM duckdb_settings() WHERE name = 'geometry_always_xy'")) {
-        hasAxisOrderSetting = rs.next();
+        if (rs.next()) {
+          hasAxisOrderSetting = true;
+        }
       }
       if (hasAxisOrderSetting) {
         st.execute("SET GLOBAL geometry_always_xy = false");
