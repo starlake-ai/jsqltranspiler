@@ -92,11 +92,11 @@ public class JsonTreeBuilderMinimized extends TreeBuilder<String> {
 
       boolean first = true;
       for (JdbcColumn child : column.getChildren()) {
-        convertNodeToJson(child, "");
         if (!first) {
-          first = false;
           jsonBuilder.append(",");
         }
+        first = false;
+        convertNodeToJson(child, "");
       }
       jsonBuilder.append("]");
     }

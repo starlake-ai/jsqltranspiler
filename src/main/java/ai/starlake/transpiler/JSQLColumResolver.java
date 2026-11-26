@@ -44,6 +44,9 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SelectVisitor;
+import net.sf.jsqlparser.statement.select.ExceptOp;
+import net.sf.jsqlparser.statement.select.MinusOp;
+import net.sf.jsqlparser.statement.select.SetOperation;
 import net.sf.jsqlparser.statement.select.SetOperationList;
 import net.sf.jsqlparser.statement.select.TableFunction;
 import net.sf.jsqlparser.statement.select.TableStatement;
@@ -71,6 +74,7 @@ public class JSQLColumResolver
 
   public final static Logger LOGGER = Logger.getLogger(JSQLColumResolver.class.getName());
   private boolean commentFlag = true;
+  private boolean allSetOperationBranches = false;
   final JdbcMetaData metaData;
   final JSQLExpressionColumnResolver expressionColumnResolver;
 
@@ -158,7 +162,7 @@ public class JSQLColumResolver
 
     Statement st = CCJSqlParserUtil.parse(sqlStr);
     if (st instanceof Select) {
-      PlainSelect select = (PlainSelect) st;
+      Select select = (Select) st;
       return select.accept((SelectVisitor<JdbcResultSetMetaData>) resolver,
           JdbcMetaData.copyOf(metaData));
 
@@ -590,14 +594,70 @@ public class JSQLColumResolver
         JdbcMetaData.copyOf(metaData));
   }
 
+  /**
+   * Resolves a set operation ({@code UNION}, {@code INTERSECT}, {@code EXCEPT}, {@code MINUS}). The
+   * common table expressions written in front of it are visible to every branch. Its columns are
+   * those of the first branch, unless {@link #setAllSetOperationBranches(boolean)} is set: then
+   * each column takes as children the column at the same position in every branch that gives
+   * values, so that the lineage reaches the sources of all of them.
+   */
   @Override
   public <S> JdbcResultSetMetaData visit(SetOperationList setOperationList, S context) {
-    if (context instanceof JdbcMetaData) {
-      return setOperationList.getSelect(0).accept((SelectVisitor<JdbcResultSetMetaData>) this,
-          (JdbcMetaData) context);
-    } else {
+    if (!(context instanceof JdbcMetaData)) {
       return null;
     }
+    JdbcMetaData metaData = (JdbcMetaData) context;
+    int branchCount = allSetOperationBranches ? setOperationList.getSelects().size() : 1;
+
+    List<JdbcResultSetMetaData> branches = new ArrayList<>();
+    for (int i = 0; i < branchCount; i++) {
+      // the right side of EXCEPT or MINUS only removes rows: it gives no value
+      SetOperation operation = i > 0 ? setOperationList.getOperation(i - 1) : null;
+      if (operation instanceof ExceptOp || operation instanceof MinusOp) {
+        continue;
+      }
+      branches.add(visitBranch(setOperationList, setOperationList.getSelect(i), metaData));
+    }
+
+    JdbcResultSetMetaData first = branches.get(0);
+    if (first == null || branches.size() < 2) {
+      return first;
+    }
+    JdbcResultSetMetaData resultSetMetaData = new JdbcResultSetMetaData();
+    for (int c = 0; c < first.getColumns().size(); c++) {
+      JdbcColumn firstColumn = first.getColumns().get(c);
+      // a column of the set operation belongs to none of the branch tables
+      JdbcColumn column = new JdbcColumn(firstColumn.columnName, firstColumn.dataType,
+          firstColumn.typeName, firstColumn.columnSize, firstColumn.decimalDigits,
+          firstColumn.nullable, firstColumn.remarks, null);
+      for (JdbcResultSetMetaData branch : branches) {
+        if (branch != null && c < branch.getColumns().size()) {
+          column.add(branch.getColumns().get(c));
+        }
+      }
+      resultSetMetaData.add(column, first.getLabels().get(c));
+    }
+    return resultSetMetaData;
+  }
+
+  /**
+   * Resolves one branch of a set operation in its own copy of the metadata, where the common table
+   * expressions written in front of the set operation are registered. A plain select is resolved in
+   * that copy itself, as it resolves its own common table expressions: copying the metadata once
+   * more would drop the children of their columns, and with them their lineage.
+   */
+  private JdbcResultSetMetaData visitBranch(SetOperationList setOperationList, Select select,
+      JdbcMetaData metaData) {
+    JdbcMetaData branchMetaData = JdbcMetaData.copyOf(metaData);
+    if (setOperationList.getWithItemsList() != null) {
+      for (WithItem<?> withItem : setOperationList.getWithItemsList()) {
+        withItem.accept(this, branchMetaData);
+      }
+    }
+    if (select instanceof PlainSelect) {
+      return visit((PlainSelect) select, branchMetaData);
+    }
+    return select.accept((SelectVisitor<JdbcResultSetMetaData>) this, branchMetaData);
   }
 
   @Override
@@ -613,6 +673,17 @@ public class JSQLColumResolver
 
       ParenthesedStatement st = withItem.getParenthesedStatement();
       if (st instanceof ParenthesedSelect) {
+        Select body = withItem.getSelect().getSelect();
+        if (withItem.isRecursive() && body instanceof SetOperationList) {
+          // the recursive branches read the common table expression itself: register it first
+          // with the columns of its anchor, the first branch
+          JdbcResultSetMetaData anchor = ((SetOperationList) body).getSelect(0)
+              .accept((SelectVisitor<JdbcResultSetMetaData>) this, JdbcMetaData.copyOf(metaData));
+          if (anchor != null) {
+            metaData.put(anchor, withItem.getUnquotedAliasName(),
+                "Error in WITH clause " + withItem);
+          }
+        }
         rsMetaData =
             withItem.getSelect().accept((SelectVisitor<JdbcResultSetMetaData>) this, metaData);
         metaData.put(rsMetaData, withItem.getUnquotedAliasName(),
@@ -755,6 +826,36 @@ public class JSQLColumResolver
    */
   public JSQLColumResolver setCommentFlag(boolean commentFlag) {
     this.commentFlag = commentFlag;
+    return this;
+  }
+
+  /**
+   * @return whether the columns of a set operation follow every branch, see
+   *         {@link #setAllSetOperationBranches(boolean)}
+   */
+  public boolean isAllSetOperationBranches() {
+    return allSetOperationBranches;
+  }
+
+  /**
+   * Makes each column of a set operation ({@code UNION}, {@code INTERSECT}, {@code EXCEPT},
+   * {@code MINUS}) take as children the column at the same position in every branch that gives
+   * values, instead of being the column of the first branch. The lineage then reaches the sources
+   * of every such branch; the right side of {@code EXCEPT} or {@code MINUS}, which only removes
+   * rows, is left out. Such a column has no table, since it belongs to none of the branch tables;
+   * its name, label and type are those of the first branch. Off by default: the column of the first
+   * branch, with its table, is what the resolution of a result set needs.
+   *
+   * <p>
+   * The static {@code getResultSetMetaData} methods, and {@code getResultSetMetaData(String,
+   * String[][])} which calls them, use a new resolver and ignore this option; so does
+   * {@link JSQLResolver}, which resolves set operations its own way.
+   *
+   * @param allSetOperationBranches true to follow every branch of a set operation
+   * @return this resolver
+   */
+  public JSQLColumResolver setAllSetOperationBranches(boolean allSetOperationBranches) {
+    this.allSetOperationBranches = allSetOperationBranches;
     return this;
   }
 }
