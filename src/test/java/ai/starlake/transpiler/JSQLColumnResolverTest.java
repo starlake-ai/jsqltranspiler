@@ -971,6 +971,42 @@ public class JSQLColumnResolverTest extends AbstractColumnResolverTest {
   }
 
   /**
+   * Test lenient mode when a star is expanded over a table qualified with a catalog or a schema
+   * that does not exist in the metadata: the table's columns are unknown, as for a table not found,
+   * instead of failing. Strict mode still fails.
+   *
+   * @throws JSQLParserException then exception when the SQL can't be parsed
+   */
+  @Test
+  void testLenientStarOverUnknownCatalogAndSchema() throws JSQLParserException, SQLException {
+    JdbcMetaData jdbcMetadata = new JdbcMetaData("", "");
+    jdbcMetadata.addTable("", "tpch1", "orders", new JdbcColumn("o_orderdate"));
+
+    //@formatter:off
+    String unknownCatalog =
+        "WITH ref AS (\n" +
+        "    SELECT * FROM acme_tpch.tpch1.orders\n" +
+        ")\n" +
+        "SELECT ref.o_orderdate FROM ref";
+    //@formatter:on
+    JdbcMetaData lenient =
+        JdbcMetaData.copyOf(jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.LENIENT));
+    JdbcResultSetMetaData res = JSQLColumResolver.getResultSetMetaData(unknownCatalog, lenient);
+    assertThatResolvesInto(res, new String[][] {{"ref", "o_orderdate"}});
+
+    String unknownSchema = "SELECT * FROM unknown_schema.orders";
+    JdbcMetaData ignore =
+        JdbcMetaData.copyOf(jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.IGNORE));
+    res = JSQLColumResolver.getResultSetMetaData(unknownSchema, ignore);
+    Assertions.assertThat(res.getColumnCount()).isZero();
+
+    Assertions
+        .assertThatThrownBy(() -> JSQLColumResolver.getResultSetMetaData(unknownSchema,
+            JdbcMetaData.copyOf(jdbcMetadata.setErrorMode(JdbcMetaData.ErrorMode.STRICT))))
+        .hasMessageContaining("Schema unknown_schema does not exist");
+  }
+
+  /**
    * Test lenient mode for an aliased table and column, when table exists, but no columns found and
    * schema mismatch.
    *
