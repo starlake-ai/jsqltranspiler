@@ -134,13 +134,13 @@ public class JsonTreeBuilder extends TreeBuilder<String> {
 
       boolean first = true;
       for (JdbcColumn child : column.getChildren()) {
-        convertNodeToJson(child, "", indent + 4);
         if (!first) {
-          first = false;
-          jsonBuilder.append(",");
+          jsonBuilder.append(",\n");
         }
-        jsonBuilder.append("\n");
+        first = false;
+        convertNodeToJson(child, "", indent + 4);
       }
+      jsonBuilder.append("\n");
 
       addIndentation(indent + 2);
       jsonBuilder.append("]\n");
