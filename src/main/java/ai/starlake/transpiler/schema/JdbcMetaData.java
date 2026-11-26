@@ -618,8 +618,13 @@ public final class JdbcMetaData implements DatabaseMetaData {
     if (jdbcCatalog == null) {
       LOGGER.info(
           "Available catalogues: " + Arrays.deepToString(catalogs.keySet().toArray(new String[0])));
-      throw new RuntimeException(
-          "Catalog " + catalogName + " does not exist in the DatabaseMetaData.");
+      if (errorMode == ErrorMode.STRICT) {
+        throw new RuntimeException(
+            "Catalog " + catalogName + " does not exist in the DatabaseMetaData.");
+      }
+      // Lenient and ignore modes: the table's columns are unknown, as for a table not found.
+      addUnresolved(qualifiedName(catalogName, schemaName, tableName));
+      return jdbcColumns;
     }
 
     JdbcSchema jdbcSchema = jdbcCatalog
@@ -627,8 +632,12 @@ public final class JdbcMetaData implements DatabaseMetaData {
     if (jdbcSchema == null) {
       LOGGER.info("Available schema: "
           + Arrays.deepToString(jdbcCatalog.schemas.keySet().toArray(new String[0])));
-      throw new RuntimeException(
-          "Schema " + schemaName + " does not exist in the given Catalog " + catalogName);
+      if (errorMode == ErrorMode.STRICT) {
+        throw new RuntimeException(
+            "Schema " + schemaName + " does not exist in the given Catalog " + catalogName);
+      }
+      addUnresolved(qualifiedName(catalogName, schemaName, tableName));
+      return jdbcColumns;
     }
 
     if (tableName != null && !tableName.isEmpty()) {
@@ -1989,6 +1998,16 @@ public final class JdbcMetaData implements DatabaseMetaData {
    */
   public void addUnresolved(String unquotedQualifiedName) {
     unresolvedObjects.add(unquotedQualifiedName);
+  }
+
+  private static String qualifiedName(String... parts) {
+    StringJoiner joiner = new StringJoiner(".");
+    for (String part : parts) {
+      if (part != null && !part.isEmpty()) {
+        joiner.add(part);
+      }
+    }
+    return joiner.toString();
   }
 
   /**
